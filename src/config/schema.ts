@@ -9,6 +9,7 @@ export const configSchema = z.looseObject({
   version: z.number().int().positive().optional(),
   theme: z.enum(['auto', ...themeNames]).optional(),
   ascii: z.boolean().optional(),
+  compactMode: z.boolean().optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -38,6 +39,14 @@ export const appConfig = defineConfig({
       description: 'Use ASCII-only symbols and borders.',
       defaultValue: false,
       env: 'CLI_ASCII',
+    },
+    {
+      path: 'compactMode',
+      label: 'Compact mode',
+      section: 'Appearance',
+      kind: 'toggle',
+      description: 'Show a minimal Scan interface when Nosey opens directly on Scan.',
+      defaultValue: false,
     },
   ],
 });
