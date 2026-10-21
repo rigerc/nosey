@@ -164,6 +164,8 @@ npm run dev -- --setup
 
 Settings are saved only when you choose to save them. Theme previews do not change saved preferences.
 
+**Compact mode** is an optional toggle in Settings (off by default). When enabled, launching the interactive Scan directly with `nosey [path]` opens a minimal interface without application tabs or the command menu. You can still select skill IDs with Space, review them with Enter, rescan with `r`, or quit with `q`. Launches that start on another screen retain the standard interface. The explicit `nosey scan [path]` command, `--plain`, and noninteractive reports remain headless and unchanged. Restart Nosey after saving this setting.
+
 ## Development
 
 Build the CLI, then run it without the development runner:

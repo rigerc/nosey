@@ -101,6 +101,7 @@ function presentation(screen: string, root: string): AppOptions {
       noColor: noColor(),
     }),
     ascii: resolved.values.ascii ?? !supportsUnicode(),
+    compactMode: resolved.values.compactMode ?? false,
     debug: Boolean(flags.debug),
     screen,
     configFile: flags.config,
