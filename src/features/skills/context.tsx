@@ -14,6 +14,7 @@ export interface ScanConfig {
   registry: string[];
   explain: boolean;
 }
+type ScanResult = Report & {updatedRegistries?: string[]; inspectedAgents?: string[]};
 export const defaultScan: ScanConfig = {
   root: '.',
   depth: 8,
@@ -29,7 +30,7 @@ function useScanState(
 ) {
   // Startup checking is opt-in and only runs for the first interactive scan.
   const checkOnNextScan = useRef(checkRegistryUpdatesOnStart && enabled && !initialReport);
-  const scan = useAsync(async () => {
+  const scan = useAsync<ScanResult, []>(async () => {
     const forceRefresh = checkOnNextScan.current;
     checkOnNextScan.current = false;
     const resolved = await resolveRegistries(config.root, config.registry, {forceRefresh});
