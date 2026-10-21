@@ -88,7 +88,7 @@ export function ScanProvider({
 }) {
   const value = useScanState(config, initialReport, enabled, installSettings);
   return (
-    <Context.Provider value={{...value, confirm: (ids, commands) => onConfirm?.(ids, commands)}}>
+    <Context.Provider value={{...value, confirm: (ids, commands) => commands === undefined ? onConfirm?.(ids) : onConfirm?.(ids, commands)}}>
       {children}
     </Context.Provider>
   );
