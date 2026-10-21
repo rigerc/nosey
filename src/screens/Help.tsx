@@ -29,6 +29,12 @@ export function HelpScreen() {
           </Box>
         ))}
       </Panel>
+      <Panel title="Scan and skill selection">
+        <Text>Space select · Enter review · / or f filter · c clear</Text>
+        <Text>Filter: type to search · Enter apply · Esc cancel</Text>
+        <Text>g group selection · d inspect skill · r rescan</Text>
+        <Muted>Typing in a filter never triggers application shortcuts.</Muted>
+      </Panel>
       <Panel title="Flags and commands">
         <Text>--theme nosey|dark|light|contrast|mono|auto</Text>
         <Text>{`--screen ${screenIds.join('|')}`}</Text>

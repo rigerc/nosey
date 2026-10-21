@@ -7,7 +7,10 @@ import type {SelectItem} from './Select';
 import {Muted} from './typography';
 
 export interface MultiSelectProps<T extends string> {
+  /** Items visible in the current view, optionally filtered. */
   items: readonly SelectItem<T>[];
+  /** Full item order for preserving selections hidden by a filter. */
+  allItems?: readonly SelectItem<T>[];
   value?: readonly T[];
   defaultValue?: readonly T[];
   onChange?: (value: T[]) => void;
@@ -17,9 +20,10 @@ export interface MultiSelectProps<T extends string> {
   emptyMessage?: string;
 }
 
-/** Space toggles, arrows or j/k move, Enter submits. Values follow item order. */
+/** Space toggles; arrows/j/k move; Enter submits every selected item, including filtered-out ones. */
 export function MultiSelect<T extends string>({
   items,
+  allItems,
   value,
   defaultValue = [],
   onChange,
@@ -33,8 +37,9 @@ export function MultiSelect<T extends string>({
   const [cursor, setCursor] = useState(0);
   const index = listIndex(cursor, items.length);
   if (cursor !== index) setCursor(index);
+  const sourceItems = allItems ?? items;
   const selected = new Set(value ?? internal);
-  const values = () => items.filter((item) => selected.has(item.value)).map((item) => item.value);
+  const values = () => sourceItems.filter((item) => selected.has(item.value)).map((item) => item.value);
   const move = (delta: number) => {
     if (items.length) setCursor((index + delta + items.length) % items.length);
   };
@@ -44,7 +49,7 @@ export function MultiSelect<T extends string>({
     const next = new Set(selected);
     if (next.has(item.value)) next.delete(item.value);
     else next.add(item.value);
-    const result = items.filter((item) => next.has(item.value)).map((item) => item.value);
+    const result = sourceItems.filter((entry) => next.has(entry.value)).map((entry) => entry.value);
     if (value === undefined) setInternal(result);
     onChange?.(result);
   };
@@ -81,13 +86,13 @@ export function MultiSelect<T extends string>({
           >
             {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
             {item.label}
-            {item.hint ? ` - ${item.hint}` : ''}
+            {item.hint ? ' - ' + item.hint : ''}
           </Text>
         );
       })}
-      {items.length > 0 && (
+      {sourceItems.length > 0 && (
         <Muted>
-          {values().length} selected / {start + 1}-{end} of {items.length}
+          {values().length} selected / {items.length === 0 ? '0' : start + 1 + '-' + end} of {items.length} visible
         </Muted>
       )}
     </Box>
