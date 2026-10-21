@@ -1,6 +1,8 @@
-import {createContext, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
-import {detectProject, type Report} from '../../lib/detect.js';
-import {resolveRegistries} from '../../lib/registry/resolve.js';
+import {createContext, useContext, useEffect, type ReactNode} from 'react';
+import {resolve} from 'node:path';
+import {detectProject, type Report} from '../../lib/detect';
+import {resolveRegistries} from '../../lib/registry/resolve';
+import {useAsync} from '../../hooks/useAsync';
 
 export interface ScanConfig {
   root: string;
@@ -10,60 +12,67 @@ export interface ScanConfig {
   registry: string[];
   explain: boolean;
 }
-type ScanState =
-  | {status: 'loading'}
-  | {status: 'error'; message: string}
-  | {status: 'ready'; report: Report};
-interface ScanContextValue {
-  config: ScanConfig;
-  state: ScanState;
-  refresh: () => void;
-  confirm: (ids: string[]) => void;
+export const defaultScan: ScanConfig = {
+  root: '.',
+  depth: 8,
+  maxFiles: 20_000,
+  frontendBonus: true,
+  registry: [],
+  explain: false,
+};
+function useScanState(config: ScanConfig, initialReport?: Report, enabled = true) {
+  const scan = useAsync(async () => {
+    const resolved = await resolveRegistries(config.root, config.registry);
+    return detectProject(config.root, {
+      ...config,
+      registry: resolved.registry,
+      registryWarnings: resolved.warnings,
+    });
+  }, initialReport);
+  const registryKey = JSON.stringify(config.registry);
+  useEffect(() => {
+    if (enabled && !initialReport) void scan.run();
+  }, [
+    config.root,
+    config.depth,
+    config.maxFiles,
+    config.frontendBonus,
+    registryKey,
+    enabled,
+    initialReport,
+    scan.run,
+  ]);
+  return {
+    config: {...config, root: resolve(config.root)},
+    scan,
+    refresh: scan.run,
+    static: !enabled,
+  };
 }
-const ScanContext = createContext<ScanContextValue | null>(null);
-
-export function ScanProvider({config, onConfirm, children}: {
-  config: ScanConfig;
+type Value = ReturnType<typeof useScanState> & {confirm: (ids: string[]) => void};
+const Context = createContext<Value | null>(null);
+export function ScanProvider({
+  config = defaultScan,
+  initialReport,
+  enabled,
+  onConfirm,
+  children,
+}: {
+  config?: ScanConfig;
+  initialReport?: Report;
+  enabled?: boolean;
   onConfirm?: (ids: string[]) => void;
   children: ReactNode;
 }) {
-  const [revision, setRevision] = useState(0);
-  const [state, setState] = useState<ScanState>({status: 'loading'});
-  const registryKey = config.registry.join('\n');
-  useEffect(() => {
-    let cancelled = false;
-    setState({status: 'loading'});
-    async function load() {
-      try {
-        const resolved = await resolveRegistries(config.root, config.registry);
-        const report = await detectProject(config.root, {
-          depth: config.depth,
-          maxFiles: config.maxFiles,
-          frontendBonus: config.frontendBonus,
-          registry: resolved.registry,
-          registryWarnings: resolved.warnings,
-        });
-        if (!cancelled) setState({status: 'ready', report});
-      } catch (error) {
-        if (!cancelled)
-          setState({status: 'error', message: error instanceof Error ? error.message : String(error)});
-      }
-    }
-    void load();
-    return () => { cancelled = true; };
-  }, [config.root, config.depth, config.maxFiles, config.frontendBonus, registryKey, revision]);
-  const value = useMemo<ScanContextValue>(
-    () => ({
-      config, state,
-      refresh: () => setRevision((n) => n + 1),
-      confirm: (ids) => onConfirm?.(ids),
-    }),
-    [config, state, onConfirm],
+  const value = useScanState(config, initialReport, enabled);
+  return (
+    <Context.Provider value={{...value, confirm: (ids) => onConfirm?.(ids)}}>
+      {children}
+    </Context.Provider>
   );
-  return <ScanContext.Provider value={value}>{children}</ScanContext.Provider>;
 }
 export function useScan() {
-  const ctx = useContext(ScanContext);
-  if (!ctx) throw new Error('useScan must be used under ScanProvider');
-  return ctx;
+  const value = useContext(Context);
+  if (!value) throw new Error('useScan requires ScanProvider');
+  return value;
 }

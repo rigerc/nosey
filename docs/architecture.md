@@ -1,77 +1,63 @@
 # Architecture
 
-Nosey is an Ink 8/React 19 command-line application with a single, branded UI framework.
-The scanner and registry services were ported from SkillSense; all interactive feature
-screens use Nosey's existing components, hooks, router and theme.
+The application combines the Ink 8 scaffold shell with Nosey's workspace detection
+and skill registry engine. Domain operations are shared by the terminal UI and
+headless commands, without adding a separate UI framework dependency.
 
-## Program entry points
+- `src/cli.tsx` parses CLI arguments and handles plain and interactive rendering.
+- `src/app.tsx` composes providers, navigation, and shortcuts.
+- `src/screens/index.ts` defines screens and visible navigation order.
+- `src/commands/index.ts` registers headless commands.
+- `src/commands/scan.ts` resolves registries, scans workspaces, and prints reports.
+- `src/commands/registry.ts` routes registry management and noninteractive initialization.
+- `src/lib/scanner.ts`, `manifests.ts`, `detect.ts`, `report.ts`, and `text-cache.ts`
+  implement bounded scanning, manifest parsing, detection, reporting, and caching.
+- `src/lib/registry/` implements local/Git registry loading, validation, merging,
+  configuration discovery, migration compatibility, initialization, and commands.
+- `src/data/skills-map.ts` contains built-in technology and skill mappings.
+- `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
+- `templates/registry/` is the packaged registry template and trusted manifest generator.
+- `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
+  and generate review proposals; see [their guide](../scripts/README.md).
+- `assets/nosey-brand-kit/` retains Nosey's original asset exports; runtime semantic
+  colors live in `src/theme/palettes.json`. The ASCII `BrandMark` carries the identity.
+- `src/components/`, `src/hooks/`, and `src/theme/` supply reusable UI primitives.
+- `docs/ui-framework.md` explains composition, input ownership, themes and tests.
+- `src/config/` and `src/lib/config.ts` provide versioned, validated config.
 
-- `src/cli.tsx`: parses CLI options; dispatches headless scanning, registry commands,
-  diagnostics, or the interactive Nosey application.
-- `src/app.tsx`: composes the Nosey theme, configuration, router, input-capture,
-  scan and registry providers. The shell owns global keys and tab navigation.
-- `src/screens/index.ts`: screen registry and visible navigation order.
-- `src/commands/index.ts`: noninteractive diagnostics.
-- `src/screens/Home.tsx`: unified scan summary, filtered MultiSelect, review and skill evidence views.
-- `src/screens/RegistryManager.tsx`: registry browse/edit workflow.
-- `src/screens/RegistrySetup.tsx`: Nosey-native registry initialization wizard.
-- `src/components/`, `src/hooks/`, `src/theme/`: the **only** generic Ink UI layer.
+Selected features: settings, doctor, gallery, tests, screenshots, ci.
 
-## Pure domain services
+The no-argument CLI and project-path form open Scan in a TTY. Explicit `scan`, JSON,
+skills-only, plain, and noninteractive modes reuse the same engine without mounting
+Ink. Non-Scan plain previews remain separate. Confirmed skill IDs are printed only
+after Ink exits; quit/cancel never confirms a selection.
 
-- `src/lib/scanner.ts`: bounded project traversal without symlink following or code execution.
-- `src/lib/manifests.ts`: ecosystem dependency extraction.
-- `src/lib/detect.ts`: evidence-based technology and skill matching; JSON report model.
-- `src/data/skills-map.ts`: built-in mappings.
-- `src/features/skills/groups.ts` and `filter.ts`: pure grouping/filtering helpers.
-- `src/lib/registry/`: configuration, validation, read-only Git snapshot retrieval,
-  merge logic, initialization and registry commands.
-- `src/lib/report.ts`: plain text formatter, deliberately distinct from UI presentation.
+`src/app.tsx` owns one provider tree and shell. Visited primary screens remain
+mounted, retaining their local selections, filters, cursors, and drafts. Each is
+wrapped in `InputActivityProvider`: hidden screens keep state but cannot capture
+input or dispatch keys. The command menu deactivates every screen while open.
+`src/features/skills/context.tsx` owns scanning via `useAsync`, which ignores stale
+completions. `src/features/ui/context.tsx` carries contextual hints and command actions.
 
-Scan and skill selection share a single screen and selection state. `MultiSelect` accepts
-`allItems` when displaying a filtered subset, so hidden selections are retained when toggling
-or submitting visible items. Grouped skill rows have technology/combination headings and
-spacing, while duplicate IDs across groups share one checked state and review entry.
-The `d` shortcut inspects the currently focused `MultiSelect` row rather than opening
-another searchable picker. Only `/` opens the filter input. The filter uses a controlled Nosey `TextField` and input capture
-suspends the shell's shortcuts while editing.
+Scan, Registries, Settings, and Help are the visible routes. `skills` resolves to
+Scan; `registry-setup` and `gallery` are hidden. Registry initialization unmounts
+on exit so each new wizard starts cleanly. The Stepper locks transitions and writes
+once, after Review. Settings drafts survive tab changes; opening the separate
+wizard requires discarding an unsaved draft explicitly.
 
-React screens call pure services through feature/context boundaries. Services never
-import Ink or React, and the CLI does not create a terminal UI when producing JSON
-or plain-text output.
+App appearance uses the existing `nosey` configuration; registry discovery retains
+Nosey's and legacy SkillSense's paths. Interactive project registry writes target
+the scanned project root, with the exact configuration path shown before confirmation.
 
-## Registry configuration
+Node.js 24+ matches the imported application's runtime requirement. `npm test`
+runs both the runtime/UI tests and the catalog and mapping tool tests. The package
+ships the registry template, brand assets, and third-party license notices.
 
-Nosey's normal appearance settings remain versioned and validated under
-`src/config/`. Registry configuration uses a separate, versioned document:
-project `.nosey.json` or global `nosey/registries.json`.
+## UI framework
 
-The registry resolver additionally discovers legacy SkillSense configuration files
-for compatibility, without editing them. Git caches are written under the Nosey
-namespace; validated SkillSense snapshots remain usable as a read-only fallback.
+Use [the UI framework guide](ui-framework.md) for shared shell ownership,
+screen registration, keymap priority, text input capture, semantic theming,
+async states and terminal-width-safe layouts.
+The [feature walkthrough](adding-a-feature.md) shows the extension path.
 
-## Brand and interaction
-
-The palette is sourced from `assets/nosey-brand-kit/` and exposed through
-`src/theme/`. Global key handling is owned by the app shell and suspended while
-Nosey text controls hold input capture.
-
-## Safety
-
-Project scanning never writes to the scanned project, follows symlinks, or executes
-project code. Reads are limited by maximum depth, files, individual file size and cache.
-Registry validation rejects unsafe paths and inconsistent manifests. Git snapshot
-retrieval does not checkout remote content. Registry creation and publishing are separate,
-explicitly requested write actions.
-
-## Validation
-
-```sh
-npm run typecheck
-npm test
-npm run build
-npm run check
-```
-
-Domain regression tests are migrated from SkillSense. New interactive behavior is
-implemented with Nosey primitives, never by copying SkillSense's UI code.
+Run your package manager scripts for typecheck and build, plus tests.

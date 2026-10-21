@@ -1,49 +1,59 @@
-import {Box, Text} from 'ink';
-import pkg from '../../package.json';
-import {BrandMark, Kbd, Muted, Panel, Stack} from '../components';
-import {globalKeys} from '../keys';
-import {brandTagline} from '../lib/brand';
-import {screenIds} from './index';
+import {Text} from 'ink';
+import {Panel, ScreenLayout, Stack, Muted} from '../components';
+import {getGlobalKeys} from '../keys';
+import {navScreens} from './index';
+import {scanHints} from './Home';
 
 export function HelpScreen() {
   return (
-    <Stack gap={1}>
-      <Panel
-        title={
-          <>
-            <BrandMark bold /> {pkg.name} v{pkg.version}
-          </>
-        }
-        tone="accent"
-      >
-        <Text>{brandTagline}</Text>
-        <Muted>Terminal UI, no alt screen. Every screen fits the current width.</Muted>
-      </Panel>
-      <Panel title="Keyboard">
-        {globalKeys.map((binding) => (
-          <Box key={binding.key} gap={2}>
-            <Box width={5}>
-              <Kbd>{binding.key}</Kbd>
-            </Box>
-            <Text>{binding.label}</Text>
-          </Box>
-        ))}
-      </Panel>
-      <Panel title="Scan and skill selection">
-        <Text>Space select · Enter review · / filter · c clear</Text>
-        <Text>Filter: type to search · Enter apply · Esc cancel</Text>
-        <Text>g group selection · d inspect focused skill · r rescan</Text>
-        <Muted>Skills are grouped by technology; typing in a filter never triggers shortcuts.</Muted>
-      </Panel>
-      <Panel title="Flags and commands">
-        <Text>--theme nosey|dark|light|contrast|mono|auto</Text>
-        <Text>{`--screen ${screenIds.join('|')}`}</Text>
-        <Text>--setup --config path --plain --ascii --debug</Text>
-        <Text>--json --skills-only --explain --no-interactive</Text>
-        <Text>--depth N --max-files N --registry SOURCE</Text>
-        <Text>registry init|list|add|remove|show|validate|build</Text>
-        <Text>doctor [--json] Environment and configuration checks</Text>
-      </Panel>
-    </Stack>
+    <ScreenLayout title="Help" description="Scanning and selecting never installs skills.">
+      <Stack gap={1}>
+        <Panel title="Global keys" tone="muted">
+          {getGlobalKeys(navScreens.length).map((hint) => (
+            <Text key={hint.key}>
+              {hint.key} {hint.label}
+            </Text>
+          ))}
+          <Muted>Shortcuts pause while a text field or confirmation owns the keyboard.</Muted>
+        </Panel>
+        <Panel title="Scan and selection" tone="muted">
+          {scanHints.map((hint) => (
+            <Text key={hint.key}>
+              {hint.key} {hint.label}
+            </Text>
+          ))}
+          <Text>f or / filters by skill ID and source. c clears the applied filter.</Text>
+          <Text>Hidden selections stay selected. g toggles groups; d searches skill details.</Text>
+          <Text>
+            Enter reviews; choose Yes then Enter to confirm IDs and exit. Nothing is installed.
+          </Text>
+          <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
+        </Panel>
+        <Panel title="Registries" tone="muted">
+          <Text>a Add / i Initialize / g New scope / r Refresh / Enter Details</Text>
+          <Text>In details: v Validate local / u Build metadata / d Remove reference / b Back</Text>
+          <Text>Writes require confirmation and show their project/global config target.</Text>
+          <Text>
+            Removing references never deletes registry files. Ctrl+X cancels initialization.
+          </Text>
+        </Panel>
+        <Panel title="Settings" tone="muted">
+          <Text>Up/down Section / Enter Edit / Escape Back / s Save / d Discard / w Wizard</Text>
+          <Text>Drafts survive tab changes. t previews a runtime theme without saving.</Text>
+          <Text>NO_COLOR always forces mono. --ascii uses ASCII borders and symbols.</Text>
+        </Panel>
+        <Panel title="CLI / safety" tone="muted">
+          <Text>nosey [path] [--explain | --json | --skills-only | --plain]</Text>
+          <Text>nosey scan [path] --depth 8 --max-files 20000</Text>
+          <Text>nosey registry init|list|add|remove|show|validate|build</Text>
+          <Text>nosey doctor --json / nosey --setup</Text>
+          <Text>--no-interactive produces a plain report. Piped output never prompts.</Text>
+          <Text>
+            Scan targets are read-only. Partial results show limits, skipped files, or registry
+            warnings.
+          </Text>
+        </Panel>
+      </Stack>
+    </ScreenLayout>
   );
 }

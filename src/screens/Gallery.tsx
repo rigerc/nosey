@@ -1,110 +1,99 @@
 import {Box} from 'ink';
-import {
-  Alert,
-  Badge,
-  Divider,
-  KeyValue,
-  Muted,
-  Panel,
-  ProgressBar,
-  Spinner,
-  Stack,
-  StatusMessage,
-  Table,
-  Heading,
-  type BadgeVariant,
-  Confirm,
-  StepperProgress,
-} from '../components';
-import {CollectionGallery} from '../demos/CollectionGallery';
-import {formatBytes, formatDuration} from '../lib/format';
-import {tones} from '../theme/tokens';
+import {useState} from 'react';
+import {Badge, Panel, ScreenLayout, SearchSelect} from '../components';
+import {useScreenHints} from '../features/ui/context';
+import {useHasInputCapture, useKeymap} from '../hooks';
+import {GalleryExample, galleryItems} from './GalleryExamples';
 
-const variants: BadgeVariant[] = ['solid', 'subtle', 'outline'];
-
-/** Every component and variant in one place: docs + manual QA. Press t to switch themes. */
+/**
+ * One component family is mounted at a time.
+ * [ / ] switch examples; / explicitly opens the searchable picker.
+ * The focused SearchSelect captures input and suspends gallery/global shortcuts.
+ */
 export function GalleryScreen() {
+  const [index, setIndex] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const captured = useHasInputCapture();
+  const current = galleryItems[index]!;
+  useScreenHints(
+    'gallery',
+    captured
+      ? []
+      : [
+          ...(current.id === 'search' || current.id === 'text'
+            ? [{key: 'enter', label: 'focus input'}]
+            : []),
+          ...(current.id === 'multi'
+            ? [
+                {key: 'space', label: 'select'},
+                {key: 'up/down', label: 'move'},
+              ]
+            : []),
+          ...(current.id === 'toggle' ? [{key: 'space', label: 'toggle'}] : []),
+          ...(current.id === 'pages' ? [{key: 'left/right', label: 'page'}] : []),
+          {key: '[', label: 'previous'},
+          {key: ']', label: 'next'},
+          {key: '/', label: 'find component'},
+        ],
+  );
+
+  const choose = (next: number) => {
+    setIndex((next + galleryItems.length) % galleryItems.length);
+    setSearchActive(false);
+    setPickerOpen(false);
+  };
+
+  useKeymap(
+    [
+      {key: '[', run: () => choose(index - 1)},
+      {key: ']', run: () => choose(index + 1)},
+      {key: '/', run: () => setPickerOpen(true)},
+      {
+        key: 'enter',
+        run: () => {
+          if (current.id === 'search' || current.id === 'text') setSearchActive(true);
+        },
+      },
+    ],
+    {isActive: !captured && !pickerOpen && !searchActive, scope: 'screen'},
+  );
+
   return (
-    <Stack gap={1}>
-      <Panel title="Badges">
-        {variants.map((variant) => (
-          <Box key={variant} columnGap={1} flexWrap="wrap">
-            {tones.map((tone) => (
-              <Badge key={tone} tone={tone} variant={variant}>
-                {tone}
-              </Badge>
-            ))}
-          </Box>
-        ))}
-      </Panel>
-
-      <Panel title="Feedback" tone="success">
-        <StatusMessage tone="success">Build completed</StatusMessage>
-        <StatusMessage tone="warn">Cache is stale</StatusMessage>
-        <StatusMessage tone="danger">Request failed</StatusMessage>
-        <StatusMessage tone="info">3 updates available</StatusMessage>
-        <Divider label="progress" />
-        <Spinner label="Installing dependencies" />
-        <ProgressBar value={0.65} />
-      </Panel>
-
-      <Panel title="Data" tone="info">
-        <KeyValue
-          items={[
-            {label: 'Size', value: formatBytes(48_213_000)},
-            {label: 'Duration', value: formatDuration(83_400)},
-          ]}
-        />
-        <Divider />
-        <Table
-          selected={0}
-          columns={[
-            {key: 'name', header: 'Package'},
-            {key: 'version', header: 'Version', align: 'right'},
-            {key: 'status', header: 'Status'},
-          ]}
-          rows={[
-            {name: 'ink', version: '8.0.0', status: {text: 'up to date', tone: 'success'}},
-            {name: 'react', version: '19.3.0', status: {text: 'up to date', tone: 'success'}},
-            {
-              name: 'a-very-long-package-name-that-needs-truncating',
-              version: '1.2.3',
-              status: {text: 'outdated', tone: 'warn'},
-            },
-          ]}
-        />
-      </Panel>
-
-      <Panel title="Stepper progress">
-        <StepperProgress
-          steps={[
-            {id: 'install', name: 'Install'},
-            {id: 'configure', name: 'Configure'},
-            {id: 'done', name: 'Done'},
-          ]}
-          currentStep={1}
-        />
-        <Divider label="vertical" />
-        <StepperProgress
-          steps={[
-            {id: 'first', name: 'First'},
-            {id: 'second', name: 'Second'},
-          ]}
-          currentStep={1}
-          orientation="vertical"
-        />
-      </Panel>
-
-      <Panel title="Confirm" footer="Static example; press w to open the interactive wizard">
-        <Confirm message="Continue with deployment?" onConfirm={() => {}} isActive={false} />
-      </Panel>
-
-      <CollectionGallery />
-
-      <Alert tone="warn" title="Heads up">
-        <Muted>Alerts carry a title and optional body.</Muted>
-      </Alert>
-      <Heading tone="muted">End of gallery</Heading>
-    </Stack>
+    <ScreenLayout
+      title="Component gallery"
+      description="Explore Nosey's components"
+      actions={
+        <Badge tone="accent" variant="outline">
+          {index + 1}/{galleryItems.length}
+        </Badge>
+      }
+    >
+      {pickerOpen ? (
+        <Panel title="Choose component">
+          <SearchSelect
+            items={galleryItems.map((item) => ({
+              value: item.id,
+              label: item.label,
+              hint: item.hint,
+            }))}
+            maxVisible={6}
+            onSelect={(id) => choose(galleryItems.findIndex((item) => item.id === id))}
+            onCancel={() => setPickerOpen(false)}
+          />
+        </Panel>
+      ) : (
+        <Box flexDirection="column" gap={1}>
+          <Panel title={current.label} footer={current.hint}>
+            <GalleryExample
+              key={current.id}
+              id={current.id}
+              searchActive={searchActive}
+              onSearchActiveChange={setSearchActive}
+            />
+          </Panel>
+        </Box>
+      )}
+    </ScreenLayout>
   );
 }

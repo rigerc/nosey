@@ -12,6 +12,7 @@ async function main() {
       columns: {type: 'string', multiple: true},
       'output-dir': {type: 'string', default: 'screenshots'},
       ascii: {type: 'boolean', default: false},
+      project: {type: 'string'},
       help: {type: 'boolean', short: 'h'},
     },
   });
@@ -20,7 +21,8 @@ async function main() {
     console.log(`Usage: npm run screenshot -- [options]
 
   --screen <id>       Screen ID (repeat to select several; default: all)
-  --theme <name>      dark | light | nosey | contrast | mono (repeat; default: all)
+  --theme <name>      nosey | dark | light | contrast | mono (repeat; default: all)
+  --project <path>    Project to scan for the Scan preview (default: current directory)
   --columns <n>       Terminal width, 40–240 (repeat; default: 80 and 120)
   --output-dir <dir>  Destination directory (default: screenshots)
   --ascii            Use ASCII glyphs and borders
@@ -37,35 +39,15 @@ First run: npx playwright install chromium`);
   process.env.CI = '1';
   process.env.XDG_CONFIG_HOME = path.join(tmpdir(), `${pkg.name}-screenshots`);
 
-  const [
-    {renderToString},
-    {App},
-    {screenIds},
-    {themeNames},
-    {themes},
-    {brandColors},
-    {default: Convert},
-    {chromium},
-  ] = await Promise.all([
-    import('ink'),
-    import('../src/app'),
-    import('../src/screens'),
-    import('../src/theme/tokens'),
-    import('../src/theme/themes'),
-    import('../src/theme/palette'),
-    import('ansi-to-html'),
-    import('playwright'),
-  ]);
-
-  // Page background per theme. Ink only paints glyphs, so the ground a theme is
-  // designed for has to be supplied here — `nosey` uses the brand Ground.
-  const grounds: Record<(typeof themeNames)[number], string> = {
-    dark: '#1a1b26',
-    light: '#ffffff',
-    nosey: brandColors.ground,
-    contrast: '#000000',
-    mono: '#000000',
-  };
+  const [{renderToString}, {App}, {screenIds}, {themeNames}, {default: Convert}, {chromium}] =
+    await Promise.all([
+      import('ink'),
+      import('../src/app'),
+      import('../src/screens'),
+      import('../src/theme/tokens'),
+      import('ansi-to-html'),
+      import('playwright'),
+    ]);
 
   const selectedScreens = [...new Set(values.screen ?? screenIds)];
   const selectedThemes = [...new Set(values.theme ?? themeNames)];
@@ -86,6 +68,8 @@ First run: npx playwright install chromium`);
 
   const outputDir = path.resolve(values['output-dir']);
   await mkdir(outputDir, {recursive: true});
+  const {detectProject} = await import('../src/lib/detect');
+  const report = await detectProject(values.project ?? process.cwd());
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({
@@ -104,12 +88,22 @@ First run: npx playwright install chromium`);
             ascii: values.ascii,
             debug: false,
             screen,
+            report,
+            static: true,
           };
           const ansi = renderToString(<App options={options} />, {columns});
           if (!ansi.trim()) throw new Error(`Empty render: ${screen}/${theme}/${columns}`);
 
-          const background = grounds[theme as (typeof themeNames)[number]];
-          const foreground = themes[theme as (typeof themeNames)[number]].color.text ?? '#c0caf5';
+          const background =
+            theme === 'light'
+              ? '#F5E6C8'
+              : theme === 'nosey'
+                ? '#14100A'
+                : theme === 'dark'
+                  ? '#1a1b26'
+                  : '#000000';
+          const foreground =
+            theme === 'light' ? '#14100A' : theme === 'nosey' ? '#F5E6C8' : '#c0caf5';
           const html = new Convert({fg: foreground, bg: background, escapeXML: true}).toHtml(ansi);
           await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>
             body { margin: 0; background: ${background}; }

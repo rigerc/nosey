@@ -1,22 +1,22 @@
 import {themeNames, type ThemeName} from './tokens';
-
-/** The brand theme is the default; `--theme dark` stays available. */
-export const DEFAULT_THEME: ThemeName = 'nosey';
+import defaults from './defaults.json';
 
 export const isThemeName = (value: unknown): value is ThemeName =>
   typeof value === 'string' && (themeNames as readonly string[]).includes(value);
 
-/**
- * Best-effort light/dark detection. COLORFGBG is "fg;bg" in many terminals.
- * A light terminal keeps the `light` theme: the kit forbids amber-on-parchment,
- * so the brand theme is dark-ground only.
- */
+/** Project-level default; 'auto' retains the original terminal detection behavior. */
+if (defaults.defaultTheme !== 'auto' && !isThemeName(defaults.defaultTheme)) {
+  throw new Error('Invalid theme default in src/theme/defaults.json');
+}
+export const defaultTheme = defaults.defaultTheme as ThemeName | 'auto';
+
+/** Best-effort light/dark detection. COLORFGBG is "fg;bg" in many terminals. */
 function detectScheme(): ThemeName {
   const bg = process.env.COLORFGBG?.split(';').pop();
-  return bg === '7' || bg === '15' ? 'light' : DEFAULT_THEME;
+  return bg === '7' || bg === '15' ? 'light' : 'nosey';
 }
 
-/** Order: NO_COLOR > --theme flag > env var > config file > autodetect. */
+/** Order: NO_COLOR > --theme flag > env var > config file > project default > autodetect. */
 export function resolveThemeName(input: {
   flag?: string | undefined;
   env?: string | undefined;
@@ -28,5 +28,5 @@ export function resolveThemeName(input: {
     if (candidate === 'auto') return detectScheme();
     if (isThemeName(candidate)) return candidate;
   }
-  return detectScheme();
+  return defaultTheme === 'auto' ? detectScheme() : defaultTheme;
 }

@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import pkg from '../../package.json';
 import {themeNames} from '../theme/tokens';
+import {defaultTheme} from '../theme/resolve';
 import {defineConfig} from './definition';
 
 /** Loose parsing retains application-specific extension keys during edits. */
@@ -21,12 +22,12 @@ export const appConfig = defineConfig({
       label: 'Terminal theme',
       section: 'Appearance',
       kind: 'select',
-      description: 'nosey by default; Auto follows the terminal background.',
-      defaultValue: 'auto',
+      description: 'Auto detects light/dark; NO_COLOR always forces mono.',
+      defaultValue: defaultTheme,
       env: `${pkg.name.replaceAll('-', '_').toUpperCase()}_THEME`,
       options: [
-        {value: 'auto', label: 'Auto (nosey, light on light terminals)'},
-        ...themeNames.map((value) => ({value, label: value === 'nosey' ? 'nosey (brand)' : value})),
+        {value: 'auto', label: 'Auto (terminal default)'},
+        ...themeNames.map((value) => ({value, label: value})),
       ],
     },
     {

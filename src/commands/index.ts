@@ -1,16 +1,32 @@
 import {AppError} from '../lib/errors';
-import {brandMarkAnsi} from '../lib/brand';
-import {APP_NAME} from '../lib/config';
-import {noColor} from '../lib/terminal';
 import {inspectEnvironment} from './doctor';
+import {runScan, type ScanCommandOptions} from './scan';
+import {registryInitOptions, runRegistry, type RegistryCommandOptions} from './registry';
 
-export interface CommandOptions {
+export interface CommandOptions extends ScanCommandOptions, RegistryCommandOptions {
   configFile?: string;
-  json?: boolean;
 }
 
 /** Register headless commands here; do not import Ink or React in command handlers. */
-export function runCommand(name: string, args: string[], options: CommandOptions): boolean {
+export async function runCommand(
+  name: string,
+  args: string[],
+  options: CommandOptions,
+): Promise<boolean> {
+  if (name !== 'registry' && registryInitOptions.some((key) => options[key] !== undefined))
+    throw new AppError('Registry initialization options require: nosey registry init', {
+      exitCode: 2,
+    });
+  if (name !== 'registry' && (options.global !== undefined || options.ref !== undefined))
+    throw new AppError('--global and --ref require a registry subcommand', {exitCode: 2});
+  if (name === 'scan') {
+    await runScan(args, options);
+    return true;
+  }
+  if (name === 'registry') {
+    await runRegistry(args, options);
+    return true;
+  }
   if (name !== 'doctor') return false;
   if (args.length) throw new AppError('doctor does not accept positional arguments', {exitCode: 2});
 
@@ -18,9 +34,6 @@ export function runCommand(name: string, args: string[], options: CommandOptions
   if (options.json) {
     console.log(JSON.stringify(report, null, 2));
   } else {
-    console.log(
-      `${brandMarkAnsi({color: !noColor() && Boolean(process.stdout.isTTY)})}  ${APP_NAME}`,
-    );
     for (const check of report.checks)
       console.log(`${check.ok ? 'OK' : 'FAIL'}  ${check.name}: ${check.detail}`);
   }

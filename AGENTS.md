@@ -1,27 +1,25 @@
-<!--VITE PLUS START-->
+# Agent instructions for this CLI
 
-# Using Vite+, the Unified Toolchain for the Web
+These instructions apply to the **generated application**, not the ink-kit starter repository. Start with `README.md`, [UI framework guide](docs/ui-framework.md), [Architecture](docs/architecture.md) and [Add a feature](docs/adding-a-feature.md). The source in `src/` is the authoritative API reference.
 
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Vite+ is distinct from Vite, and it invokes Vite through `vp dev` and `vp build`. Run `vp help` to print a list of commands and `vp <command> --help` for information about a specific command.
+## Architecture and implementation
 
-Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.dev/guide/.
+- `src/cli.tsx` handles flags and interactive/plain rendering; `src/app.tsx` owns providers and the shared application shell.
+- Add screens under `src/screens/` and register them in `src/screens/index.ts`. Put domain operations in `src/features/` instead of coupling them to Ink components. Register headless operations in `src/commands/index.ts`.
+- Compose each screen with `ScreenLayout`; do not duplicate `AppShell`, application header, tabs or footer.
+- Prefer existing `src/components/` and `src/hooks/` exports. Use `ScreenState` for loading, empty, error and success views and `useToast` for transient messages.
+- Use `useKeymap` with `{scope: 'screen'}` for screen shortcuts. Shared key precedence is control > screen > global. Keep only one active keyboard control; text fields must capture input and release capture on close.
+- Style with semantic theme tokens (`useTheme` / `useTone`), not hard-coded ANSI colors; support `NO_COLOR`, `--ascii`, and narrow terminals.
+- Keep terminal rendering free of console logging; maintain headless/`--plain` behavior. Review generated documentation when changing framework conventions.
+- Features are optional. Check `package.json` and the screen/command registries before assuming settings, gallery, doctor, screenshots, tests, or CI are installed.
 
-## Built-in Commands vs Scripts
+## Toolchain and checks
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
+This application uses **Vite+** for building and running tests. Run package.json scripts with the chosen package manager. If using the global `vp` CLI, note that `vp <name>` invokes a built-in command whereas `vp run <name>` runs a project script; inspect the scripts first.
 
-## Tool Versions
-
-Run `vp toolchain` to show versions and relationships in the active Vite+
-release. Add a tool name to select part of the graph. For example, run
-`vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use
-`vp why <package>` to show the package-manager dependency graph.
-
-## Review Checklist
-
-- [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
-- [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
-
-<!--VITE PLUS END-->
+- Install dependencies with `npm install`.
+- Run `npm run typecheck` and `npm run build`.
+- Run `npm run test`; keep interactive and plain-rendering coverage.
+- For screenshot review, install Playwright Chromium and run `npm run screenshot`.
+- The generated CI workflow lives in `.github/workflows/ci.yml`.
+- Confirm `node dist/cli.js --plain` prints output after a build.

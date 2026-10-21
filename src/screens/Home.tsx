@@ -1,193 +1,437 @@
 import {useEffect, useMemo, useState} from 'react';
-import {Text, useApp} from 'ink';
+import {Box, Text, useApp} from 'ink';
 import {
-  BrandMark, Confirm, MultiSelect, Muted, Panel,
-  Select, Spinner, Stack, StatusMessage, TextField,
+  Badge,
+  Confirm,
+  MultiSelect,
+  Muted,
+  PaginatedList,
+  Panel,
+  ScreenLayout,
+  ScreenState,
+  SearchSelect,
+  Select,
+  Stack,
+  StatusMessage,
+  TextField,
 } from '../components';
 import {useScan} from '../features/skills/context';
 import {filterSkills} from '../features/skills/filter';
-import {deriveSkillGroups, orderedSelection} from '../features/skills/groups';
-import {useHasInputCapture} from '../hooks/useInputCapture';
-import {useKeymap} from '../hooks/useKeymap';
+import {deriveSkillGroups, orderedSelection, selectedInGroup} from '../features/skills/groups';
+import {useScreenHints, useUiAction} from '../features/ui/context';
+import {useKeymap, useTerminalSize} from '../hooks';
+import {useTheme} from '../theme/context';
 
-type Mode = 'browse' | 'filter' | 'groups' | 'detail' | 'review';
+type Mode = 'browse' | 'filter' | 'groups' | 'search' | 'detail' | 'review';
+export const scanHints = [
+  {key: 'space', label: 'select'},
+  {key: 'enter', label: 'review'},
+  {key: 'up/down', label: 'move'},
+  {key: '/', label: 'filter'},
+  {key: 'd', label: 'details'},
+  {key: 'g', label: 'groups'},
+  {key: 'r', label: 'rescan'},
+];
 
-/** Scan results and skill selection share one screen and one selection state. */
 export function HomeScreen() {
-  const {config, state, refresh, confirm} = useScan();
+  const {config, scan, refresh, confirm} = useScan();
   const {exit} = useApp();
-  const inputCaptured = useHasInputCapture();
+  const {columns, rows} = useTerminalSize();
+  const theme = useTheme();
   const [mode, setMode] = useState<Mode>('browse');
+  const [selected, setSelected] = useState<string[]>([]);
   const [filter, setFilter] = useState('');
   const [previousFilter, setPreviousFilter] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+  const [cursor, setCursor] = useState(0);
   const [detailId, setDetailId] = useState('');
-  const report = state.status === 'ready' ? state.report : undefined;
-
-  const allItems = useMemo(() => (report?.skills ?? []).map((skill) => ({
-    value: skill.id,
-    label: skill.id,
-    hint: skill.sources.map((source) => source.name).join(', '),
-  })), [report]);
-  const visibleIds = useMemo(
-    () => new Set(filterSkills(report?.skills ?? [], filter).map((skill) => skill.id)),
-    [report, filter],
+  const [notice, setNotice] = useState('');
+  const report = scan.status === 'success' ? scan.data : undefined;
+  const visible = useMemo(() => filterSkills(report?.skills ?? [], filter), [report, filter]);
+  const groups = useMemo(() => (report ? deriveSkillGroups(report) : []), [report]);
+  const allItems = useMemo(
+    () => (report?.skills ?? []).map((skill) => ({value: skill.id, label: skill.id})),
+    [report],
   );
-  const groups = useMemo(() => report ? deriveSkillGroups(report) : [], [report]);
-  // A skill can appear in several technology groups with one shared checked state.
+  const chosen = report ? orderedSelection(report, new Set(selected)) : [];
   const groupedItems = useMemo(() => {
-    const byId = new Map(allItems.map((item) => [item.value, item]));
+    const matches = new Set(visible.map((skill) => skill.id));
     const assigned = new Set<string>();
-    const rows = groups.flatMap((group) => {
-      const matching = group.skillIds.filter((id) => visibleIds.has(id));
-      for (const id of matching) assigned.add(id);
-      return matching.flatMap((id) => {
-        const skill = byId.get(id);
-        return skill ? [{
-          value: skill.value,
-          label: skill.label,
-          group: {key: group.key, label: group.title + ' (' + matching.length + ')'},
-        }] : [];
+    const byId = new Map(allItems.map((item) => [item.value, item]));
+    const checked = new Set(selected);
+    const items = groups.flatMap((group) => {
+      const heading = {
+        key: group.key,
+        label: `${group.title}  ${selectedInGroup(group, checked)}/${group.skillIds.length}`,
+      };
+      return group.skillIds.flatMap((id) => {
+        const item = byId.get(id);
+        if (!item || !matches.has(id)) return [];
+        assigned.add(id);
+        return [{...item, group: heading}];
       });
     });
-    // Unmapped custom-registry suggestions still need a home.
-    const remaining = allItems.filter((item) => visibleIds.has(item.value) && !assigned.has(item.value));
-    rows.push(...remaining.map((item) => ({
-      value: item.value,
-      label: item.label,
-      group: {key: 'other', label: 'Other suggestions (' + remaining.length + ')'},
-    })));
-    return rows;
-  }, [groups, allItems, visibleIds]);
-  const chosen = report ? orderedSelection(report, new Set(selected)) : [];
+    return [
+      ...items,
+      ...allItems
+        .filter((item) => matches.has(item.value) && !assigned.has(item.value))
+        .map((item) => ({
+          ...item,
+          group: {key: 'other', label: 'Other suggestions'},
+        })),
+    ];
+  }, [visible, groups, allItems, selected]);
   const detail = report?.skills.find((skill) => skill.id === detailId);
-
-  // A new scan invalidates the previous project's selections and filter.
+  const partial =
+    report &&
+    (report.truncated ||
+      report.skippedFiles.length > 0 ||
+      (report.registryWarnings?.length ?? 0) > 0);
+  const pageSize = Math.max(3, Math.min(10, rows - 18));
   useEffect(() => {
-    setSelected([]);
-    setFilter('');
-    setMode('browse');
-    setDetailId('');
+    if (report) {
+      setSelected([]);
+      setFilter('');
+      setCursor(0);
+      setMode('browse');
+    }
   }, [report]);
-
   const beginFilter = () => {
     setPreviousFilter(filter);
     setMode('filter');
   };
-  useKeymap([
-    {key: 'r', run: refresh},
-    // Search uses only '/', so letter shortcuts cannot accidentally open it.
-    {key: '/', run: () => { if (report) beginFilter(); }},
-    {key: 'g', run: () => { if (report) setMode('groups'); }},
-    {key: 'c', run: () => setFilter('')},
-    // MultiSelect doesn't submit when its filtered list is empty.
-    {key: 'enter', run: () => { if (report && groupedItems.length === 0) setMode('review'); }},
-  ], {isActive: mode === 'browse' && !inputCaptured});
-  useKeymap([
-    {key: 'esc', run: () => setMode('browse')},
-    {key: 'b', run: () => setMode('browse')},
-  ], {isActive: (mode === 'groups' || mode === 'detail') && !inputCaptured});
+  useUiAction('scan:filter', beginFilter);
+  useUiAction('scan:review', () => setMode('review'));
+  useUiAction('scan:refresh', () => {
+    void refresh();
+  });
+  useKeymap(
+    [
+      {key: '/', run: beginFilter},
+      {key: 'f', run: beginFilter},
+      {key: 'g', run: () => setMode('groups')},
+      {key: 'd', run: () => setMode('search')},
+      {
+        key: 'c',
+        run: () => {
+          setFilter('');
+          setCursor(0);
+        },
+      },
+    ],
+    {scope: 'screen', isActive: mode === 'browse' && Boolean(report)},
+  );
+  useKeymap(
+    [
+      {
+        key: 'r',
+        run: () => {
+          if (selected.length) setNotice('New scan: selection was cleared.');
+          void refresh();
+        },
+      },
+    ],
+    {scope: 'screen', isActive: mode === 'browse' && scan.status !== 'loading'},
+  );
+  useKeymap(
+    [
+      {key: 'esc', run: () => setMode('browse')},
+      {key: 'b', run: () => setMode('browse')},
+    ],
+    {
+      scope: 'screen',
+      isActive: mode === 'groups' || mode === 'detail',
+    },
+  );
+  useScreenHints(
+    'home',
+    mode === 'browse'
+      ? report
+        ? [
+            ...(groupedItems.length
+              ? scanHints.slice(0, 4)
+              : [
+                  {key: 'enter', label: 'review'},
+                  ...(report.skills.length ? [{key: '/', label: 'filter'}] : []),
+                ]),
+            ...(filter ? [{key: 'c', label: 'clear filter'}] : []),
+            ...scanHints.slice(4).filter((hint) => hint.key === 'r' || report.skills.length > 0),
+            ...(groupedItems.length > pageSize ? [{key: 'pageup/down', label: 'page'}] : []),
+          ]
+        : scan.status === 'error'
+          ? [{key: 'r', label: 'retry scan'}]
+          : []
+      : mode === 'filter'
+        ? [
+            {key: 'enter', label: 'apply filter'},
+            {key: 'esc', label: 'cancel'},
+            {key: 'ctrl+u', label: 'clear text'},
+          ]
+        : mode === 'review'
+          ? [
+              {key: 'y/n', label: 'choose'},
+              {key: 'enter', label: 'confirm'},
+              {key: 'esc', label: 'back'},
+              ...(chosen.length > pageSize ? [{key: 'pageup/down', label: 'page'}] : []),
+            ]
+          : mode === 'search'
+            ? [
+                {key: 'enter', label: 'open detail'},
+                {key: 'esc', label: 'back'},
+              ]
+            : [
+                {key: 'esc', label: 'back'},
+                ...(mode === 'groups'
+                  ? [
+                      {key: 'up/down', label: 'move'},
+                      {key: 'enter', label: 'toggle group'},
+                    ]
+                  : []),
+              ],
+  );
 
-  return <Stack gap={1}>
-    <Panel title={<><BrandMark bold /> Project scan</>} tone="accent"
-      footer={mode === 'browse' ? 'r rescan' : undefined}>
-      <Text wrap="truncate-middle">{config.root}</Text>
-      {state.status === 'loading' && <Spinner label="Scanning project..." />}
-      {state.status === 'error' && <StatusMessage tone="danger">{state.message}</StatusMessage>}
-      {report && <>
+  const overview = (
+    <Panel title="Project" tone="muted">
+      <Stack>
+        <Text bold color={partial ? theme.color.warn : theme.color.success}>
+          {partial ? '! Partial scan' : `${theme.symbols.success} Scan complete`}
+        </Text>
+        <Text>{report?.scannedFiles ?? 0} files scanned</Text>
         <Text>
-          Scanned {report.scannedFiles} files{report.truncated ? ' (limit reached)' : ''}
+          {report?.technologies.length ?? 0} technologies / {report?.combinations.length ?? 0}{' '}
+          combinations
         </Text>
-        <Text>{report.technologies.length} technologies · {report.combinations.length} combinations · {report.skills.length} suggested skills</Text>
-        <Text wrap="truncate-end">
-          Detected technologies: {report.technologies.map((tech) => tech.name).join(', ') || 'none'}
-        </Text>
-        {report.summary.technologiesWithoutSkills > 0 &&
-          <Muted>{report.summary.technologiesWithoutSkills} technologies have no mapped skills.</Muted>}
-        {report.skippedFiles.length > 0 &&
-          <Muted>{report.skippedFiles.length} skipped files (detection may be incomplete)</Muted>}
-        {report.registryWarnings?.map((warning, index) =>
-          <StatusMessage key={index} tone="warn">{warning.source}: {warning.message}</StatusMessage>)}
-      </>}
+        <Box marginTop={1} flexDirection="column">
+          <Text bold>Technologies</Text>
+          <Text>
+            {report?.technologies
+              .slice(0, 4)
+              .map((tech) => tech.name)
+              .join(', ') || 'No technologies detected'}
+          </Text>
+          {(report?.technologies.length ?? 0) > 4 && (
+            <Muted>+{report!.technologies.length - 4} more technologies</Muted>
+          )}
+          {!!report?.combinations.length && (
+            <>
+              <Text bold>Combinations</Text>
+              <Text>
+                {report.combinations
+                  .slice(0, 2)
+                  .map((combo) => combo.name)
+                  .join(', ')}
+              </Text>
+              {report.combinations.length > 2 && (
+                <Muted>+{report.combinations.length - 2} more combinations</Muted>
+              )}
+            </>
+          )}
+        </Box>
+        {report?.truncated && (
+          <StatusMessage tone="warn">
+            Limit reached. Detection may be incomplete; increase --depth or --max-files.
+          </StatusMessage>
+        )}
+        {!!report?.skippedFiles.length && (
+          <StatusMessage tone="warn">
+            {report.skippedFiles.length} skipped inputs; detection may be incomplete.
+          </StatusMessage>
+        )}
+        {report?.registryWarnings?.map((warning, i) => (
+          <StatusMessage key={i} tone="warn">
+            {warning.source}: {warning.message}
+          </StatusMessage>
+        ))}
+        {notice && <Muted>{notice}</Muted>}
+      </Stack>
     </Panel>
-    {report && <Panel title="Suggested skills"
-      footer={mode === 'browse'
-        ? '↑↓ move · space select · enter review · / search · c clear · g groups · d details'
-        : mode === 'filter' ? 'type to filter · enter return to list · esc cancel'
-          : mode === 'groups' || mode === 'detail' ? 'b or esc back' : undefined}>
-      <Text>{chosen.length} of {report.skills.length} unique skills selected</Text>
-      {filter && <Muted>Filter: {filter} ({visibleIds.size} matches) · c to clear</Muted>}
-      {mode === 'filter' && <TextField
-        label="Filter skills"
-        value={filter}
-        onChange={setFilter}
-        placeholder="type a skill or technology..."
-        onSubmit={() => setMode('browse')}
-        onCancel={() => { setFilter(previousFilter); setMode('browse'); }}
-      />}
-      {(mode === 'browse' || mode === 'filter') && <MultiSelect
-        items={groupedItems}
-        allItems={allItems}
-        value={selected}
-        isActive={mode === 'browse'}
-        onChange={setSelected}
-        onInspect={(id) => { setDetailId(id); setMode('detail'); }}
-        onSubmit={() => setMode('review')}
-        emptyMessage={report.skills.length === 0
-          ? 'No mapped skills found.'
-          : 'No skills match this filter. Press / to edit or c to clear.'}
-        maxVisible={12}
-      />}
-      {mode === 'groups' && <>
-        <Muted>Enter toggles all suggestions for the selected technology or combination.</Muted>
-        {groups.length === 0
-          ? <Muted>No skill groups were detected.</Muted>
-          : <Select items={groups.map((group) => ({
-            value: group.key,
-            label: group.title,
-            hint: group.skillIds.filter((id) => selected.includes(id)).length + '/' + group.skillIds.length,
-          }))} onSelect={(key) => {
-            const group = groups.find((item) => item.key === key);
-            if (!group) return;
-            const updated = new Set(selected);
-            const all = group.skillIds.every((id) => updated.has(id));
-            for (const id of group.skillIds) {
-              if (all) updated.delete(id);
-              else updated.add(id);
-            }
-            setSelected(report.skills.filter((skill) => updated.has(skill.id)).map((skill) => skill.id));
-          }} />}
-      </>}
-      {mode === 'detail' && detail && <>
-        <Text bold wrap="truncate-end">{detail.id}</Text>
-        {detail.sources.map((source) => {
-          const evidence = source.type === 'technology'
-            ? report.technologies.find((tech) => tech.id === source.id)?.evidence ?? []
-            : source.type === 'combination'
-              ? report.technologies.filter((tech) =>
-                  report.combinations.find((combo) => combo.id === source.id)?.requires.includes(tech.id))
-                .flatMap((tech) => tech.evidence)
-              : [];
-          return <Stack key={source.type + source.id}>
-            <Text>{source.type}: {source.name}</Text>
-            {(config.explain ? evidence : evidence.slice(0, 2)).map((reason, index) =>
-              <Muted key={index}>• {reason}</Muted>)}
-            {!config.explain && evidence.length > 2 && <Muted>Use --explain for full evidence.</Muted>}
-          </Stack>;
-        })}
-      </>}
-      {mode === 'review' && <>
-        <Text bold>Review selection</Text>
-        {chosen.length === 0 ? <Muted>No skills selected.</Muted>
-          : chosen.map((id) => <Text key={id} wrap="truncate-end">• {id}</Text>)}
-        <Confirm message="Confirm these skill IDs and exit?" onConfirm={(yes) => {
-          if (yes) {
-            confirm(chosen);
-            exit();
-          } else setMode('browse');
-        }} />
-      </>}
-      <Muted>Suggestions only — no skills were installed.</Muted>
-    </Panel>}
-  </Stack>;
+  );
+
+  const picker = (
+    <Panel
+      title={
+        mode === 'review'
+          ? 'Review selection'
+          : mode === 'detail'
+            ? 'Skill detail'
+            : mode === 'groups'
+              ? 'Technology groups'
+              : mode === 'search'
+                ? 'Find skill details'
+                : 'Suggested skills'
+      }
+      focused
+    >
+      <Text bold>
+        {chosen.length} selected of {report?.skills.length ?? 0} suggested
+      </Text>
+      {filter && (
+        <Muted>
+          Filter: {filter} / {visible.length} matches
+        </Muted>
+      )}
+      {mode === 'filter' && (
+        <TextField
+          label="Filter"
+          value={filter}
+          onChange={(next) => {
+            setFilter(next);
+            setCursor(0);
+          }}
+          placeholder="skill or technology"
+          onSubmit={() => setMode('browse')}
+          onCancel={() => {
+            setFilter(previousFilter);
+            setMode('browse');
+          }}
+        />
+      )}
+      {(mode === 'browse' || mode === 'filter') && (
+        <MultiSelect
+          items={groupedItems}
+          allItems={allItems}
+          value={selected}
+          onChange={setSelected}
+          cursor={cursor}
+          onCursorChange={setCursor}
+          isActive={mode === 'browse'}
+          maxVisible={pageSize}
+          maxVisibleRows={Math.max(7, rows - 21)}
+          submitWhenEmpty
+          onSubmit={() => setMode('review')}
+          emptyMessage={
+            report?.skills.length === 0
+              ? report.technologies.length === 0
+                ? 'No technologies detected in this project.'
+                : 'Technologies detected but no mapped skills.'
+              : 'No suggestions match this filter.'
+          }
+        />
+      )}
+      {mode === 'groups' &&
+        (groups.length ? (
+          <Select
+            items={groups.map((group) => ({
+              value: group.key,
+              label: group.title,
+              hint: `${group.skillIds.filter((id) => selected.includes(id)).length}/${group.skillIds.length}`,
+            }))}
+            onSelect={(key) => {
+              const group = groups.find((item) => item.key === key);
+              if (!group) return;
+              const next = new Set(selected);
+              const remove = group.skillIds.every((id) => next.has(id));
+              for (const id of group.skillIds) {
+                if (remove) next.delete(id);
+                else next.add(id);
+              }
+              setSelected(
+                report!.skills.filter((skill) => next.has(skill.id)).map((skill) => skill.id),
+              );
+            }}
+            maxVisible={pageSize}
+          />
+        ) : (
+          <Muted>No skill groups were detected.</Muted>
+        ))}
+      {mode === 'search' && (
+        <SearchSelect
+          items={allItems}
+          maxVisible={pageSize}
+          placeholder="Find a skill to inspect"
+          onSelect={(id) => {
+            setDetailId(id);
+            setMode('detail');
+          }}
+          onCancel={() => setMode('browse')}
+        />
+      )}
+      {mode === 'detail' && detail && (
+        <Stack gap={1}>
+          <Text bold>{detail.id}</Text>
+          {detail.sources.map((source) => {
+            const evidence =
+              source.type === 'technology'
+                ? (report!.technologies.find((tech) => tech.id === source.id)?.evidence ?? [])
+                : source.type === 'combination'
+                  ? report!.technologies
+                      .filter((tech) =>
+                        report!.combinations
+                          .find((combo) => combo.id === source.id)
+                          ?.requires.includes(tech.id),
+                      )
+                      .flatMap((tech) => tech.evidence)
+                  : [];
+            return (
+              <Stack key={source.type + source.id}>
+                <Text>
+                  {source.type}: {source.name}
+                </Text>
+                {(config.explain ? evidence : evidence.slice(0, 2)).map((reason, i) => (
+                  <Muted key={i}>{reason}</Muted>
+                ))}
+                {evidence.length === 0 && <Muted>No additional evidence available.</Muted>}
+                {!config.explain && evidence.length > 2 && (
+                  <Muted>Use --explain for full evidence.</Muted>
+                )}
+              </Stack>
+            );
+          })}
+        </Stack>
+      )}
+      {mode === 'review' && (
+        <>
+          <PaginatedList
+            allowWhenCaptured
+            items={chosen}
+            getKey={(id) => id}
+            pageSize={pageSize}
+            emptyMessage="No skills selected"
+            renderItem={(id) => <Text>{id}</Text>}
+          />
+          <Confirm
+            message="Confirm these skill IDs and exit?"
+            onConfirm={(yes) => {
+              if (yes) {
+                confirm(chosen);
+                exit();
+              } else setMode('browse');
+            }}
+          />
+        </>
+      )}
+      <Box marginTop={1}>
+        <Muted>Suggestions only - no skills were installed.</Muted>
+      </Box>
+    </Panel>
+  );
+  return (
+    <ScreenLayout
+      title="Scan"
+      description={config.root}
+      actions={<Badge tone={partial ? 'warn' : 'muted'}>{partial ? 'PARTIAL' : 'READ-ONLY'}</Badge>}
+    >
+      <ScreenState
+        status={report ? 'success' : scan.status === 'error' ? 'error' : 'loading'}
+        error={scan.status === 'error' ? scan.error : undefined}
+        message={report ? undefined : `Scanning ${config.root}...`}
+      >
+        {report && (
+          <Box flexDirection={columns >= 96 ? 'row' : 'column'} gap={1}>
+            <Box width={columns >= 96 ? '35%' : '100%'} flexDirection="column">
+              {overview}
+            </Box>
+            <Box
+              flexGrow={1}
+              flexShrink={1}
+              width={columns >= 96 ? '65%' : '100%'}
+              flexDirection="column"
+            >
+              {picker}
+            </Box>
+          </Box>
+        )}
+      </ScreenState>
+      {scan.status === 'error' && <Muted>Check the project path and permissions.</Muted>}
+    </ScreenLayout>
+  );
 }

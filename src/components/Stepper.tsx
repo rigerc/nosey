@@ -1,4 +1,5 @@
-import {Box, Text, useInput} from 'ink';
+import {Box, Text} from 'ink';
+import {useKeymap} from '../hooks/useKeymap';
 import {
   Children,
   Fragment,
@@ -252,12 +253,22 @@ export function Stepper({
     goTo: (i) => navigate(i),
     cancel,
   };
-  useInput(
-    (_input, key) => {
-      if (key.return) void context.goNext();
-      if (key.escape) void context.goBack();
-    },
-    {isActive: keyboardNav && !finished && steps.length > 0},
+  useKeymap(
+    [
+      {
+        key: 'enter',
+        run: () => {
+          void context.goNext();
+        },
+      },
+      {
+        key: 'esc',
+        run: () => {
+          void context.goBack();
+        },
+      },
+    ],
+    {scope: 'screen', isActive: keyboardNav && !finished && steps.length > 0},
   );
 
   if (!active) return null;

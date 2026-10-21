@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.{ts,tsx}'],
     exclude: ['node_modules/**', 'build/**', 'dist/**', 'tttt/**'],
+    // CLI integration cases launch several Node/tsx processes per test.
+    testTimeout: 90_000,
+    maxWorkers: 4,
   },
   pack: {
     entry: ['src/cli.tsx'],
@@ -35,7 +38,6 @@ export default defineConfig({
       'tttt/**',
       '.serena/**',
       '.claude/**',
-      // Brand assets are exported from the design tool; format them there.
       'assets/**',
     ],
   },
@@ -46,13 +48,6 @@ export default defineConfig({
     // templates/app holds overlay files for generated apps: their relative
     // imports only resolve after scaffolding. Generated apps are typechecked
     // and tested in .github/workflows/scaffold.yml instead.
-    ignorePatterns: [
-      'build/**',
-      'dist/**',
-      'screenshots/**',
-      'tttt/**',
-      'assets/**',
-      'templates/app/**',
-    ],
+    ignorePatterns: ['build/**', 'dist/**', 'screenshots/**', 'tttt/**', 'templates/app/**'],
   },
 });

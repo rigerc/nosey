@@ -1,13 +1,14 @@
 {
   "name": "nosey",
   "version": "0.1.0",
-  "description": "sniffs your workspace, suggests agent skills.",
+  "description": "Workspace detection and agent skill suggestions with an Ink terminal shell",
   "bin": {
     "nosey": "./dist/cli.js"
   },
   "files": [
     "dist",
     "templates/registry",
+    "assets/nosey-brand-kit",
     "THIRD_PARTY_NOTICES.md"
   ],
   "type": "module",
@@ -16,16 +17,19 @@
     "gallery": "tsx src/cli.tsx --screen gallery",
     "build": "vp pack",
     "typecheck": "tsc --noEmit",
-    "test": "vp test run && npm run test:catalog && npm run test:map",
-    "screenshot": "node --import tsx scripts/screenshot.tsx",
-    "start": "node dist/cli.js",
-    "prepare": "vp config",
+    "test": "npm run test:unit && npm run test:catalog && npm run test:map",
     "test:unit": "vp test run",
     "test:catalog": "node --import=tsx --test scripts/build-skills-catalog.test.mjs",
     "test:map": "node --import=tsx --test scripts/propose-skill-mappings.test.mjs",
     "skills-catalog": "node --experimental-strip-types scripts/build-skills-catalog.ts",
     "skills-map:propose": "node --experimental-strip-types scripts/propose-skill-mappings.ts",
-    "check": "vp check"
+    "screenshot": "node --import tsx scripts/screenshot.tsx",
+    "start": "node dist/cli.js",
+    "prepare": "vp config",
+    "theme": "node scripts/theme.mjs",
+    "theme:list": "node scripts/theme.mjs list",
+    "theme:token": "node scripts/theme.mjs token",
+    "theme:default": "node scripts/theme.mjs default"
   },
   "dependencies": {
     "ink": "^8.0.0",

@@ -1,63 +1,80 @@
 import {Box, Text} from 'ink';
-import {useState} from 'react';
+import {useRef, useState} from 'react';
 import {useKeymap} from '../hooks/useKeymap';
 import {listIndex, listSize, listWindow} from '../lib/list';
 import {useTheme} from '../theme/context';
 import type {SelectItem} from './Select';
 import {Muted} from './typography';
 
-/** A selectable row may appear in several technology groups without duplicating its selection. */
-export type GroupedSelectItem<T extends string> = SelectItem<T> & {
+export interface MultiSelectItem<T extends string> extends SelectItem<T> {
+  /** Non-selectable heading, repeated when a window starts partway through a group. */
   group?: {key: string; label: string};
-};
+}
 
 export interface MultiSelectProps<T extends string> {
-  /** Items visible in the current view, optionally filtered. */
-  items: readonly GroupedSelectItem<T>[];
-  /** Full item order for preserving selections hidden by a filter. */
-  allItems?: readonly SelectItem<T>[];
+  items: readonly MultiSelectItem<T>[];
   value?: readonly T[];
   defaultValue?: readonly T[];
   onChange?: (value: T[]) => void;
   onSubmit?: (value: T[]) => void;
-  /** Inspect the focused row without opening a separate search control. */
-  onInspect?: (value: T) => void;
   isActive?: boolean;
+  allowWhenCaptured?: boolean;
   maxVisible?: number;
+  /** Bound physical rows as well as option count when headings add vertical space. */
+  maxVisibleRows?: number;
   emptyMessage?: string;
+  /** Canonical options retain selections outside a filtered viewport. */
+  allItems?: readonly SelectItem<T>[];
+  cursor?: number;
+  onCursorChange?: (index: number) => void;
+  submitWhenEmpty?: boolean;
 }
 
-/** Space toggles; arrows/j/k move; Enter submits every selected item, including filtered-out ones. */
+/** Space toggles, arrows or j/k move, Enter submits. Values follow item order. */
 export function MultiSelect<T extends string>({
   items,
-  allItems,
   value,
   defaultValue = [],
   onChange,
   onSubmit,
-  onInspect,
   isActive = true,
+  allowWhenCaptured = false,
   maxVisible = 6,
+  maxVisibleRows,
   emptyMessage = 'No options available.',
+  allItems = items,
+  cursor: controlledCursor,
+  onCursorChange,
+  submitWhenEmpty = false,
 }: MultiSelectProps<T>) {
   const t = useTheme();
   const [internal, setInternal] = useState<readonly T[]>(defaultValue);
-  const [cursor, setCursor] = useState(0);
+  const [internalCursor, setInternalCursor] = useState(0);
+  const cursor = controlledCursor ?? internalCursor;
+  const currentCursor = useRef(cursor);
+  const setCursor = (next: number) => {
+    currentCursor.current = listIndex(next, items.length);
+    if (controlledCursor === undefined) setInternalCursor(currentCursor.current);
+    onCursorChange?.(currentCursor.current);
+  };
   const index = listIndex(cursor, items.length);
-  if (cursor !== index) setCursor(index);
-  const sourceItems = allItems ?? items;
+  currentCursor.current = index;
   const selected = new Set(value ?? internal);
-  const values = () => [...new Set(sourceItems.filter((item) => selected.has(item.value)).map((item) => item.value))];
+  const currentSelection = useRef(selected);
+  currentSelection.current = selected;
+  const canonicalValues = [...new Set(allItems.map((item) => item.value))];
+  const values = () => canonicalValues.filter((value) => currentSelection.current.has(value));
   const move = (delta: number) => {
-    if (items.length) setCursor((index + delta + items.length) % items.length);
+    if (items.length) setCursor((currentCursor.current + delta + items.length) % items.length);
   };
   const toggle = () => {
-    const item = items[index];
+    const item = items[currentCursor.current];
     if (!item) return;
-    const next = new Set(selected);
+    const next = new Set(currentSelection.current);
     if (next.has(item.value)) next.delete(item.value);
     else next.add(item.value);
-    const result = [...new Set(sourceItems.filter((entry) => next.has(entry.value)).map((entry) => entry.value))];
+    currentSelection.current = next;
+    const result = canonicalValues.filter((value) => next.has(value));
     if (value === undefined) setInternal(result);
     onChange?.(result);
   };
@@ -69,39 +86,60 @@ export function MultiSelect<T extends string>({
       {key: 'j', run: () => move(1)},
       {key: 'home', run: () => setCursor(0)},
       {key: 'end', run: () => setCursor(items.length - 1)},
+      {
+        key: 'pageup',
+        run: () => setCursor(Math.max(0, currentCursor.current - listSize(maxVisible, 6))),
+      },
+      {
+        key: 'pagedown',
+        run: () =>
+          setCursor(Math.min(items.length - 1, currentCursor.current + listSize(maxVisible, 6))),
+      },
       {key: 'space', run: toggle},
-      {key: 'd', run: () => {
-        const item = items[index];
-        if (item) onInspect?.(item.value);
-      }},
       {
         key: 'enter',
         run: () => {
-          if (items.length) onSubmit?.(values());
+          if (items.length || submitWhenEmpty) onSubmit?.(values());
         },
       },
     ],
-    {isActive},
+    {isActive, allowWhenCaptured},
   );
-  const {start, end} = listWindow(index, items.length, listSize(maxVisible, 6));
+  let {start, end} = listWindow(index, items.length, listSize(maxVisible, 6));
+  const rowBudget =
+    maxVisibleRows === undefined ? Infinity : Math.max(4, listSize(maxVisibleRows, 12));
+  const rowCount = () => {
+    let count = end - start;
+    for (let offset = start; offset < end; offset++) {
+      const item = items[offset]!;
+      if (item.group && (offset === start || item.group.key !== items[offset - 1]?.group?.key))
+        count += 3;
+    }
+    return count;
+  };
+  // Keep the focused option visible; headings never become keyboard stops.
+  while (end - start > 1 && rowCount() > rowBudget) {
+    if (index - start > end - index - 1) start++;
+    else end--;
+  }
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" marginTop={1}>
       {items.length === 0 && <Muted>{emptyMessage}</Muted>}
       {items.slice(start, end).map((item, offset) => {
-        const row = start + offset;
-        const focused = isActive && row === index;
-        const groupStart = item.group && (
-          row === start || items[row - 1]?.group?.key !== item.group.key
-        );
+        const focused = isActive && start + offset === index;
         return (
           <Box
-            key={item.group ? item.group.key + '/' + item.value : item.value}
+            key={`${item.group?.key ?? ''}/${item.value}/${start + offset}`}
             flexDirection="column"
-            marginTop={groupStart && row > start ? 1 : 0}
           >
-            {groupStart && <Text bold color={t.color.accent} wrap="truncate-end">
-              {item.group!.label}
-            </Text>}
+            {item.group &&
+              (offset === 0 || item.group.key !== items[start + offset - 1]?.group?.key) && (
+                <Box marginTop={offset === 0 ? 0 : 1} marginBottom={1}>
+                  <Text bold color={t.color.muted} wrap="truncate-end">
+                    {item.group.label}
+                  </Text>
+                </Box>
+              )}
             <Text
               bold={focused}
               color={focused ? t.color.primary : t.color.text}
@@ -109,15 +147,18 @@ export function MultiSelect<T extends string>({
             >
               {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
               {item.label}
-              {item.hint ? ' - ' + item.hint : ''}
+              {item.hint ? ` - ${item.hint}` : ''}
             </Text>
           </Box>
         );
       })}
-      {sourceItems.length > 0 && (
-        <Muted>
-          {values().length} selected / {items.length === 0 ? '0' : start + 1 + '-' + end} of {items.length} visible
-        </Muted>
+      {items.length > 0 && (
+        <Box marginTop={1}>
+          <Muted>
+            {values().length} selected / {start + 1}-{end} of {items.length}
+            {items.some((item) => item.group) ? ' entries' : ''}
+          </Muted>
+        </Box>
       )}
     </Box>
   );

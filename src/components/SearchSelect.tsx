@@ -1,6 +1,9 @@
-import {Box, Text, useInput} from 'ink';
-import {useState} from 'react';
+import {useKeyboardInput} from '../hooks/useKeymap';
+import {Box, Text} from 'ink';
+import {useRef, useState} from 'react';
 import {useInputCapture} from '../hooks/useInputCapture';
+import {useInputActivity} from '../hooks/useInputActivity';
+import {useFooterHints} from '../hooks/useFooterHints';
 import {listIndex, listSize, listWindow} from '../lib/list';
 import {useTheme} from '../theme/context';
 import type {SelectItem} from './Select';
@@ -39,54 +42,76 @@ export function SearchSelect<T extends string>({
   placeholder = 'Type to filter...',
   emptyMessage = 'No matches found.',
 }: SearchSelectProps<T>) {
+  isActive = useInputActivity() && isActive;
+  useFooterHints(
+    [
+      {key: 'up/down', label: 'move'},
+      {key: 'enter', label: 'select'},
+      {key: 'esc', label: 'cancel'},
+      {key: 'ctrl+u', label: 'clear search'},
+    ],
+    isActive,
+  );
   const t = useTheme();
   const [internalQuery, setQuery] = useState(defaultQuery);
   const query = controlledQuery ?? internalQuery;
+  const currentQuery = useRef(query);
+  currentQuery.current = query;
   const [position, setPosition] = useState({query, index: 0});
   const normalized = query.toLocaleLowerCase();
   const matches = items.filter((item) =>
     `${item.label} ${item.hint ?? ''}`.toLocaleLowerCase().includes(normalized),
   );
   const index = listIndex(position.query === query ? position.index : 0, matches.length);
+  const currentIndex = useRef(index);
+  currentIndex.current = index;
   if (position.query !== query || position.index !== index) setPosition({query, index});
   const changeQuery = (next: string) => {
+    currentQuery.current = next;
+    currentIndex.current = 0;
     if (controlledQuery === undefined) setQuery(next);
-    if (controlledQuery === undefined) setPosition({query: next, index: 0});
+    setPosition({query: next, index: 0});
     onQueryChange?.(next);
   };
   useInputCapture(isActive);
-  useInput(
+  useKeyboardInput(
     (input, key) => {
       if (key.ctrl && input === 'u') {
         changeQuery('');
         return;
       }
       if (key.ctrl || key.meta) return;
+      const currentMatches = items.filter((item) =>
+        `${item.label} ${item.hint ?? ''}`
+          .toLocaleLowerCase()
+          .includes(currentQuery.current.toLocaleLowerCase()),
+      );
       if (key.escape) {
         onCancel?.();
         return;
       }
       if (key.return) {
-        const item = matches[index];
+        const item = currentMatches[currentIndex.current];
         if (item) onSelect(item.value);
         return;
       }
       if (key.upArrow || key.downArrow) {
-        if (matches.length)
-          setPosition({
-            query,
-            index: (index + (key.upArrow ? -1 : 1) + matches.length) % matches.length,
-          });
+        if (currentMatches.length) {
+          currentIndex.current =
+            (currentIndex.current + (key.upArrow ? -1 : 1) + currentMatches.length) %
+            currentMatches.length;
+          setPosition({query: currentQuery.current, index: currentIndex.current});
+        }
         return;
       }
       if (key.backspace || key.delete) {
-        changeQuery(trimLast(query));
+        changeQuery(trimLast(currentQuery.current));
         return;
       }
       // Strip control characters Ink delivers for special keys.
       // oxlint-disable-next-line no-control-regex
       const printable = input.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
-      if (printable) changeQuery(query + printable);
+      if (printable) changeQuery(currentQuery.current + printable);
     },
     {isActive},
   );

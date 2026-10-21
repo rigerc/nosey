@@ -10,5 +10,6 @@ tttt/
 .serena/
 .pi/
 
-# Local MCP wiring: absolute paths per machine
-.mcp.json
+# Catalog snapshots, mapping proposals, and HTTP caches
+out/
+skills-catalog.json

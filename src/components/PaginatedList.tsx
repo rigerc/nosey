@@ -15,6 +15,7 @@ export interface PaginatedListProps<T> {
   onPageChange?: (page: number) => void;
   isActive?: boolean;
   emptyMessage?: string;
+  allowWhenCaptured?: boolean;
 }
 
 /** Left/right or PageUp/PageDown change pages; Home/End jump to first/last. */
@@ -28,6 +29,7 @@ export function PaginatedList<T>({
   onPageChange,
   isActive = true,
   emptyMessage = 'No items.',
+  allowWhenCaptured = false,
 }: PaginatedListProps<T>) {
   const [internal, setInternal] = useState(initialPage);
   const size = listSize(pageSize, 5);
@@ -49,7 +51,7 @@ export function PaginatedList<T>({
       {key: 'home', run: () => change(0)},
       {key: 'end', run: () => change(count - 1)},
     ],
-    {isActive},
+    {isActive, allowWhenCaptured},
   );
   if (!items.length) return <Muted>{emptyMessage}</Muted>;
   const start = current * size;

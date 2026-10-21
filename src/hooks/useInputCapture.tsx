@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import {useInputActivity} from './useInputActivity';
 
 const CaptureContext = createContext({captured: false, capture: (): (() => void) => () => {}});
 
@@ -22,6 +23,7 @@ export function InputCaptureProvider({children}: {children: ReactNode}) {
 }
 
 export function useInputCapture(active: boolean) {
+  active = useInputActivity() && active;
   const {capture} = useContext(CaptureContext);
   useLayoutEffect(() => {
     if (active) return capture();

@@ -1,9 +1,8 @@
-import {Box, Text} from 'ink';
+import {Box, Text, useWindowSize} from 'ink';
 import type {ReactNode} from 'react';
 import {useToast} from '../hooks/useToast';
-import {gradient, isHex} from '../lib/gradient';
-import {useTheme} from '../theme/context';
 import {BrandMark} from './BrandMark';
+import {useTheme} from '../theme/context';
 import {StatusMessage} from './Status';
 import {Divider, Kbd, Muted} from './typography';
 
@@ -17,19 +16,12 @@ export function Header({
   right?: ReactNode;
 }) {
   const t = useTheme();
-  const {primary, accent} = t.color;
-  const chars = Array.from(title);
-  const colors = isHex(primary) && isHex(accent) ? gradient(chars.length, primary, accent) : null;
   return (
     <Box justifyContent="space-between" paddingX={1}>
       <Box gap={1}>
         <BrandMark bold />
-        <Text bold color={colors ? undefined : primary}>
-          {chars.map((ch, i) => (
-            <Text key={i} color={colors?.[i]}>
-              {ch}
-            </Text>
-          ))}
+        <Text bold color={t.color.text}>
+          {title}
         </Text>
         <Muted>v{version}</Muted>
       </Box>
@@ -40,17 +32,30 @@ export function Header({
 
 export function StatusBar({
   hints,
+  globalHints,
   right,
 }: {
-  hints: {key: string; label: string}[];
+  hints: readonly {key: string; label: string}[];
+  globalHints?: readonly {key: string; label: string}[];
   right?: ReactNode;
 }) {
+  const {columns} = useWindowSize();
+  // Keep control actions separate from app navigation; editors only receive their own hints.
+  const limit = columns < 60 ? 3 : columns < 90 ? 5 : 9;
+  const unique = (items: typeof hints) =>
+    items.filter((hint, i) => items.findIndex((item) => item.key === hint.key) === i);
+  const visible = unique(hints.length ? hints : (globalHints ?? [])).slice(0, limit);
+  const quit = hints.find((hint) => hint.key === 'q');
+  if (!globalHints && quit && !visible.some((hint) => hint.key === 'q') && visible.length === limit)
+    visible[visible.length - 1] = quit;
+  const appHints = columns >= 60 && hints.length ? unique(globalHints ?? []) : [];
+
   return (
     <Box flexDirection="column">
       <Divider />
-      <Box justifyContent="space-between" paddingX={1}>
-        <Box columnGap={2} flexWrap="wrap">
-          {hints.map((h) => (
+      <Box justifyContent="space-between" paddingX={1} marginTop={1}>
+        <Box columnGap={2} flexWrap="wrap" flexShrink={1}>
+          {visible.map((h) => (
             <Box key={h.key} gap={1}>
               <Kbd>{h.key}</Kbd>
               <Muted>{h.label}</Muted>
@@ -59,6 +64,16 @@ export function StatusBar({
         </Box>
         {right}
       </Box>
+      {appHints.length > 0 && (
+        <Box columnGap={2} flexWrap="wrap" paddingX={1} marginTop={1}>
+          {appHints.map((hint) => (
+            <Box key={hint.key} gap={1}>
+              <Kbd>{hint.key}</Kbd>
+              <Muted>{hint.label}</Muted>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -91,7 +106,7 @@ export function AppShell({
 }) {
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column">
+      <Box flexDirection="column" gap={1}>
         {header}
         {nav}
       </Box>

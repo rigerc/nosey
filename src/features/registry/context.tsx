@@ -2,7 +2,10 @@ import {createContext, useContext, type ReactNode} from 'react';
 import type {RegistryInitOptions} from '../../lib/registry/init.js';
 
 const Context = createContext<RegistryInitOptions>({});
-export function RegistryInitProvider({options, children}: {
+export function RegistryInitProvider({
+  options,
+  children,
+}: {
   options?: RegistryInitOptions;
   children: ReactNode;
 }) {

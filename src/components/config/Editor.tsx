@@ -1,8 +1,11 @@
-import {Box, Text, useInput} from 'ink';
+import {useKeyboardInput} from '../../hooks/useKeymap';
+import {Box, Text} from 'ink';
 import {useState} from 'react';
 import type {ConfigField} from '../../config';
 import {getAtPath} from '../../config';
 import {useInputCapture} from '../../hooks/useInputCapture';
+import {useInputActivity} from '../../hooks/useInputActivity';
+import {useFooterHints} from '../../hooks/useFooterHints';
 import {formatValue} from '../../lib/format';
 import {useTheme} from '../../theme/context';
 import {MultiSelect} from '../MultiSelect';
@@ -30,37 +33,53 @@ function EditText({
 }) {
   const [text, setText] = useState(formatValue(value));
   const [error, setError] = useState('');
-  useInput((input, key) => {
-    if (key.escape) {
-      onCancel();
-      return;
-    }
-    if (key.return) {
-      const parsed = isNumber ? Number(text) : text;
-      if (isNumber && (!text.trim() || !Number.isFinite(Number(text)))) {
-        setError('Enter a valid number');
-      } else onSubmit(parsed);
-      return;
-    }
-    if (key.ctrl || key.meta) return;
-    if (key.backspace || key.delete) {
-      setText((current) => trimLast(current));
-      setError('');
-      return;
-    }
-    // Strip control characters Ink delivers for special keys.
-    // oxlint-disable-next-line no-control-regex
-    const printable = input.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
-    if (printable) {
-      setText((current) => current + printable);
-      setError('');
-    }
-  });
+  const active = useInputActivity();
+  useFooterHints(
+    [
+      {key: 'enter', label: 'accept value'},
+      {key: 'esc', label: 'cancel'},
+      {key: 'ctrl+u', label: 'clear text'},
+    ],
+    active,
+  );
+  useKeyboardInput(
+    (input, key) => {
+      if (key.escape) {
+        onCancel();
+        return;
+      }
+      if (key.return) {
+        const parsed = isNumber ? Number(text) : text;
+        if (isNumber && (!text.trim() || !Number.isFinite(Number(text)))) {
+          setError('Enter a valid number');
+        } else onSubmit(parsed);
+        return;
+      }
+      if (key.ctrl && input === 'u') {
+        setText('');
+        setError('');
+        return;
+      }
+      if (key.ctrl || key.meta) return;
+      if (key.backspace || key.delete) {
+        setText((current) => trimLast(current));
+        setError('');
+        return;
+      }
+      // Strip control characters Ink delivers for special keys.
+      // oxlint-disable-next-line no-control-regex
+      const printable = input.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+      if (printable) {
+        setText((current) => current + printable);
+        setError('');
+      }
+    },
+    {isActive: active},
+  );
   return (
     <Box flexDirection="column">
       <Text>Edit value: {text || '(empty)'}_</Text>
       {error && <Text color="red">{error}</Text>}
-      <Muted>type to edit / backspace delete / enter accept / esc cancel</Muted>
     </Box>
   );
 }
@@ -85,6 +104,7 @@ export function ConfigSectionEditor({
   sources,
   active = true,
 }: ConfigSectionEditorProps) {
+  active = useInputActivity() && active;
   const theme = useTheme();
   const visible = fields.filter(
     (field) => !field.visibleWhen || field.visibleWhen(values as Record<string, unknown>),
@@ -93,8 +113,23 @@ export function ConfigSectionEditor({
   const [mode, setMode] = useState<'list' | 'select' | 'text' | 'multi'>('list');
   const field = visible[Math.min(index, visible.length - 1)];
   const value = field ? (getAtPath(values, field.path) ?? field.defaultValue) : undefined;
+  useFooterHints(
+    mode === 'list'
+      ? [
+          {key: 'up/down', label: 'move'},
+          {key: 'enter', label: 'edit'},
+          {key: 'esc', label: 'back'},
+          ...(onDone ? [{key: 'n', label: 'next step'}] : []),
+        ]
+      : [
+          {key: 'up/down', label: 'move'},
+          {key: 'enter', label: 'select'},
+          {key: 'esc', label: 'cancel'},
+        ],
+    active && mode !== 'text',
+  );
   useInputCapture(active);
-  useInput(
+  useKeyboardInput(
     (input, key) => {
       if (mode !== 'list') {
         if (key.escape) setMode('list');
@@ -149,6 +184,7 @@ export function ConfigSectionEditor({
       {active && field && mode === 'select' && (
         <Box flexDirection="column">
           <Select
+            allowWhenCaptured
             key={field.path}
             items={[...(field.options ?? [])]}
             initialValue={formatValue(value)}
@@ -158,11 +194,11 @@ export function ConfigSectionEditor({
               setMode('list');
             }}
           />
-          <Muted>arrows choose / enter select / esc cancel</Muted>
         </Box>
       )}
       {active && field && mode === 'multi' && (
         <MultiSelect
+          allowWhenCaptured
           key={field.path}
           items={[...(field.options ?? [])]}
           defaultValue={Array.isArray(value) ? (value as string[]) : []}
@@ -183,9 +219,6 @@ export function ConfigSectionEditor({
           }}
           onCancel={() => setMode('list')}
         />
-      )}
-      {mode === 'list' && (
-        <Muted>↑/↓ navigate / enter edit / esc back{onDone ? ' / n next' : ''}</Muted>
       )}
     </Box>
   );

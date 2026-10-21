@@ -1,131 +1,169 @@
-# :^) Nosey
+# nosey
 
-**Nosey sniffs your workspace and suggests AI agent skills.**
+Workspace detection and agent skill suggestions, with an Ink 8 / React 19 terminal shell.
+Requires Node.js 24+ (matching Nosey's runtime requirement).
 
-Nosey detects technologies by scanning dependency manifests, project files, and configuration
-signals. It matches them to built-in skill mappings and optional local/Git skill registries.
-Use its branded [Ink](https://github.com/vadimdemedes/ink) terminal interface to review and
-select suggestions, or run it headlessly in a script.
+Generated with preset **standard**, package manager **npm**,
+and toolchain **vite-plus**.
 
-The scan is **read-only**. Nosey never executes the target project's code or installs skills.
+## Getting started
 
-## Install and run
-
-Requires Node.js **24+**.
-
-```sh
+```bash
 npm install
+npm run dev
 npm run build
-npm link
-nosey .
+npm run start
 ```
 
-During development:
+Installation creates the package-manager lockfile if one was not included.
+Commit that generated lockfile and use frozen installs in deployed environments.
 
-```sh
-npm run dev -- .
-npm run dev -- ../another-project --json
+## Commands and features
+
+```bash
+nosey --help
+nosey --plain
+nosey --setup
+nosey --screen settings
+nosey doctor --json
+nosey --screen gallery
 ```
 
-## Detect and select skills
+In a terminal, the app opens Nosey's branded Scan, Registries, Settings, and Help
+tabs. The component gallery is a hidden development route. The default dark-terminal
+theme is `nosey`; light, dark, contrast, mono, and ASCII rendering are supported.
+The original asset exports are in `assets/nosey-brand-kit`.
 
-```sh
-nosey .                          # Scan and open the terminal UI
-nosey ../project --explain       # View evidence for matches
-nosey . --json                   # Structured scan report
-nosey . --skills-only            # One suggested skill ID per line
-nosey . --no-interactive         # Plain-text report
-nosey . --plain                  # Equivalent noninteractive report
-nosey . --no-frontend-bonus
-nosey . --depth 6 --max-files 5000
-nosey . --registry ./team-skills
-nosey . --registry https://github.com/org/skills.git
+## Terminal interface
+
+```bash
+npm run dev -- ../project
+npm run dev -- ../project --explain
+npm run dev -- --screen registry
+npm run dev -- --theme nosey
 ```
 
-A noninteractive terminal automatically produces the plain-text report. The interactive
-**Scan** screen displays detected technologies, matching combinations and suggested
-skills together. The skill picker uses Nosey's MultiSelect, with each technology's skills
-under a distinct heading and blank spacing between groups. Skills shared by multiple
-technologies stay checked consistently and count only once. Filtered-out selections
-stay selected. Confirmed skill IDs print to stdout after Ink exits. No skills are installed.
+Use Tab / Shift+Tab or 1–4 to navigate. Ctrl+K opens commands, `t` previews a
+runtime theme, `?` opens Help, and `q` quits without confirming a selection.
+Captured text fields and confirmation prompts own the keyboard.
 
-### Nosey interface
+In Scan, arrows or j/k move, Space selects, `/` or `f` filters, `c` clears the
+filter, `g` toggles technology groups, `d` finds skill details, and `r` rescans.
+Selections hidden by filters stay selected. Tabs and the command menu preserve
+selection, filter, cursor, and settings drafts. A completed new scan resets the
+old selection. Enter reviews ordered, unique IDs; the final confirmation defaults
+to No. Confirmed IDs print only after Ink exits. Nothing is installed.
 
-Navigation uses **Tab** or **1–4** across Scan, Registries, Settings and Help.
-Use **t** to cycle themes and **q** to quit. Within Scan, **Space** toggles a
-suggested skill and **Enter** reviews selections. Press **/** to filter the
-MultiSelect, **Enter** to return to the list, **Escape** to cancel an edit,
-or **c** to clear the filter. The letter **f** is not a search shortcut.
-**g** toggles skills by technology group; **d** opens the focused skill's
-details directly (without launching another search); **r** rescans.
+Results are grouped by technology, combination, and frontend essentials, with
+spacing between each heading and its options. A shared skill appears under each
+matching heading with one synchronized checkbox state and one confirmed ID.
+The footer shows available screen actions and app navigation separately; active
+editors and confirmation prompts replace those hints with their own controls.
 
-While the filter input is focused, typing characters such as q, t, g, f, or ?
-does not execute shortcuts. The old `--screen skills` flag remains a hidden
-alias for Scan. The interface exclusively uses Nosey's components, hooks,
-navigation and theme; no SkillSense UI code is included.
+Registries targets the scanned project for project-scoped references. Add, remove,
+metadata builds, and initialization show exact write targets and require explicit
+confirmation. The initialization wizard supports optional Git and GitHub creation;
+Ctrl+X cancels without creating anything before final confirmation. Settings uses
+drafts: `s` saves, `d` discards, and `w` opens guided setup. Theme cycling does not save.
+
+## Scan a workspace
+
+```bash
+npm run dev -- scan ../project --json
+npm run dev -- ../project --skills-only
+npm run dev -- scan ../project --explain --no-frontend-bonus
+npm run dev -- scan ../project --depth 6 --max-files 5000
+npm run dev -- scan ../project --registry ./team-skills
+```
+
+After building, use `node dist/cli.js` in place of `npm run dev --`, or link the
+package with `npm link` to use `nosey` directly. `scan` defaults to the current
+directory and always runs headlessly. A project path opens Scan in a TTY;
+`--json`, `--skills-only`, `--plain`, `--no-interactive`, pipes, and CI produce
+noninteractive reports. Non-Scan `--screen ... --plain` still previews a screen.
+
+Scans read manifests and configuration signals without executing project code or
+installing skills. Reports include technologies, combinations, agent folders,
+suggested skills, evidence, and registry warnings. Use `--json` for structured
+output, `--skills-only` for skill IDs, or `--explain` for a text report with evidence.
+`--plain` and `--no-interactive` are also supported on scan commands.
 
 ## Skill registries
 
-```sh
-nosey registry                      # Interactive registry manager
-nosey registry init ./team-skills --registry-id acme/team-skills --yes --no-git
-nosey registry add ./team-skills
-nosey registry add https://github.com/org/skills.git --ref v1
-nosey registry list --json
-nosey registry show ./team-skills
-nosey registry validate ./team-skills --json
-nosey registry build ./team-skills
-nosey registry remove ./team-skills
+```bash
+npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
+npm run dev -- registry add ./team-skills
+npm run dev -- registry add https://github.com/org/skills.git --ref v1
+npm run dev -- registry list --json
+npm run dev -- registry show ./team-skills --json
+npm run dev -- registry validate ./team-skills --json
+npm run dev -- registry build ./team-skills
+npm run dev -- registry remove ./team-skills
 ```
 
-Use `--global` with `list`, `add`, or `remove` to manage global registry references.
-Registry initialization optionally initializes Git and creates a remote with the GitHub CLI
-when explicitly selected. The registry template is included in the published package.
-Local and remote registries are validated before their mappings are merged.
+Use `--global` with `list`, `add`, and `remove` for global registry references.
+Headless initialization requires a destination and `--registry-id`; in a TTY,
+`registry init` opens the same guided wizard as the Registries tab. Headless init
+initializes Git by default unless `--no-git` is passed. `--github` explicitly creates and pushes a
+remote with `gh`, with optional `--visibility private|public`.
 
-The registry UI uses Nosey's own `Select`, `Confirm`, `TextField`, `Stepper`,
-`Panel`, and keyboard hooks.
+Registry configuration retains Nosey's `.nosey.json` project file and global
+`nosey/registries.json` under the platform config directory. Existing SkillSense
+registry settings and cached snapshots remain readable; edits write Nosey files.
+Appearance settings use the `nosey` config path.
+Git registries load through Git objects without checking out or running remote code.
 
-### Configuration and migration
+## Catalog and mapping tools
 
-- Project registry configuration: `<project>/.nosey.json`
-- Global registry configuration: `$XDG_CONFIG_HOME/nosey/registries.json` (or
-  `~/.config/nosey/registries.json`; on Windows, under `%APPDATA%`)
-- App appearance/settings: `$XDG_CONFIG_HOME/nosey/config.json` (or the equivalent home directory)
-- Remote registry cache: the platform user cache directory under `nosey/registries`
+```bash
+npm run skills-catalog -- --output skills-catalog.json --refresh
+npm run skills-map:propose -- --no-model --limit 3 --output out/offline-proposals.json
+```
 
-Nosey **also reads** existing SkillSense registry settings from `.skillsense.json`
-and its global config path, and can reuse valid cached Git snapshots from SkillSense.
-Legacy files are never automatically changed or deleted; new registry edits write only
-Nosey's config files.
+The catalog builder and optional Kev mapping proposal tool are imported unchanged.
+They produce catalogs and review proposals; they do not install skills or edit the
+built-in mappings. See [the tooling guide](scripts/README.md) for network/cache
+behavior, model configuration, checkpointing, and output details.
 
-A registry reference can be a local directory or an HTTPS/SSH Git repository, optionally
-pinned to a revision. Git snapshots are read through Git objects, without checking out the
-repository or executing any remote code.
+## Theme customization
 
-## Diagnostics, themes, and development
+Semantic palettes live in `src/theme/palettes.json`; the project default is in `src/theme/defaults.json`.
 
-```sh
-nosey doctor --json
-nosey --setup
-nosey --theme nosey
-nosey --theme dark
-nosey --screen gallery      # Development component gallery
+```bash
+npm run theme:list
+npm run theme:token -- dark primary "#ff80aa"
+npm run theme:default -- light
+npm run theme:default -- auto
+```
 
+## Extend your app
+
+- Register screens in `src/screens/index.ts`.
+- Register noninteractive commands in `src/commands/index.ts`.
+- Keep domain features independent of React/Ink.
+- Reuse `src/components/`, `src/hooks/`, and `src/theme/`.
+- See [UI framework guide](docs/ui-framework.md), [Architecture](docs/architecture.md), and [Add a feature](docs/adding-a-feature.md).
+
+## Checks
+
+```bash
 npm run typecheck
-npm test
+npm run test
+npm run test:unit # Runtime, domain, CLI, and existing UI tests
+npm run test:catalog
+npm run test:map
 npm run build
-npm run check
+npm run screenshot # First: npx playwright install chromium
 ```
 
-Nosey retains the existing brand kit in `assets/nosey-brand-kit` and the branded
-appearance themes. Domain logic is kept separate from React and Ink; scans and registry
-operations are shared by the CLI and the UI.
+A GitHub Actions workflow is included in `.github/workflows/ci.yml`.
 
-For architecture and implementation conventions, see
-[docs/architecture.md](docs/architecture.md) and
-[docs/adding-a-feature.md](docs/adding-a-feature.md).
+## Provenance
 
-SkillSense's detection and registry domain modules were ported from
-[rigerc/skillsense](https://github.com/rigerc/skillsense). See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance and license.
+Core logic, tests, catalog tools, registry templates, and the brand kit originated
+in the Nosey checkout at `bfe67a8b14e758927f997fc56ca35ef322497c43`.
+The UI uses the ink-cli-starter framework, with Nosey's brand mark and text field.
+The four-screen workflows include input arbitration, write confirmations, and
+responsive layouts.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the SkillSense engine's
+original provenance and MIT license.

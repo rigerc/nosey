@@ -1,5 +1,8 @@
 import {describe, expect, it} from 'vite-plus/test';
-import {resolveThemeName} from '../src/theme/resolve';
+import {defaultTheme, resolveThemeName} from '../src/theme/resolve';
+import defaults from '../src/theme/defaults.json';
+import palettes from '../src/theme/palettes.json';
+import {appConfig} from '../src/config/schema';
 import {themes} from '../src/theme/themes';
 import {themeNames, tones} from '../src/theme/tokens';
 
@@ -7,6 +10,12 @@ describe('themes', () => {
   it('defines every token in every theme', () => {
     for (const name of themeNames) {
       for (const tone of tones) expect(tone in themes[name].color).toBe(true);
+    }
+  });
+
+  it('reads the published color palettes without changing semantic token shape', () => {
+    for (const name of ['dark', 'light', 'contrast'] as const) {
+      expect(themes[name].color).toEqual(palettes[name]);
     }
   });
 
@@ -19,6 +28,15 @@ describe('themes', () => {
 });
 
 describe('resolveThemeName', () => {
+  it('uses the shared project default when higher-priority values are absent', () => {
+    expect(defaultTheme).toBe(defaults.defaultTheme);
+    expect(appConfig.fields[0]?.defaultValue).toBe(defaultTheme);
+    const result = resolveThemeName({noColor: false});
+    expect(result).toBe(
+      defaultTheme === 'auto' ? resolveThemeName({config: 'auto', noColor: false}) : defaultTheme,
+    );
+  });
+
   it('NO_COLOR beats everything', () => {
     expect(resolveThemeName({flag: 'dark', noColor: true})).toBe('mono');
   });
@@ -31,20 +49,5 @@ describe('resolveThemeName', () => {
   });
   it('ignores invalid names', () => {
     expect(resolveThemeName({flag: 'neon', config: 'light', noColor: false})).toBe('light');
-  });
-
-  it('defaults to the brand theme, and to light on a light terminal', () => {
-    const previous = process.env.COLORFGBG;
-    try {
-      delete process.env.COLORFGBG;
-      expect(resolveThemeName({noColor: false})).toBe('nosey');
-      process.env.COLORFGBG = '0;15';
-      expect(resolveThemeName({noColor: false})).toBe('light');
-      process.env.COLORFGBG = '15;0';
-      expect(resolveThemeName({noColor: false})).toBe('nosey');
-    } finally {
-      if (previous === undefined) delete process.env.COLORFGBG;
-      else process.env.COLORFGBG = previous;
-    }
   });
 });

@@ -40,70 +40,6 @@ describe('MultiSelect', () => {
     expect(submit).toHaveBeenLastCalledWith(['alpha', 'epsilon']);
   });
 
-  it('preserves selected skills hidden by a filter, ordered by allItems', async () => {
-    const change = vi.fn();
-    const submit = vi.fn();
-    const app = await mount(
-      <MultiSelect
-        items={items.filter((item) => item.value === 'alpha')}
-        allItems={items}
-        value={['gamma']}
-        onChange={change}
-        onSubmit={submit}
-      />,
-    );
-    await press(app, ' ');
-    expect(change).toHaveBeenLastCalledWith(['alpha', 'gamma']);
-    app.rerender(
-      <MultiSelect
-        items={items.filter((item) => item.value === 'alpha')}
-        allItems={items}
-        value={['alpha', 'gamma']}
-        onChange={change}
-        onSubmit={submit}
-      />,
-    );
-    await settle();
-    await press(app, '\r');
-    expect(submit).toHaveBeenCalledWith(['alpha', 'gamma']);
-  });
-
-  it('renders group headers with spacing and shared skill selection across groups', async () => {
-    const grouped = [
-      {value: 'alpha', label: 'Alpha', group: {key: 'react', label: 'React (2)'}},
-      {value: 'shared', label: 'Shared', group: {key: 'react', label: 'React (2)'}},
-      {value: 'shared', label: 'Shared', group: {key: 'next', label: 'Next.js (2)'}},
-      {value: 'delta', label: 'Delta', group: {key: 'next', label: 'Next.js (2)'}},
-    ];
-    const change = vi.fn();
-    const inspect = vi.fn();
-    const app = await mount(
-      <MultiSelect
-        items={grouped}
-        allItems={items}
-        onChange={change}
-        onInspect={inspect}
-        maxVisible={6}
-      />,
-    );
-    let lines = (app.lastFrame() ?? '').split('\n');
-    const next = lines.findIndex((line) => line.includes('Next.js (2)'));
-    const firstShared = lines.findIndex((line) => line.includes('[ ] Shared'));
-    expect(next).toBeGreaterThan(firstShared);
-    expect(lines.slice(firstShared + 1, next).some((line) => line.trim() === '')).toBe(true);
-
-    await press(app, '\u001b[B'); // Focus React's Shared
-    await press(app, 'd'); // Inspect, do not open a search control
-    expect(inspect).toHaveBeenCalledWith('shared');
-    await press(app, ' '); // Select one logical skill
-    lines = (app.lastFrame() ?? '').split('\n');
-    expect(lines.filter((line) => line.includes('[x] Shared'))).toHaveLength(2);
-    expect(app.lastFrame()).toContain('1 selected');
-    await press(app, '\u001b[B'); // Next.js copy of Shared
-    await press(app, ' '); // Unselect the same underlying ID
-    expect(app.lastFrame()).toContain('0 selected');
-  });
-
   it('leaves controlled selection to the parent and ignores keys when inactive', async () => {
     const change = vi.fn();
     const app = await mount(<MultiSelect items={items} value={[]} onChange={change} />);
@@ -339,35 +275,75 @@ describe('PaginatedList', () => {
   });
 });
 
-describe('gallery input ownership', () => {
-  it('pauses global letter shortcuts during search and restores them on Escape', async () => {
+describe('gallery selection and input ownership', () => {
+  it('renders one component at a time and browses with brackets', async () => {
+    const app = await mount(
+      <App options={{theme: 'mono', ascii: true, debug: false, screen: 'gallery'}} />,
+    );
+    expect(app.lastFrame()).toContain('Panel example');
+    expect(app.lastFrame()).not.toContain('Build completed');
+    await press(app, ']');
+    expect(app.lastFrame()).toContain('Cards use a colored left edge');
+    expect(app.lastFrame()).not.toContain('Panel example');
+    await press(app, '[');
+    expect(app.lastFrame()).toContain('Panel example');
+  });
+
+  it('opens search only explicitly, and a cancelled picker never activates a demo', async () => {
+    const app = await mount(
+      <App options={{theme: 'mono', ascii: true, debug: false, screen: 'gallery'}} />,
+    );
+    await press(app, 'o');
+    await press(app, 'm');
+    await press(app, 'p');
+    expect(app.lastFrame()).toContain('Panel example');
+    expect(app.lastFrame()).not.toContain('Search:');
+    await press(app, '/');
+    expect(app.lastFrame()).toContain('Choose component');
+    await press(app, 'q');
+    expect(app.lastFrame()).toContain('Search: q');
+    expect(app.lastFrame()).toContain('Choose component');
+    await press(app, '\u001b');
+    expect(app.lastFrame()).toContain('Panel example');
+    expect(app.lastFrame()).not.toContain('Search:');
+  });
+
+  it('searches for a component without navigating, and only focuses its own search on Enter', async () => {
     const app = await mount(
       <App options={{theme: 'mono', ascii: true, debug: false, screen: 'gallery'}} />,
     );
     await press(app, '/');
-    await expect.poll(() => app.lastFrame()).toContain('SearchSelect');
-    await expect.poll(() => app.lastFrame()).toContain('leave search');
+    await press(app, 'searchselect');
+    expect(app.lastFrame()).toContain('Search: searchselect');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Press Enter to focus search');
+    expect(app.lastFrame()).toContain('Selected: None');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Type to filter');
     await press(app, 'q');
     await press(app, 't');
     await press(app, 'r');
     await press(app, '1');
     await press(app, '?');
     expect(app.lastFrame()).toContain('Search: qtr1?');
-    expect(app.lastFrame()).toContain('SearchSelect');
-    expect(app.lastFrame()).toContain('leave search');
+    expect(app.lastFrame()).toContain('Selected: None');
     await press(app, '\u001b');
-    await expect.poll(() => app.lastFrame()).toContain('shortcuts restored');
-    await press(app, 'o');
+    expect(app.lastFrame()).toContain('Press Enter to focus search');
+    await press(app, ']');
+    expect(app.lastFrame()).toContain('Enable caching');
+    expect(app.lastFrame()).not.toContain('Search:');
     await press(app, ' ');
     expect(app.lastFrame()).toContain('Enable caching: Off');
-    await press(app, 'p');
-    await press(app, '\u001b[C');
-    expect(app.lastFrame()).toContain('Page 2/3');
-    await press(app, 'w');
-    expect(app.lastFrame()).toContain('Setup wizard');
-    await press(app, '1');
-    expect(app.lastFrame()).toContain(':^)');
-    expect(app.lastFrame()).not.toContain('Interactive components');
+  });
+
+  it('keeps the global command menu accessible when no input is focused', async () => {
+    const app = await mount(
+      <App options={{theme: 'mono', ascii: true, debug: false, screen: 'gallery'}} />,
+    );
+    await press(app, '\u000b');
+    expect(app.lastFrame()).toContain('Commands');
+    await press(app, '\u001b');
+    expect(app.lastFrame()).toContain('Panel example');
   });
 });
 

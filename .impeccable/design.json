@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T03:36:02.704823+00:00",
+  "title": "Design System: Nosey",
+  "extensions": {
+    "platform": "Native Ink terminal; dimensions are character columns and rows.",
+    "sources": {
+      "palettes": "src/theme/palettes.json",
+      "tokens": "src/theme/tokens.ts",
+      "themes": "src/theme/themes.ts",
+      "themeResolution": "src/theme/resolve.ts",
+      "brandAssets": "assets/nosey-brand-kit/README.md",
+      "shell": "src/components/AppShell.tsx",
+      "panel": "src/components/Panel.tsx",
+      "screenLayout": "src/components/ScreenLayout.tsx",
+      "scan": "src/screens/Home.tsx",
+      "groupedMenu": "src/components/MultiSelect.tsx"
+    },
+    "colorMeta": {
+      "nosey-primary": {
+        "role": "primary",
+        "displayName": "Nose amber"
+      },
+      "nosey-text": {
+        "role": "neutral",
+        "displayName": "Parchment"
+      },
+      "nosey-muted": {
+        "role": "neutral",
+        "displayName": "Dim"
+      },
+      "nosey-border": {
+        "role": "neutral",
+        "displayName": "Umber"
+      },
+      "nosey-success": {
+        "role": "semantic",
+        "displayName": "Moss"
+      },
+      "nosey-on-tone": {
+        "role": "neutral",
+        "displayName": "Ground"
+      },
+      "light-primary": {
+        "role": "primary",
+        "displayName": "Burnt amber"
+      }
+    },
+    "terminalColors": {
+      "noseyDanger": {
+        "ansiName": "redBright",
+        "source": "src/theme/palettes.json#nosey.danger"
+      },
+      "contrast": "Uses ANSI names from palettes.json; the terminal determines their RGB appearance.",
+      "mono": "All semantic colors are undefined; NO_COLOR forces this theme.",
+      "additionalThemes": ["dark", "contrast", "mono"],
+      "canvas": "Inherited terminal background, not an application panel-fill token."
+    },
+    "terminalTypography": {
+      "font": "Inherited terminal monospace; runtime does not select a font.",
+      "assetPreference": "JetBrains Mono in the existing brand kit; not required by the application.",
+      "hierarchy": "Bold headings and focus; regular values; muted metadata; bracketed bold keys."
+    },
+    "breakpoints": [
+      {
+        "name": "context-only-compact-footer",
+        "value": "below 60 columns",
+        "purpose": "At most three context hints; suppress the extra global row when context exists."
+      },
+      {
+        "name": "separate-global-footer",
+        "value": "60 columns",
+        "purpose": "Show separate global hints when context exists; context limit is five through 89 columns."
+      },
+      {
+        "name": "expanded-context-footer",
+        "value": "90 columns",
+        "purpose": "Allow up to nine context hints."
+      },
+      {
+        "name": "two-column-scan",
+        "value": "96 columns",
+        "purpose": "Project and selection sit side by side with 35%/65% assignments and a one-column gap."
+      }
+    ],
+    "terminalSpacing": {
+      "source": [
+        "src/components/Panel.tsx",
+        "src/components/AppShell.tsx",
+        "src/components/ScreenLayout.tsx",
+        "src/components/MultiSelect.tsx",
+        "src/components/Stack.tsx"
+      ],
+      "horizontalInsetColumns": 1,
+      "shellGapRows": 1,
+      "panelTitleBottomRows": 1,
+      "panelFooterTopRows": 1,
+      "groupHeadingBottomRows": 1,
+      "laterGroupHeadingTopRows": 1,
+      "hintGapColumns": 2,
+      "keyLabelGapColumns": 1,
+      "stackGapScaleCells": [0, 1, 2, 3, 4],
+      "stackDefaultGapCells": 0
+    },
+    "terminalShapes": {
+      "baseBorder": "round",
+      "focusedBorder": "bold",
+      "monoBaseBorder": "single",
+      "monoFocusedBorder": "double",
+      "asciiBorders": "classic",
+      "card": "left border only; one-column left padding"
+    },
+    "terminalMotion": {
+      "source": "src/theme/themes.ts and src/theme/tokens.ts",
+      "spinnerIntervalMs": 80,
+      "unicodeSpinner": "unicodeSpinner",
+      "asciiSpinner": "asciiSpinner"
+    },
+    "terminalComponents": [
+      {
+        "name": "BrandMark",
+        "source": "src/components/BrandMark.tsx",
+        "description": "ASCII :^) with primary caret and text-colored punctuation."
+      },
+      {
+        "name": "Panel",
+        "source": "src/components/Panel.tsx",
+        "description": "Subdued base border; focused border and title use semantic emphasis."
+      },
+      {
+        "name": "Tabs",
+        "source": "src/components/Tabs.tsx",
+        "description": "Wrapping numbered tabs; active tab is bracketed, bold and primary."
+      },
+      {
+        "name": "MultiSelect",
+        "source": "src/components/MultiSelect.tsx",
+        "description": "Nonselectable group headings, blank heading-to-option row, pointer and checkboxes; shared IDs synchronize across groups."
+      },
+      {
+        "name": "TextField",
+        "source": "src/components/TextField.tsx",
+        "description": "Inline label and underscore cursor; captures text input and replaces footer hints."
+      },
+      {
+        "name": "Badge",
+        "source": "src/components/Badge.tsx",
+        "description": "Subtle, bracketed outline and solid variants; mono solid uses inverse bold."
+      },
+      {
+        "name": "StatusBar",
+        "source": "src/components/AppShell.tsx",
+        "description": "Context hints and global navigation occupy separate rows when width permits."
+      }
+    ],
+    "evidence": {
+      "reviewedWidthsColumns": [40, 120],
+      "screenshots": [],
+      "limits": "This pass extracts and documents existing source; it does not independently certify all interaction states."
+    },
+    "limitations": [
+      "Frontmatter captures Nosey and light brand colors. Supported dark and ANSI contrast palettes remain authoritative in the runtime source.",
+      "No synthetic tonal ramps or ANSI-to-RGB conversions were added.",
+      "Native Ink has no CSS shadow, pixel radius or controlled font-size tokens.",
+      "Browser HTML/CSS component previews are omitted because they would approximate a native terminal interface rather than document its actual components."
+    ]
+  },
+  "narrative": {
+    "overview": "Nosey's existing `:^)` identity anchors a compact, keyboard-driven terminal interface. Amber identifies focus and the brand's nose; parchment carries readable content; subdued warm metadata keeps evidence and actions easy to scan. This document describes the implemented Ink interface and the confirmed direction, without introducing a replacement identity.\n\nThe application renders inline and preserves terminal scrollback. Its hierarchy comes from bold text, restrained borders, blank rows and explicit labels. Scan, Registries, Settings and Help share one shell. Scan presents read-only suggestions; selection and review never imply installation.",
+    "keyCharacteristics": [
+      "Existing Nosey brand assets and the ASCII `:^)` mark.",
+      "One warm brand accent, semantic status colors and terminal-controlled typography.",
+      "Technology-grouped suggestions with synchronized shared-skill selection.",
+      "Separate contextual controls and global navigation hints.",
+      "Stacked narrow layouts and a two-column wide Scan layout."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Color Rule",
+        "body": "Use theme roles for state and focus; pair every status with readable text or a symbol so meaning survives mono rendering.",
+        "section": "colors"
+      },
+      {
+        "name": "The Group Spacing Rule",
+        "body": "Keep the heading-to-menu blank row even in compact terminals; window the list instead of compressing that separation.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do reuse the existing `:^)` mark and Nosey brand assets.",
+      "Do resolve colors, borders and glyphs from the active semantic theme.",
+      "Do preserve blank rows around group headings and synchronized selection for shared skill IDs.",
+      "Do compose screens inside `ScreenLayout` and preserve the shared contextual footer.",
+      "Do review stacked 40-column and wide 120-column output alongside light, mono and ASCII variants.",
+      "Do state that suggestions and selection do not install skills."
+    ],
+    "donts": [
+      "Don't replace the mark or introduce another decorative brand accent.",
+      "Don't force a terminal font, pixel type scale, CSS radius, shadow or panel fill.",
+      "Don't use color alone to distinguish focus, selection, warnings or errors.",
+      "Don't merge contextual editing hints with unrelated global shortcuts.",
+      "Don't count repeated grouped entries as separate selected skills.",
+      "Don't hide essential state behind a wide-only layout or print application logs while Ink owns stdout."
+    ]
+  }
+}

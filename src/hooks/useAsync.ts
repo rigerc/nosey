@@ -8,8 +8,10 @@ type State<T> =
   | {status: 'error'; error: AppError};
 
 /** Run an async function; ignores results after unmount or when superseded. */
-export function useAsync<T, A extends unknown[]>(fn: (...args: A) => Promise<T>) {
-  const [state, setState] = useState<State<T>>({status: 'idle'});
+export function useAsync<T, A extends unknown[]>(fn: (...args: A) => Promise<T>, initialData?: T) {
+  const [state, setState] = useState<State<T>>(() =>
+    initialData === undefined ? {status: 'idle'} : {status: 'success', data: initialData},
+  );
   const alive = useRef(true);
   const runId = useRef(0);
   const fnRef = useRef(fn);

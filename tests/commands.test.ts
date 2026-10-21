@@ -18,9 +18,11 @@ describe('headless commands', () => {
     return join(dir, name);
   }
 
-  it('reports defaults as healthy JSON without starting Ink', () => {
+  it('reports defaults as healthy JSON without starting Ink', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    expect(runCommand('doctor', [], {configFile: fixture('missing.json'), json: true})).toBe(true);
+    expect(await runCommand('doctor', [], {configFile: fixture('missing.json'), json: true})).toBe(
+      true,
+    );
     const report = JSON.parse(String(log.mock.calls[0]![0]));
     expect(report.ok).toBe(true);
     expect(report.checks.map((check: {name: string}) => check.name)).toEqual([
@@ -30,17 +32,17 @@ describe('headless commands', () => {
     expect(report.checks[1].detail).toContain('defaults in use');
   });
 
-  it('fails with exit code 1 when configuration is invalid', () => {
+  it('fails with exit code 1 when configuration is invalid', async () => {
     const file = fixture('invalid.json');
     writeFileSync(file, '{ bad json');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    expect(runCommand('doctor', [], {configFile: file, json: true})).toBe(true);
+    expect(await runCommand('doctor', [], {configFile: file, json: true})).toBe(true);
     expect(JSON.parse(String(log.mock.calls[0]![0])).ok).toBe(false);
     expect(process.exitCode).toBe(1);
   });
 
-  it('rejects extra positional arguments and preserves unknown-command handling', () => {
-    expect(() => runCommand('doctor', ['extra'], {})).toThrow('positional arguments');
-    expect(runCommand('unknown', [], {})).toBe(false);
+  it('rejects extra positional arguments and preserves unknown-command handling', async () => {
+    await expect(runCommand('doctor', ['extra'], {})).rejects.toThrow('positional arguments');
+    expect(await runCommand('unknown', [], {})).toBe(false);
   });
 });

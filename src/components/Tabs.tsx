@@ -8,8 +8,8 @@ export function Tabs({items, activeId}: {items: {id: string; label: string}[]; a
     <Box columnGap={2} paddingX={1} flexWrap="wrap">
       {items.map((item, i) =>
         item.id === activeId ? (
-          <Text key={item.id} bold underline {...primary}>
-            {i + 1} {item.label}
+          <Text key={item.id} bold {...primary}>
+            [{i + 1} {item.label}]
           </Text>
         ) : (
           <Text key={item.id} {...muted}>

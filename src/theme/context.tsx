@@ -1,7 +1,6 @@
 import {createContext, useCallback, useContext, useMemo, useState, type ReactNode} from 'react';
 import {supportsUnicode} from '../lib/terminal';
 import {applyGlyphs, themes} from './themes';
-import {DEFAULT_THEME} from './resolve';
 import {themeNames, type Theme, type ThemeName, type Tone} from './tokens';
 
 interface ThemeContextValue {
@@ -17,7 +16,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({
-  name = DEFAULT_THEME,
+  name = 'dark',
   ascii = !supportsUnicode(),
   children,
 }: {
@@ -26,11 +25,14 @@ export function ThemeProvider({
   children: ReactNode;
 }) {
   const [current, setCurrent] = useState<ThemeName>(name);
-  const theme = useMemo(() => applyGlyphs(themes[current], ascii), [current, ascii]);
-  const cycleTheme = useCallback(
-    () => setCurrent((c) => themeNames[(themeNames.indexOf(c) + 1) % themeNames.length]!),
-    [],
+  const locked = process.env.NO_COLOR !== undefined;
+  const theme = useMemo(
+    () => applyGlyphs(themes[locked ? 'mono' : current], ascii),
+    [current, ascii, locked],
   );
+  const cycleTheme = useCallback(() => {
+    if (!locked) setCurrent((c) => themeNames[(themeNames.indexOf(c) + 1) % themeNames.length]!);
+  }, [locked]);
   const value = useMemo(() => ({theme, setTheme: setCurrent, cycleTheme}), [theme, cycleTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

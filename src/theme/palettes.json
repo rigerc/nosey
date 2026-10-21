@@ -1,0 +1,58 @@
+{
+  "dark": {
+    "primary": "#7aa2f7",
+    "accent": "#bb9af7",
+    "success": "#9ece6a",
+    "warn": "#e0af68",
+    "danger": "#f7768e",
+    "info": "#7dcfff",
+    "muted": "#565f89",
+    "text": "#c0caf5",
+    "subtle": "#737aa2",
+    "border": "#3b4261",
+    "focus": "#7aa2f7",
+    "onTone": "#1a1b26"
+  },
+  "light": {
+    "primary": "#8A5A00",
+    "accent": "#8A5A00",
+    "success": "#2f7d32",
+    "warn": "#a15c00",
+    "danger": "#c62828",
+    "info": "#00698f",
+    "muted": "#6B5A38",
+    "text": "#14100A",
+    "subtle": "#6B5A38",
+    "border": "#A08A60",
+    "focus": "#8A5A00",
+    "onTone": "#F5E6C8"
+  },
+  "contrast": {
+    "primary": "cyanBright",
+    "accent": "magentaBright",
+    "success": "greenBright",
+    "warn": "yellowBright",
+    "danger": "redBright",
+    "info": "blueBright",
+    "muted": "white",
+    "text": "whiteBright",
+    "subtle": "white",
+    "border": "whiteBright",
+    "focus": "yellowBright",
+    "onTone": "black"
+  },
+  "nosey": {
+    "primary": "#FFB000",
+    "accent": "#FFB000",
+    "success": "#A3D977",
+    "warn": "#FFD37A",
+    "danger": "redBright",
+    "info": "#A08A60",
+    "muted": "#A08A60",
+    "text": "#F5E6C8",
+    "subtle": "#A08A60",
+    "border": "#6B5A38",
+    "focus": "#FFB000",
+    "onTone": "#14100A"
+  }
+}

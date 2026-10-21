@@ -5,8 +5,7 @@ import type {Tone} from '../theme/tokens';
 import {Muted} from './typography';
 
 export interface PanelProps {
-  /** A string or any inline node, e.g. `<BrandMark />` plus a name. */
-  title?: ReactNode;
+  title?: string;
   footer?: ReactNode;
   /** Tone of the title. */
   tone?: Tone;
@@ -35,9 +34,11 @@ export function Panel({
       width={width}
     >
       {title && (
-        <Text bold wrap="truncate-end" {...titleStyle}>
-          {title}
-        </Text>
+        <Box marginBottom={1}>
+          <Text bold wrap="truncate-end" {...titleStyle}>
+            {title}
+          </Text>
+        </Box>
       )}
       {children}
       {footer && (

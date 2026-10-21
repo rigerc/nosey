@@ -1,27 +1,55 @@
-import {Box, Text, useInput} from 'ink';
-import {useState} from 'react';
+import {Box, Text} from 'ink';
+import {useRef, useState} from 'react';
+import {useKeymap} from '../hooks/useKeymap';
+import {useInputCapture} from '../hooks/useInputCapture';
 import {useTheme} from '../theme/context';
-import {Kbd, Muted} from './typography';
+import {useFooterHints} from '../hooks/useFooterHints';
 
 export interface ConfirmProps {
   message: string;
   defaultValue?: boolean;
   onConfirm: (value: boolean) => void;
   isActive?: boolean;
+  onCancel?: () => void;
 }
 
-/** Y/N or arrows to choose, Enter to submit; q is left to the host app. */
-export function Confirm({message, defaultValue = false, onConfirm, isActive = true}: ConfirmProps) {
-  const [value, setValue] = useState(defaultValue);
+/** Confirmation owns the keyboard until answered or cancelled; default is No. */
+export function Confirm({
+  message,
+  defaultValue = false,
+  onConfirm,
+  onCancel,
+  isActive = true,
+}: ConfirmProps) {
+  const [value, updateValue] = useState(defaultValue);
+  const current = useRef(value);
+  current.current = value;
+  const setValue = (next: boolean) => {
+    current.current = next;
+    updateValue(next);
+  };
   const t = useTheme();
-  useInput(
-    (input, key) => {
-      if (key.ctrl || key.meta) return;
-      if (input.toLowerCase() === 'y' || key.leftArrow) setValue(true);
-      if (input.toLowerCase() === 'n' || key.rightArrow) setValue(false);
-      if (key.return) onConfirm(value);
-    },
-    {isActive},
+  useFooterHints(
+    [
+      {key: 'y/n', label: 'choose'},
+      {key: 'enter', label: 'confirm'},
+      {key: 'esc', label: 'cancel'},
+    ],
+    isActive,
+  );
+  useInputCapture(isActive);
+  useKeymap(
+    [
+      {key: 'y', run: () => setValue(true)},
+      {key: 'Y', run: () => setValue(true)},
+      {key: 'left', run: () => setValue(true)},
+      {key: 'n', run: () => setValue(false)},
+      {key: 'N', run: () => setValue(false)},
+      {key: 'right', run: () => setValue(false)},
+      {key: 'enter', run: () => onConfirm(current.current)},
+      {key: 'esc', run: () => (onCancel ? onCancel() : onConfirm(false))},
+    ],
+    {isActive, scope: 'control', allowWhenCaptured: true},
   );
   return (
     <Box flexDirection="column">
@@ -36,9 +64,6 @@ export function Confirm({message, defaultValue = false, onConfirm, isActive = tr
             {option === value ? t.symbols.pointer : ' '} {option ? 'Yes' : 'No'}
           </Text>
         ))}
-        <Muted>
-          <Kbd>y/n</Kbd> choose <Kbd>enter</Kbd> confirm
-        </Muted>
       </Box>
     </Box>
   );

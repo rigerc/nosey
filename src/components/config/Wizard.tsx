@@ -1,8 +1,9 @@
-import {Box, Text, useInput} from 'ink';
+import {Box, Text} from 'ink';
 import {useState} from 'react';
 import {appConfig, configSections, getAtPath} from '../../config';
 import {useConfigDraft} from '../../hooks/useConfigDraft';
 import {useInputCapture} from '../../hooks/useInputCapture';
+import {useKeymap} from '../../hooks/useKeymap';
 import {formatValue} from '../../lib/format';
 import {Confirm} from '../Confirm';
 import {KeyValue} from '../KeyValue';
@@ -26,9 +27,6 @@ function Review({
   onConfirm: (yes: boolean) => void;
   onBack: () => void;
 }) {
-  useInput((_input, key) => {
-    if (key.escape) onBack();
-  });
   return (
     <Box flexDirection="column" gap={1}>
       <Text bold>Review configuration</Text>
@@ -42,7 +40,7 @@ function Review({
       <Muted>
         {changed ? 'Changes will be written on confirmation.' : 'Save current settings?'}
       </Muted>
-      <Confirm message="Save configuration?" defaultValue onConfirm={onConfirm} />
+      <Confirm message="Save configuration?" defaultValue onConfirm={onConfirm} onCancel={onBack} />
     </Box>
   );
 }
@@ -63,6 +61,11 @@ export function ConfigWizard({
     setResult(value);
     onFinish?.(value);
   };
+  useKeymap([{key: 'esc', run: () => finish('cancelled')}], {
+    scope: 'screen',
+    allowWhenCaptured: true,
+    isActive: Boolean(draft.error),
+  });
 
   if (result)
     return (
