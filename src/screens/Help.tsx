@@ -25,7 +25,7 @@ export function HelpScreen() {
           <Text>f or / filters by skill ID and source. c clears the applied filter.</Text>
           <Text>Hidden selections stay selected. g toggles groups; d searches skill details.</Text>
           <Text>
-            Enter reviews; choose Yes then Enter to confirm IDs and exit. Nothing is installed.
+            Enter reviews; choose Yes then Enter to print IDs or installation commands. Nothing runs.
           </Text>
           <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
         </Panel>
@@ -42,7 +42,8 @@ export function HelpScreen() {
         </Panel>
         <Panel title="Settings" tone="muted">
           <Text>Up/down Section / Enter Edit / Escape Back / s Save / d Discard / w Wizard</Text>
-          <Text>Drafts survive tab changes. t previews a runtime theme without saving.</Text>
+          <Text>Skills CLI: opt in and choose default target agents for project-only commands.
+            Drafts survive tab changes. t previews a runtime theme without saving.</Text>
           <Text>NO_COLOR always forces mono. --ascii uses ASCII borders and symbols.</Text>
         </Panel>
         <Panel title="CLI / safety" tone="muted">
@@ -52,7 +53,8 @@ export function HelpScreen() {
           <Text>nosey doctor --json / nosey --setup</Text>
           <Text>--no-interactive produces a plain report. Piped output never prompts.</Text>
           <Text>
-            Scan targets are read-only. Partial results show limits, skipped files, or registry
+            Scan targets are read-only. Installed indicators use project-local files and lock metadata.
+            Partial results show limits, skipped files, or registry
             warnings.
           </Text>
         </Panel>
