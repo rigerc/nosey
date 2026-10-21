@@ -389,17 +389,20 @@ describe('Registry UI writes', () => {
     });
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, '\r');
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'));
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, '\r'); // default No
+    await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Remove reference from'));
     expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toHaveLength(1);
     await press(app, 'd');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, 'y');
     await press(app, '\r');
-    await settle();
     await vi.waitFor(() =>
       expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toEqual([]),
+      {timeout: 3000},
     );
     expect(existsSync(join(registry, 'skills-manifest.json'))).toBe(true);
   });
