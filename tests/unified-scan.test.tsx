@@ -29,7 +29,7 @@ describe('combined scan and skill selection', () => {
     await expect.poll(() => terminal.lastFrame()).toContain('Suggested skills');
     const frame = terminal.lastFrame() ?? '';
     expect(frame).toContain('Project scan');
-    expect(frame).toContain('Technologies:');
+    expect(frame).toContain('Detected technologies');
     expect(frame).toContain('React');
     expect(frame).toContain('unique skills selected');
     expect(frame).toContain('[ ]');

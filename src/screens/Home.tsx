@@ -79,12 +79,21 @@ export function HomeScreen() {
           Scanned {report.scannedFiles} files{report.truncated ? ' (limit reached)' : ''}
         </Text>
         <Text>{report.technologies.length} technologies · {report.combinations.length} combinations · {report.skills.length} suggested skills</Text>
-        <Text wrap="truncate-end">
-          Technologies: {report.technologies.map((tech) => tech.name).join(', ') || 'none'}
-        </Text>
-        {report.combinations.length > 0 && <Text wrap="truncate-end">
-          Combinations: {report.combinations.map((combo) => combo.name).join(', ')}
-        </Text>}
+        <Muted>Detected technologies</Muted>
+        {report.technologies.length === 0 && <Muted>None found</Muted>}
+        {report.technologies.slice(0, 4).map((tech) =>
+          <Text key={tech.id} wrap="truncate-end">
+            • {tech.name}{tech.skills.length === 0 ? ' (no mapped skills)' : ''}
+          </Text>)}
+        {report.technologies.length > 4 &&
+          <Muted>+{report.technologies.length - 4} more detected technologies</Muted>}
+        {report.combinations.length > 0 && <>
+          <Muted>Matching combinations</Muted>
+          {report.combinations.slice(0, 2).map((combo) =>
+            <Text key={combo.id} wrap="truncate-end">• {combo.name}</Text>)}
+          {report.combinations.length > 2 &&
+            <Muted>+{report.combinations.length - 2} more combinations</Muted>}
+        </>}
         {report.skippedFiles.length > 0 &&
           <Muted>{report.skippedFiles.length} skipped files (detection may be incomplete)</Muted>}
         {report.registryWarnings?.map((warning, index) =>
