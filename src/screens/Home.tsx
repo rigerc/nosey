@@ -254,12 +254,6 @@ export function HomeScreen() {
             {warning.source}: {warning.message}
           </StatusMessage>
         ))}
-        {!!report?.updatedRegistries?.length && (
-          <StatusMessage tone="info">
-            Updated Git registries: {report.updatedRegistries.join(', ')}.
-            {installSettings.enabled ? ' Run `npx skills update` to update installed skills.' : ''}
-          </StatusMessage>
-        )}
         {notice && <Muted>{notice}</Muted>}
       </Stack>
     </Panel>
