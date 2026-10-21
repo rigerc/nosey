@@ -26,9 +26,9 @@
 
 <div align="center">
   <a href="assets/recordings/home-nosey-100-video.mp4">
-    <img src="assets/recordings/home-nosey-100-video.gif" alt="Nosey terminal walkthrough: scan a workspace, filter React skill suggestions, and explore Registries, Settings, and Help" width="920">
+    <img src="assets/recordings/home-nosey-100-video.gif" alt="Nosey terminal walkthrough: slowly browse skill suggestions, filter React skills, then open Registries" width="920">
   </a>
-  <p><sub>Interactive terminal walkthrough · <a href="assets/recordings/home-nosey-100-video.mp4">Watch MP4</a> · <a href="assets/recordings/home-nosey-100-video.png">View still frame</a></sub></p>
+  <p><sub>Slow Scan + Registries demo · <a href="assets/recordings/home-nosey-100-video.mp4">Watch MP4</a> · <a href="assets/recordings/home-nosey-100-video.png">View still frame</a></sub></p>
 </div>
 
 ## Quick start

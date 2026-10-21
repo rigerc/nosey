@@ -65,8 +65,7 @@ snapshots. The runner stops the app after the interaction tape finishes.
 
 ## Adapt the workflow
 
-Start with `scripts/tapes/workflow.tape`. It waits for Scan to finish, filters suggestions for React, clears the filter,
-then visits Registries, Settings and Help using the command menu. Replace its VHS key presses, `Type`, `Wait` and `Sleep` commands with your journey.
+Start with `scripts/tapes/workflow.tape`. The README demo is deliberately paced: it holds the Scan (skills) screen, filters suggestions for React, clears the filter, then holds on Registries. It does not visit Settings or Help. Replace its VHS key presses, `Type`, `Wait` and `Sleep` commands with your journey.
 Prefer `Wait+Screen@10s /expected text/` for asynchronous transitions, then a short
 `Sleep` for a readable pause. Add `Screenshot "screenshots/checkpoint.png"` for
 checkpoints. Paths in interactions resolve from the project root. Keep launch,

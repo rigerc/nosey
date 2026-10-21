@@ -1,28 +1,18 @@
-# The runner starts the selected screen and takes its initial PNG first.
-# Keep Output, Set and launch commands in the runner. Edit this journey freely.
-# Navigate to Scan regardless of the selected starting screen.
-Type "1"
+# Slow, read-only README demo: Scan (skills) -> Registries only.
+# The runner launches Scan, waits for it, and captures the initial PNG.
+# Deliberate holds let viewers read the detected skills before navigating.
 Wait+Screen@15s /Scan complete/
-Sleep 1s
+Sleep 2s
 Type "/"
-Sleep 300ms
-Type@100ms "react"
+Sleep 600ms
+Type@180ms "react"
+Sleep 500ms
 Enter
 Wait+Screen@10s /Filter: react/
-Sleep 1s
+Sleep 3s
 Type "c"
-Sleep 500ms
+Sleep 2s
 Type "2"
 Wait+Screen@10s /Registry references/
-Sleep 1s
-Type "3"
-Wait+Screen@10s /Review and configure application preferences/
-Sleep 1s
-Ctrl+K
-Sleep 300ms
-Type@100ms "help"
-Sleep 300ms
-Enter
-Wait+Screen@10s /Scanning and selecting never installs skills/
-Sleep 1s
-# No registry writes, saved settings, skill confirmation or installations.
+Sleep 5s
+# Never open Settings or Help; never confirm a skill or write to a registry.

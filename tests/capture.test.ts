@@ -87,6 +87,17 @@ describe('VHS capture workflow', () => {
     }
   });
 
+  it('keeps the default README demo focused on Scan and Registries', () => {
+    const tape = readFileSync(path.join('scripts', 'tapes', 'workflow.tape'), 'utf8');
+    expect(tape).toContain('Type@180ms "react"');
+    expect(tape).toContain('Wait+Screen@10s /Filter: react/');
+    expect(tape).toContain('Type "2"');
+    expect(tape).toContain('Sleep 5s');
+    expect(tape).not.toContain('Type "3"');
+    expect(tape).not.toContain('Type "4"');
+    expect(tape).not.toContain('Ctrl+K');
+  });
+
   it('preserves real-project scanning and the skills alias without modifying the project', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'nosey-project-'));
     const project = path.join(dir, 'project');
