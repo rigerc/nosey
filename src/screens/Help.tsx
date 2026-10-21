@@ -43,7 +43,7 @@ export function HelpScreen() {
         <Panel title="Settings" tone="muted">
           <Text>Up/down Section / Enter Edit / Escape Back / s Save / d Discard / w Wizard</Text>
           <Text>Skills CLI: opt in and choose default target agents for project-only commands.
-            Drafts survive tab changes. t previews a runtime theme without saving.</Text>
+            Drafts survive tab changes. Preview themes in Settings without saving.</Text>
           <Text>NO_COLOR always forces mono. --ascii uses ASCII borders and symbols.</Text>
         </Panel>
         <Panel title="CLI / safety" tone="muted">
