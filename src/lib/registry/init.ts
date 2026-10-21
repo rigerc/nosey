@@ -344,7 +344,7 @@ export async function runRegistryInit(
 					destination,
 					'commit',
 					'-m',
-					'Initial SkillSense registry',
+					'Initial Nosey registry',
 				]);
 				await runner('gh', [
 					'repo',

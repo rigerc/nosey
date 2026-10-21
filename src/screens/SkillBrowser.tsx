@@ -1,5 +1,5 @@
 import {useMemo, useState} from 'react';
-import {Box, Text, useApp} from 'ink';
+import {Text, useApp} from 'ink';
 import {Confirm, MultiSelect, Muted, Panel, SearchSelect, Select, Spinner, Stack, StatusMessage} from '../components';
 import {useScan} from '../features/skills/context';
 import {deriveSkillGroups, orderedSelection} from '../features/skills/groups';
@@ -31,6 +31,7 @@ export function SkillBrowserScreen() {
     {key: 'f', run: () => setMode('search')},
     {key: 'g', run: () => setMode('groups')},
     {key: 'd', run: () => setMode('detail-pick')},
+    {key: 'enter', run: () => { if (mode === 'browse' && items.length === 0) setMode('review'); }},
   ], {isActive: mode === 'browse' || mode === 'groups' || mode === 'detail'});
   if (state.status === 'loading') return <Spinner label="Scanning project..." />;
   if (state.status === 'error') return <StatusMessage tone="danger">{state.message}</StatusMessage>;
@@ -50,7 +51,7 @@ export function SkillBrowserScreen() {
       />}
       {mode === 'groups' && <>
         <Muted>Enter toggles every skill matched by a group. Press b to return.</Muted>
-        <Select items={groups.map((group) => ({
+        {groups.length === 0 ? <Muted>No skill groups were detected.</Muted> : <Select items={groups.map((group) => ({
           value: group.key, label: group.title,
           hint: String(group.skillIds.filter((id) => selected.includes(id)).length) + '/' + group.skillIds.length,
         }))} onSelect={(key) => {
@@ -63,7 +64,7 @@ export function SkillBrowserScreen() {
             else old.add(id);
           }
           setSelected([...old]);
-        }} />
+        }} />}
       </>}
       {(mode === 'search' || mode === 'detail-pick') && <SearchSelect
         items={picker}

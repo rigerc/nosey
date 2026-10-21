@@ -81,6 +81,17 @@ const cli = meow(
 );
 
 function validate() {
+  const allowed = new Set([
+    'theme', 'screen', 'ascii', 'config', 'setup', 'plain', 'json', 'skillsOnly',
+    'explain', 'interactive', 'frontendBonus', 'registry', 'depth', 'maxFiles',
+    'global', 'ref', 'registryId', 'yes', 'git', 'github', 'visibility', 'debug',
+  ]);
+  for (const key of Object.keys(cli.flags)) {
+    if (!allowed.has(key))
+      throw new AppError('Unknown option: --' + key.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase()), {exitCode: 2});
+  }
+  if (cli.flags.theme && !appConfig.fields[0]?.options?.some((entry) => entry.value === cli.flags.theme))
+    throw new AppError('--theme requires a supported theme', {exitCode: 2});
   if (cli.flags.json && cli.flags.skillsOnly)
     throw new AppError('--json and --skills-only cannot be combined', {exitCode: 2});
   if (!Number.isSafeInteger(cli.flags.depth) || cli.flags.depth < 0)
@@ -146,6 +157,8 @@ async function main() {
     if (flags.setup || flags.skillsOnly || flags.explain)
       throw new AppError('Scan and setup flags cannot be used with registry subcommands', {exitCode: 2});
     if (input[1] === 'init') {
+      if (flags.global !== undefined || flags.ref !== undefined || flags.json || flags.skillsOnly || flags.explain || (flags.registry?.length ?? 0) > 0)
+        throw new AppError('Registry init does not accept scan or registry-selection flags', {exitCode: 2});
       if (input.length > 3) throw new AppError('Expected registry init [directory]', {exitCode: 2});
       const options = initOptions(input[2]);
       if (isInteractive() && flags.interactive && !flags.yes) {
@@ -163,6 +176,11 @@ async function main() {
     await runRegistryCommand(input.slice(1), {json: Boolean(flags.json), global: flags.global, ref: flags.ref});
     return;
   }
+  if (flags.registryId !== undefined || flags.yes !== undefined || flags.git !== undefined ||
+      flags.github !== undefined || flags.visibility !== undefined)
+    throw new AppError('Registry initialization options require: nosey registry init', {exitCode: 2});
+  if (flags.global !== undefined || flags.ref !== undefined)
+    throw new AppError('--global and --ref require a registry subcommand', {exitCode: 2});
   if (input.length > 1) throw new AppError('Expected at most one project path', {exitCode: 2});
   const root = input[0] ?? '.';
   if (!isScreenId(flags.screen))

@@ -36,8 +36,8 @@ async function fixture<T>(
 		return await run({
 			root,
 			registry,
-			projectConfig: path.join(root, '.skillsense.json'),
-			globalConfig: path.join(configHome, 'skillsense/config.json'),
+			projectConfig: path.join(root, '.nosey.json'),
+			globalConfig: path.join(configHome, 'nosey/registries.json'),
 			cacheDirectory: path.join(root, 'cache/skillsense/registries'),
 			async command(...args) {
 				const {stdout, stderr} = await exec(
