@@ -150,7 +150,7 @@ export function mergeRegistries(registries: LoadedRegistry[]): {
     addUnique(registry.frontendBonusSkills, incoming.map.frontendBonusSkills);
     for (const item of incoming.map.frontendPackages) registry.frontendPackages.add(item);
     for (const item of incoming.map.webFrontendExtensions) registry.webFrontendExtensions.add(item);
-    for (const item of incoming.(map.externalSkills ?? [])) {
+    for (const item of (incoming.map.externalSkills ?? [])) {
       if (!registry.externalSkillIds.has(item.id)) {
         registry.skillInstallSources?.set(item.id, {source: item.source, name: item.skill});
       }
@@ -166,7 +166,7 @@ export function mergeRegistries(registries: LoadedRegistry[]): {
     }
     const available = new Set([
       ...incoming.manifest.skills.map((skill) => skill.id),
-      ...incoming.(map.externalSkills ?? []).map((skill) => skill.id),
+      ...(incoming.map.externalSkills ?? []).map((skill) => skill.id),
     ]);
     const alwaysRecommend = (incoming.map.alwaysRecommend ?? []).filter((id) => {
       if (available.has(id)) return true;
