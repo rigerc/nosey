@@ -13,7 +13,6 @@ import {
   ToastProvider,
   InputCaptureProvider,
   useHasInputCapture,
-  useToast,
 } from './hooks';
 import {InputActivityProvider} from './hooks/useInputActivity';
 import {FooterHintsProvider, useActiveFooterHints} from './hooks/useFooterHints';
@@ -82,8 +81,7 @@ const menuHints: KeyHint[] = [
 function Shell() {
   const router = useRouter();
   const exit = useExit();
-  const {theme, cycleTheme} = useThemeControls();
-  const toast = useToast();
+  const {theme} = useThemeControls();
   const captured = useHasInputCapture();
   const {scan} = useScan();
   const hintsMap = useScreenHintsMap();
@@ -108,10 +106,6 @@ function Shell() {
         next: () => go(index + 1),
         previous: () => go(index - 1),
         commands: () => setCommandOpen(true),
-        theme: () => {
-          cycleTheme();
-          toast.push('Runtime theme preview only; save a preference in Settings.', 'info');
-        },
         help: () => router.replace('help'),
         quit: exit,
       },
@@ -162,7 +156,7 @@ function Shell() {
             commandOpen || captured
               ? []
               : getGlobalKeys(navScreens.length).filter((hint) =>
-                  ['ctrl+k', 'tab', 't', '?', 'q'].includes(hint.key),
+                  ['ctrl+k', 'tab', '?', 'q'].includes(hint.key),
                 )
           }
         />

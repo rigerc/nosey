@@ -75,7 +75,6 @@ Navigate four tabs in one terminal session:
 | `Space` | Select or deselect a skill |
 | `d` | View skill details in Scan |
 | `Enter` | Review selected skill IDs |
-| `t` | Preview a theme |
 | `?` | Open Help |
 | `q` | Quit without confirming a selection |
 

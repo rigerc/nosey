@@ -14,11 +14,10 @@ describe('consistent terminal UI', () => {
     const next = vi.fn();
     const previous = vi.fn();
     const commands = vi.fn();
-    const theme = vi.fn();
     const help = vi.fn();
     const quit = vi.fn();
     const jump = vi.fn();
-    const bindings = getGlobalBindings(3, {next, previous, commands, theme, help, quit}, jump);
+    const bindings = getGlobalBindings(3, {next, previous, commands, help, quit}, jump);
     expect(bindings.map((binding) => binding.key)).toEqual([
       'tab',
       'shift+tab',
@@ -26,11 +25,11 @@ describe('consistent terminal UI', () => {
       '2',
       '3',
       'ctrl+k',
-      't',
       '?',
       'q',
     ]);
     expect(getGlobalKeys(3).find((key) => key.label === 'jump to screen')?.key).toBe('1-3');
+    expect(getGlobalKeys(3).some((hint) => hint.key === 't')).toBe(false);
     bindings.find((binding) => binding.key === '2')?.run();
     expect(jump).toHaveBeenCalledWith(1);
     bindings.find((binding) => binding.key === 'ctrl+k')?.run();
