@@ -37,7 +37,8 @@ describe('configuration wizard', () => {
     await press(app, '\r');
     expect(output(app)).toContain('Terminal theme: dark');
     expect(existsSync(path)).toBe(false);
-    await press(app, 'n'); // Appearance -> Skills CLI
+    await press(app, 'n'); // Appearance -> Registries
+    await press(app, 'n'); // Registries -> Skills CLI
     await press(app, 'n'); // Skills CLI -> Review
     expect(output(app)).toContain('Save configuration?');
     expect(existsSync(path)).toBe(false);
@@ -51,7 +52,8 @@ describe('configuration wizard', () => {
     const path = fixture();
     const finish = vi.fn();
     const app = await mount(view(path, finish));
-    await press(app, 'n'); // Appearance -> Skills CLI
+    await press(app, 'n'); // Appearance -> Registries
+    await press(app, 'n'); // Registries -> Skills CLI
     await press(app, 'n'); // Skills CLI -> Review
     await press(app, 'n'); // No in the confirmation
     await press(app, '\r');
@@ -63,6 +65,7 @@ describe('configuration wizard', () => {
   it('returns from Review to editing without saving', async () => {
     const path = fixture();
     const app = await mount(view(path));
+    await press(app, 'n');
     await press(app, 'n');
     await press(app, 'n');
     expect(output(app)).toContain('Review configuration');
