@@ -1,250 +1,194 @@
-# nosey
+<div align="center">
+  <h1>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/nosey-brand-kit/svg/logo/nosey-logo-for-dark.svg">
+      <img src="assets/nosey-brand-kit/svg/logo/nosey-logo-for-light.svg" alt="Nosey" width="360">
+    </picture>
+  </h1>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/nosey-brand-kit/svg/logo/nosey-logo-for-dark.svg">
-  <img src="assets/nosey-brand-kit/svg/logo/nosey-logo-for-light.svg" alt="Nosey logo: :^) nosey" width="360">
-</picture>
+  <p><strong>Find agent skills that match the technologies in your workspace.</strong></p>
+  <p>Nosey scans project files, groups matching skill suggestions, and lets you review them in an interactive terminal. Scanning and selecting never install skills.</p>
 
-Workspace detection and agent skill suggestions, with an Ink 8 / React 19 terminal shell.
-Requires Node.js 24+ (matching Nosey's runtime requirement).
+  <p>
+    <img src="https://img.shields.io/badge/Node.js-24%2B-417e38?style=flat-square" alt="Node.js 24 or newer">
+    <img src="https://img.shields.io/badge/Ink-8-555?style=flat-square" alt="Ink 8">
+    <img src="https://img.shields.io/badge/React-19-087ea4?style=flat-square" alt="React 19">
+  </p>
 
-![Nosey Scan showing detected technologies and grouped skill suggestions](docs/screenshots/home-nosey-96.png)
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#terminal-workflow">Terminal workflow</a> ·
+    <a href="#screenshots">Screenshots</a> ·
+    <a href="#cli-and-automation">CLI and automation</a> ·
+    <a href="#development">Development</a>
+  </p>
+</div>
 
-Generated with preset **standard**, package manager **npm**,
-and toolchain **vite-plus**.
+## Quick start
 
-## Getting started
+Requires **Node.js 24+**. Run Nosey from this repository; a published package installation is not assumed.
 
-```bash
-npm install
-npm run dev
-npm run build
-npm run start
-```
+~~~bash
+git clone https://github.com/rigerc/nosey.git
+cd nosey
+npm ci
+npm run dev -- ../your-project
+~~~
 
-Installation creates the package-manager lockfile if one was not included.
-Commit that generated lockfile and use frozen installs in deployed environments.
+In an interactive terminal, Nosey opens **Scan** for the supplied directory. Omit the path to scan the current directory.
 
-## Commands and features
+To get a text report instead of opening the interface:
 
-```bash
-nosey --help
-nosey --plain
-nosey --setup
-nosey --screen settings
-nosey doctor --json
-nosey --screen gallery
-```
+~~~bash
+npm run dev -- scan ../your-project --explain
+~~~
 
-In a terminal, the app opens Nosey's branded Scan, Registries, Settings, and Help
-tabs. The component gallery is a hidden development route. The default dark-terminal
-theme is `nosey`; light, dark, contrast, mono, and ASCII rendering are supported.
-The original asset exports are in `assets/nosey-brand-kit`.
+Nosey reads manifests and configuration signals without executing the scanned project's code. It reports detected technologies, matching agent skills, and supporting evidence. It does not install recommended skills.
 
-## Terminal interface
+## Terminal workflow
 
-```bash
-npm run dev -- ../project
-npm run dev -- ../project --explain
-npm run dev -- --screen registry
-npm run dev -- --theme nosey
-```
+Navigate four tabs in one terminal session:
 
-Use Tab / Shift+Tab or 1–4 to navigate. Ctrl+K opens commands, `t` previews a
-runtime theme, `?` opens Help, and `q` quits without confirming a selection.
-Captured text fields and confirmation prompts own the keyboard.
+| Tab | What you can do |
+| --- | --- |
+| **Scan** | See detected technologies and grouped suggestions, filter results, inspect details, and select skill IDs. |
+| **Registries** | Manage local and Git-based skill registry references, inspect their contents, and initialize a registry. |
+| **Settings** | Preview themes and adjust appearance or configuration with save/discard controls. |
+| **Help** | Look up shortcuts and available actions. |
 
-In Scan, arrows or j/k move, Space selects, `/` or `f` filters, `c` clears the
-filter, `g` toggles technology groups, `d` finds skill details, and `r` rescans.
-Selections hidden by filters stay selected. Tabs and the command menu preserve
-selection, filter, cursor, and settings drafts. A completed new scan resets the
-old selection. Enter reviews ordered, unique IDs; the final confirmation defaults
-to No. Confirmed IDs print only after Ink exits. Nothing is installed.
+### Essential keys
 
-Results are grouped by technology, combination, and frontend essentials, with
-spacing between each heading and its options. A shared skill appears under each
-matching heading with one synchronized checkbox state and one confirmed ID.
-The footer shows available screen actions and app navigation separately; active
-editors and confirmation prompts replace those hints with their own controls.
+| Keys | Action |
+| --- | --- |
+| `Tab` / `Shift+Tab` or `1`–`4` | Switch tabs |
+| `Ctrl+K` | Open the command menu |
+| `↑` / `↓` or `j` / `k` | Move through Scan suggestions |
+| `/` or `f` | Filter Scan suggestions |
+| `c` | Clear the Scan filter |
+| `Space` | Select or deselect a skill |
+| `d` | View skill details in Scan |
+| `Enter` | Review selected skill IDs |
+| `t` | Preview a theme |
+| `?` | Open Help |
+| `q` | Quit without confirming a selection |
 
-Registries targets the scanned project for project-scoped references. Add, remove,
-metadata builds, and initialization show exact write targets and require explicit
-confirmation. The initialization wizard supports optional Git and GitHub creation;
-Ctrl+X cancels without creating anything before final confirmation. Settings uses
-drafts: `s` saves, `d` discards, and `w` opens guided setup. Theme cycling does not save.
+Selections stay intact when you filter results or switch tabs. Confirming the selection prints distinct skill IDs after the terminal UI exits. Confirmation defaults to **No**.
 
-Initialization requires a new destination directory; existing directories, including
-empty ones, are rejected without changing their contents. To use an existing
-registry, add it from Registries instead.
+## Screenshots
 
-### Screenshots
+These tracked captures use the Nosey terminal theme. Scan shows a demo React, TypeScript, Vite, and Vitest workspace. The Registries image shows the initial state before references are added.
 
-The main tabs in the default Nosey theme. Scan uses a demo React, TypeScript,
-Vite, and Vitest workspace; Registries shows the initial state before adding references.
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/home-nosey-96.png" alt="Nosey Scan with detected technologies and grouped agent skill suggestions">
+      <p><sub><strong>Scan</strong> · Technology groups and selectable skill suggestions</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/registry-nosey-96.png" alt="Nosey Registries screen with project scope and registry references">
+      <p><sub><strong>Registries</strong> · Project scope and reference management</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/settings-nosey-96.png" alt="Nosey Settings screen with appearance preferences">
+      <p><sub><strong>Settings</strong> · Appearance preferences and save/discard actions</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/help-nosey-96.png" alt="Nosey Help screen with navigation and action shortcuts">
+      <p><sub><strong>Help</strong> · Keyboard shortcuts in the app</sub></p>
+    </td>
+  </tr>
+</table>
 
-<details>
-<summary>Registries, Settings, and Help</summary>
+## CLI and automation
 
-![Registries with project scope, write target, and no references configured](docs/screenshots/registry-nosey-96.png)
+The same detection engine works without the interactive interface, including in pipes and CI.
 
-![Settings showing appearance preferences and save/discard controls](docs/screenshots/settings-nosey-96.png)
+~~~bash
+# Human-readable report with detection evidence
+npm run dev -- scan ../your-project --explain
 
-![Help showing navigation, scan, registry, and settings shortcuts](docs/screenshots/help-nosey-96.png)
+# Structured report
+npm run dev -- scan ../your-project --json
 
-</details>
+# Suggested skill IDs only
+npm run dev -- scan ../your-project --skills-only
 
-Regenerate these images from the current UI:
+# Scan with a custom bound
+npm run dev -- scan ../your-project --depth 6 --max-files 5000
 
-```bash
-# Install VHS 0.12.1+, ttyd and FFmpeg first; see docs/recording.md
-npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
-```
+# Diagnostics
+npm run dev -- doctor --json
+~~~
 
-The screenshot script defaults to the four visible tabs across all themes at 80
-and 120 columns, using an isolated demo workspace and configuration. Captures go
-to the ignored `screenshots/` directory unless `--output-dir` is supplied. Use
-`--project ../project` to scan a real workspace, repeat `--screen` or `--theme` to
-limit captures, and set `--rows` or `--ascii` to preview other terminal layouts.
-Hidden screens such as `gallery` and `registry-setup` can be requested explicitly.
-Registry previews show the empty state and do not load or modify host references.
+The explicit `scan` subcommand is always headless. A project path alone opens the UI in a TTY; `--json`, `--skills-only`, `--plain`, `--no-interactive`, and non-TTY environments use noninteractive output.
 
-VHS now captures the terminal directly. To record the real interactive workflow:
+Use `npm run dev -- --help` for the complete command and option reference.
 
-```bash
-npm run record                                  # Nosey theme; PNG + GIF + MP4
-npm run record -- --format webm                  # Or WebM
-npm run record -- --tape scripts/tapes/workflow.tape
-npm run record -- --project ../project --columns 120 --rows 60
-npm run screenshot -- --dry-run                  # Generate replayable tapes only
-```
+### Skill registries
 
-The editable default journey filters the demo Scan results, clears the filter,
-and visits Registries, Settings, and Help. It does not save settings, edit registry
-references, confirm skill selections or install skills. Video defaults are Home,
-Nosey, 100 columns and 60 rows; screenshot defaults stay unchanged. Static image
-viewports expand to fit the rendered frame. Artifacts and replayable tapes go to
-`screenshots/` by default. For tracked documentation images, replay files/fixtures
-are kept under the ignored `screenshots/tapes/` directory.
-See [the recording guide](docs/recording.md) for setup, custom journeys and replay.
+Add local folders or Git repositories as sources of recommendations:
 
-The **Screenshots and recordings** GitHub Actions workflow runs on pushes to main,
-pull requests and manual dispatch. It validates the app, captures all 40 default
-PNGs, records the demo and uploads media/tapes as a `terminal-captures` artifact
-for 14 days. Manual inputs select the video screen, theme, width and interaction
-tape. Generated images are review artifacts without a visual baseline comparison.
-
-## Scan a workspace
-
-```bash
-npm run dev -- scan ../project --json
-npm run dev -- ../project --skills-only
-npm run dev -- scan ../project --explain --no-frontend-bonus
-npm run dev -- scan ../project --depth 6 --max-files 5000
-npm run dev -- scan ../project --registry ./team-skills
-```
-
-After building, use `node dist/cli.js` in place of `npm run dev --`, or link the
-package with `npm link` to use `nosey` directly. `scan` defaults to the current
-directory and always runs headlessly. A project path opens Scan in a TTY;
-`--json`, `--skills-only`, `--plain`, `--no-interactive`, pipes, and CI produce
-noninteractive reports. Non-Scan `--screen ... --plain` still previews a screen.
-
-Scans read manifests and configuration signals without executing project code or
-installing skills. Reports include technologies, combinations, agent folders,
-suggested skills, evidence, and registry warnings. Use `--json` for structured
-output, `--skills-only` for skill IDs, or `--explain` for a text report with evidence.
-`--plain` and `--no-interactive` are also supported on scan commands.
-
-## Skill registries
-
-```bash
-npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
+~~~bash
 npm run dev -- registry add ./team-skills
 npm run dev -- registry add https://github.com/org/skills.git --ref v1
 npm run dev -- registry list --json
-npm run dev -- registry show ./team-skills --json
 npm run dev -- registry validate ./team-skills --json
-npm run dev -- registry build ./team-skills
-npm run dev -- registry remove ./team-skills
-```
+~~~
 
-Use `--global` with `list`, `add`, and `remove` for global registry references.
-Headless initialization requires a destination and `--registry-id`; in a TTY,
-`registry init` opens the same guided wizard as the Registries tab. Headless init
-initializes Git by default unless `--no-git` is passed. `--github` explicitly creates and pushes a
-remote with `gh`, with optional `--visibility private|public`.
+To create a registry in a **new** directory:
 
-In Registries, open a local registry and press `a` for **Always recommend**.
-Space marks individual skills, `/` filters, and `s` (or Enter) opens review.
-Confirm to save to that registry's `skills-map.json`; Escape cancels. Rescan to
-apply changes. Marked skills are recommended wherever the registry is used,
-even without matching technologies. Final skill selection stays optional.
+~~~bash
+npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
+~~~
 
-Registry authors can also set `alwaysRecommend` to an array of full skill IDs in
-`skills-map.json`. The manifest generator preserves this file. Publish the map
-alongside the manifest so Git registry consumers receive the same recommendations.
-Git references show the marks; edit a local checkout to change them. Missing IDs
-produce warnings while available skills remain usable; `registry validate` reports
-them as errors. Clearing every mark stores an empty `alwaysRecommend` array.
+Registry changes are separate from scanning and skill selection. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
-Registry configuration retains Nosey's `.nosey.json` project file and global
-`nosey/registries.json` under the platform config directory. Existing SkillSense
-registry settings and cached snapshots remain readable; edits write Nosey files.
-Appearance settings use the `nosey` config path.
-Git registries load through Git objects without checking out or running remote code.
+## Appearance
 
-## Catalog and mapping tools
+Five themes are available: `nosey`, `dark`, `light`, `contrast`, and `mono`. The terminal can also use ASCII symbols and borders.
 
-```bash
-npm run skills-catalog -- --output skills-catalog.json --refresh
-npm run skills-map:propose -- --no-model --limit 3 --output out/offline-proposals.json
-```
+~~~bash
+npm run dev -- ../your-project --theme nosey
+npm run dev -- ../your-project --theme contrast --ascii
+npm run dev -- --setup
+~~~
 
-The catalog builder and optional Kev mapping proposal tool are imported unchanged.
-They produce catalogs and review proposals; they do not install skills or edit the
-built-in mappings. See [the tooling guide](scripts/README.md) for network/cache
-behavior, model configuration, checkpointing, and output details.
+Settings are saved only when you choose to save them. Theme previews do not change saved preferences.
 
-## Theme customization
+## Development
 
-Semantic palettes live in `src/theme/palettes.json`; the project default is in `src/theme/defaults.json`.
+Build the CLI, then run it without the development runner:
 
-```bash
-npm run theme:list
-npm run theme:token -- dark primary "#ff80aa"
-npm run theme:default -- light
-npm run theme:default -- auto
-```
-
-## Extend your app
-
-- Register screens in `src/screens/index.ts`.
-- Register noninteractive commands in `src/commands/index.ts`.
-- Keep domain features independent of React/Ink.
-- Reuse `src/components/`, `src/hooks/`, and `src/theme/`.
-- See [UI framework guide](docs/ui-framework.md), [Architecture](docs/architecture.md), and [Add a feature](docs/adding-a-feature.md).
-
-## Checks
-
-```bash
+~~~bash
 npm run typecheck
-npm run test
-npm run test:unit # Runtime, domain, CLI, and existing UI tests
-npm run test:catalog
-npm run test:map
+npm test
 npm run build
-npm run screenshot # Requires VHS, ttyd, FFmpeg and Chromium
-npm run record     # Interactive GIF + MP4
-```
+npm run start -- ../your-project
+~~~
 
-A GitHub Actions workflow is included in `.github/workflows/ci.yml`.
+You can also run `npm link` after building to use the `nosey` executable locally.
 
-## Provenance
+### Capture the terminal UI
 
-Core logic, tests, catalog tools, registry templates, and the brand kit originated
-in the Nosey checkout at `bfe67a8b14e758927f997fc56ca35ef322497c43`.
-The UI uses the ink-cli-starter framework, with Nosey's brand mark and text field.
-The four-screen workflows include input arbitration, write confirmations, and
-responsive layouts.
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the SkillSense engine's
-original provenance and MIT license.
+The repository includes a [VHS-based recording workflow](docs/recording.md) and an editable [interaction tape](scripts/tapes/workflow.tape).
+
+~~~bash
+# Static screenshots in the default capture matrix
+npm run screenshot
+
+# Interactive journey exported as GIF and MP4
+npm run record
+
+# Use the tracked Nosey theme and 96-column layout
+npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
+~~~
+
+Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. Generated recordings normally go to the ignored `screenshots/` directory; they are not automatically published or committed. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
+
+For internals and extensions, see [Architecture](docs/architecture.md), [UI framework](docs/ui-framework.md), and [Add a feature](docs/adding-a-feature.md). The catalog and skill-mapping utilities are documented in [scripts/README.md](scripts/README.md).
+
+## Notices
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the imported SkillSense engine's provenance and third-party license information.
