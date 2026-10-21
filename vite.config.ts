@@ -11,7 +11,7 @@ export default defineConfig({
   pack: {
     entry: ['src/cli.tsx'],
     format: ['esm'],
-    target: 'node22',
+    target: 'node24',
     clean: true,
     sourcemap: true,
     // Keep the published entry at dist/cli.js (package.json bin/start):

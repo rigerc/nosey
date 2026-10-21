@@ -33,6 +33,9 @@ export function HelpScreen() {
         <Text>--theme nosey|dark|light|contrast|mono|auto</Text>
         <Text>{`--screen ${screenIds.join('|')}`}</Text>
         <Text>--setup --config path --plain --ascii --debug</Text>
+        <Text>--json --skills-only --explain --no-interactive</Text>
+        <Text>--depth N --max-files N --registry SOURCE</Text>
+        <Text>registry init|list|add|remove|show|validate|build</Text>
         <Text>doctor [--json] Environment and configuration checks</Text>
       </Panel>
     </Stack>

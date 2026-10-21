@@ -21,3 +21,5 @@ export * from './MultiSelect';
 export * from './SearchSelect';
 export * from './Toggle';
 export * from './PaginatedList';
+
+export * from './TextField';

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "registryId": "example/agent-skills",
+  "technologies": [],
+  "technologySkills": [
+    {
+      "technologyId": "react",
+      "skills": [
+        "example/agent-skills/example-testing"
+      ]
+    }
+  ],
+  "combinations": [],
+  "combinationSkills": [],
+  "frontendBonusSkills": [],
+  "frontendPackages": [],
+  "webFrontendExtensions": []
+}
