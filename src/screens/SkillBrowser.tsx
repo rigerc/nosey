@@ -78,10 +78,21 @@ export function SkillBrowserScreen() {
       />}
       {mode === 'detail' && <>
         <Text bold>{detail?.id}</Text>
-        {detail?.sources.map((source) => <Text key={source.type + source.id}>
-          {source.type}: {source.name}
-        </Text>)}
-        {config.explain && <Muted>Detection evidence is available in the report with --explain.</Muted>}
+        {detail?.sources.map((source) => {
+          const evidence = source.type === 'technology'
+            ? report.technologies.find((tech) => tech.id === source.id)?.evidence ?? []
+            : source.type === 'combination'
+              ? report.technologies.filter((tech) =>
+                  report.combinations.find((combo) => combo.id === source.id)?.requires.includes(tech.id))
+                  .flatMap((tech) => tech.evidence)
+              : [];
+          return <Stack key={source.type + source.id}>
+            <Text>{source.type}: {source.name}</Text>
+            {(config.explain ? evidence : evidence.slice(0, 2)).map((reason, i) =>
+              <Muted key={i}>• {reason}</Muted>)}
+            {!config.explain && evidence.length > 2 && <Muted>Use --explain to show all evidence.</Muted>}
+          </Stack>;
+        })}
         <Muted>b back · f filter · g groups</Muted>
       </>}
       {mode === 'review' && <>
