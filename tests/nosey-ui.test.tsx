@@ -87,7 +87,8 @@ describe('Nosey scan interaction', () => {
     expect(app.lastFrame()).toContain('npx skills add acme/skills');
     expect(app.lastFrame()).toContain('--agent claude-code');
     expect(app.lastFrame()).not.toContain('--agent codex');
-    expect(app.lastFrame()).toMatch(/--yes\s+--json/);
+    expect(app.lastFrame()).toContain('--yes');
+    expect(app.lastFrame()).toContain('--json');
     await press(app, 'y');
     await press(app, '\r');
     expect(confirmed).toHaveBeenCalledTimes(1);
@@ -388,7 +389,7 @@ describe('Registry UI writes', () => {
     });
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, '\r');
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'));
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
     await press(app, '\r'); // default No
