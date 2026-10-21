@@ -34,10 +34,11 @@ export interface AppOptions {
   screen: string;
   configFile?: string;
   configFlags?: Partial<Config>;
+  skillsCli?: Config['skillsCli'];
   scan?: ScanConfig;
   report?: Report;
   registryInit?: RegistryInitOptions;
-  onConfirm?: (ids: string[]) => void;
+  onConfirm?: (ids: string[], commands?: string[]) => void;
   static?: boolean;
 }
 export function AppProviders({options, children}: {options: AppOptions; children: ReactNode}) {
@@ -56,6 +57,7 @@ export function AppProviders({options, children}: {options: AppOptions; children
                         initialReport={options.report}
                         enabled={!options.static}
                         onConfirm={options.onConfirm}
+                        installSettings={options.skillsCli}
                       >
                         <ErrorBoundary debug={options.debug}>{children}</ErrorBoundary>
                       </ScanProvider>
