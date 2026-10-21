@@ -57,6 +57,7 @@ export type Report = {
   combinations: DetectedCombination[];
   frontendDetected: boolean;
   agents: DetectedAgentFolder[];
+  inspectedAgents?: string[];
   skills: SuggestedSkill[];
   registryWarnings?: RegistryWarning[];
   summary: {
