@@ -10,8 +10,8 @@ import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
 import {dirname, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../source/data/skills-map.ts';
-import type {ComboSkill, Technology} from '../source/data/skills-map.ts';
+import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.ts';
+import type {ComboSkill, Technology} from '../src/data/skills-map.ts';
 import {
 	RemoteSource,
 	rawSkillUrl,

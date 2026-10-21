@@ -2,7 +2,7 @@
 /**
  * Build a merged, de-duplicated skills catalogue from officialskills.sh and
  * omgskills' gold basket, excluding IDs already mapped by this project's own
- * skills map (source/data/skills-map.ts).
+ * skills map (src/data/skills-map.ts).
  *
  * Every HTTP response uses the same disk cache. A warm --cache-ttl 0 build is an
  * OFFLINE SNAPSHOT, not evidence that GitHub has not changed. Use --refresh or
@@ -21,13 +21,13 @@ import {
 	COMBO_SKILLS_MAP,
 	FRONTEND_BONUS_SKILLS,
 	SKILLS_MAP,
-} from '../source/data/skills-map.ts';
+} from '../src/data/skills-map.ts';
 
 const OFFICIAL_URL = 'https://officialskills.sh/';
 const GOLD_URL =
 	'https://raw.githubusercontent.com/jonslimak/omgskills/refs/heads/main/index/gold-basket.json';
 /** The local map is the exclusion source; nothing is fetched for it. */
-const MAP_FILE = 'source/data/skills-map.ts';
+const MAP_FILE = 'src/data/skills-map.ts';
 const OFFICIAL_HOSTS = new Set(['officialskills.sh', 'www.officialskills.sh']);
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
 const CACHEABLE_STATUSES = new Set([200, 201, 203, 206, 404, 410]);
