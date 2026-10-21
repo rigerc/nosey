@@ -2,7 +2,7 @@ import {mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync} from 'node:f
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {afterEach, expect, test} from 'vite-plus/test';
-import {appConfig, resolveConfig} from '../src/config';
+import {appConfig, resolveConfig, type Config} from '../src/config';
 import {
   generateInstallCommands,
   inspectInstalledSkills,
@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 test('Skills CLI is opt-in with validated default agent choices', () => {
-  const config = resolveConfig(appConfig.fields, {}).values;
+  const config = resolveConfig<Config>(appConfig.fields, {}).values;
   expect(config.skillsCli).toEqual({enabled: false, defaultAgents: []});
   expect(appConfig.schema.safeParse({skillsCli: {
     enabled: true,
