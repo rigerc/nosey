@@ -24,6 +24,13 @@
   </p>
 </div>
 
+<div align="center">
+  <a href="assets/recordings/home-nosey-100-video.mp4">
+    <img src="assets/recordings/home-nosey-100-video.gif" alt="Nosey terminal walkthrough: scan a workspace, filter React skill suggestions, and explore Registries, Settings, and Help" width="920">
+  </a>
+  <p><sub>Interactive terminal walkthrough · <a href="assets/recordings/home-nosey-100-video.mp4">Watch MP4</a> · <a href="assets/recordings/home-nosey-100-video.png">View still frame</a></sub></p>
+</div>
+
 ## Quick start
 
 Requires **Node.js 24+**. Run Nosey from this repository; a published package installation is not assumed.
@@ -185,7 +192,7 @@ npm run record
 npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
 ~~~
 
-Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. Generated recordings normally go to the ignored `screenshots/` directory; they are not automatically published or committed. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
+Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. The demo GIF, MP4, and still frame above are checked into [`assets/recordings/`](assets/recordings/). New captures normally go to the ignored `screenshots/` directory; they are not automatically published or committed. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
 
 For internals and extensions, see [Architecture](docs/architecture.md), [UI framework](docs/ui-framework.md), and [Add a feature](docs/adding-a-feature.md). The catalog and skill-mapping utilities are documented in [scripts/README.md](scripts/README.md).
 
