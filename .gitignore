@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+*.log
+screenshots/
+.vitest/
+
+# Tool state and scaffold scratch output
+tttt/
+.serena/
+.pi/
+
+# Local MCP wiring: absolute paths per machine
+.mcp.json
