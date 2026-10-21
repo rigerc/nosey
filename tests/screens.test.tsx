@@ -2,7 +2,7 @@ import {renderToString} from 'ink';
 import stringWidth from 'string-width';
 import {describe, expect, it} from 'vite-plus/test';
 import {AppProviders} from '../src/app';
-import {screens} from '../src/screens';
+import {isScreenId, screens} from '../src/screens';
 import {themeNames} from '../src/theme/tokens';
 
 const render = (
@@ -21,6 +21,10 @@ const render = (
 };
 
 describe('every screen × theme × width', () => {
+  it('does not register the removed gallery screen', () => {
+    expect(isScreenId('gallery')).toBe(false);
+  });
+
   // Exercise every screen at both layout extremes, then themes separately.
   // The screen × theme × width cross-product repeated equivalent layouts.
   for (const {id} of screens) {
@@ -44,12 +48,12 @@ describe('every screen × theme × width', () => {
   }
 
   it('ascii mode uses no unicode symbols', () => {
-    const out = render('gallery', 'mono', 80, true);
+    const out = render('home', 'mono', 80, true);
     expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│]/);
   });
 
   it('mono output contains no color escape codes', () => {
-    const out = render('gallery', 'mono', 80, false);
+    const out = render('home', 'mono', 80, false);
     // eslint-disable-next-line no-control-regex
     expect(out).not.toMatch(/\u001B\[(3|4|9)\d/);
   });

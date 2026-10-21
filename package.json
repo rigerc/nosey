@@ -14,7 +14,6 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/cli.tsx",
-    "gallery": "tsx src/cli.tsx --screen gallery",
     "build": "vp pack",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:catalog && npm run test:map",

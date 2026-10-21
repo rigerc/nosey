@@ -3,7 +3,6 @@ import type {KeyHint} from '../keys';
 import {HomeScreen, scanHints} from './Home';
 import {HelpScreen} from './Help';
 import {SettingsScreen} from './Settings';
-import {GalleryScreen} from './Gallery';
 import {RegistryManagerScreen} from './RegistryManager';
 import {RegistrySetupScreen} from './RegistrySetup';
 
@@ -41,7 +40,6 @@ export const screens: ScreenDef[] = [
     ],
   },
   {id: 'help', label: 'Help', Component: HelpScreen},
-  {id: 'gallery', label: 'Gallery', Component: GalleryScreen, showInNav: false},
   {id: 'skills', label: 'Scan', Component: HomeScreen, showInNav: false},
   {
     id: 'registry-setup',
