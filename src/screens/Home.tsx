@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Text, useApp} from 'ink';
 import {
-  BrandMark, Confirm, MultiSelect, Muted, Panel, SearchSelect,
+  BrandMark, Confirm, MultiSelect, Muted, Panel,
   Select, Spinner, Stack, StatusMessage, TextField,
 } from '../components';
 import {useScan} from '../features/skills/context';
@@ -10,7 +10,7 @@ import {deriveSkillGroups, orderedSelection} from '../features/skills/groups';
 import {useHasInputCapture} from '../hooks/useInputCapture';
 import {useKeymap} from '../hooks/useKeymap';
 
-type Mode = 'browse' | 'filter' | 'groups' | 'detail-pick' | 'detail' | 'review';
+type Mode = 'browse' | 'filter' | 'groups' | 'detail' | 'review';
 
 /** Scan results and skill selection share one screen and one selection state. */
 export function HomeScreen() {
@@ -79,7 +79,6 @@ export function HomeScreen() {
     // Search uses only '/', so letter shortcuts cannot accidentally open it.
     {key: '/', run: () => { if (report) beginFilter(); }},
     {key: 'g', run: () => { if (report) setMode('groups'); }},
-    {key: 'd', run: () => { if (report && report.skills.length > 0) setMode('detail-pick'); }},
     {key: 'c', run: () => setFilter('')},
     // MultiSelect doesn't submit when its filtered list is empty.
     {key: 'enter', run: () => { if (report && groupedItems.length === 0) setMode('review'); }},
@@ -142,6 +141,7 @@ export function HomeScreen() {
         value={selected}
         isActive={mode === 'browse'}
         onChange={setSelected}
+        onInspect={(id) => { setDetailId(id); setMode('detail'); }}
         onSubmit={() => setMode('review')}
         emptyMessage={report.skills.length === 0
           ? 'No mapped skills found.'
@@ -168,13 +168,6 @@ export function HomeScreen() {
             setSelected(report.skills.filter((skill) => updated.has(skill.id)).map((skill) => skill.id));
           }} />}
       </>}
-      {mode === 'detail-pick' && <SearchSelect
-        items={allItems}
-        placeholder="Find a skill to inspect..."
-        onSelect={(id) => { setDetailId(id); setMode('detail'); }}
-        onCancel={() => setMode('browse')}
-        maxVisible={10}
-      />}
       {mode === 'detail' && detail && <>
         <Text bold wrap="truncate-end">{detail.id}</Text>
         {detail.sources.map((source) => {

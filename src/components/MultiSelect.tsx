@@ -20,6 +20,8 @@ export interface MultiSelectProps<T extends string> {
   defaultValue?: readonly T[];
   onChange?: (value: T[]) => void;
   onSubmit?: (value: T[]) => void;
+  /** Inspect the focused row without opening a separate search control. */
+  onInspect?: (value: T) => void;
   isActive?: boolean;
   maxVisible?: number;
   emptyMessage?: string;
@@ -33,6 +35,7 @@ export function MultiSelect<T extends string>({
   defaultValue = [],
   onChange,
   onSubmit,
+  onInspect,
   isActive = true,
   maxVisible = 6,
   emptyMessage = 'No options available.',
@@ -67,6 +70,10 @@ export function MultiSelect<T extends string>({
       {key: 'home', run: () => setCursor(0)},
       {key: 'end', run: () => setCursor(items.length - 1)},
       {key: 'space', run: toggle},
+      {key: 'd', run: () => {
+        const item = items[index];
+        if (item) onInspect?.(item.value);
+      }},
       {
         key: 'enter',
         run: () => {
