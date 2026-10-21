@@ -5,6 +5,7 @@ import {runRegistryInit} from '../lib/registry/init';
 export interface RegistryCommandOptions {
   json?: boolean;
   global?: boolean;
+  project?: boolean;
   ref?: string;
   registryId?: string;
   yes?: boolean;
@@ -24,6 +25,7 @@ export async function runRegistry(args: string[], options: RegistryCommandOption
     await runRegistryCommand(args, {
       json: Boolean(options.json),
       global: options.global,
+      project: options.project,
       ref: options.ref,
     });
     return;
