@@ -15,13 +15,13 @@ const usage =
 const allowedOptions: Record<string, string[]> = {
 	list: ['json', 'global'],
 	add: ['global', 'ref'],
-	remove: ['global', 'ref'],
+	remove: ['global', 'project', 'ref'],
 	show: ['json', 'ref'],
 	validate: ['json'],
 	build: [],
 };
 
-type CommandFlags = {json: boolean; global?: boolean; ref?: string};
+type CommandFlags = {json: boolean; global?: boolean; project?: boolean; ref?: string};
 
 function validateArguments(command: string, args: string[]): void {
 	if (!Object.hasOwn(allowedOptions, command)) throw new Error(usage);
@@ -101,6 +101,7 @@ export async function runRegistryCommand(
 ): Promise<void> {
 	const [command = '', source] = args;
 	validateArguments(command, args);
+	if (flags.global && flags.project) throw new Error('--global and --project cannot be combined');
 	switch (command) {
 		case 'list': {
 			const entries = await listRegistries(process.cwd(), flags.global);
@@ -114,7 +115,8 @@ export async function runRegistryCommand(
 		case 'remove': {
 			const result = await editRegistry(command, source!, {
 				root: process.cwd(),
-				scope: flags.global ? 'global' : 'project',
+				// Additions and ordinary removals are global. --project only removes legacy entries.
+				scope: command === 'add' || !flags.project ? 'global' : 'project',
 				ref: flags.ref,
 			});
 			const action =

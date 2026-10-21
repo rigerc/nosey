@@ -1,6 +1,6 @@
 import {mkdtempSync, existsSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join, relative, dirname} from 'node:path';
 import {renderToString} from 'ink';
 import stringWidth from 'string-width';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vite-plus/test';
@@ -367,6 +367,9 @@ describe('Registry UI writes', () => {
   it('uses the scanned root, validates before add and removes only after explicit confirmation', async () => {
     const registry = join(root, 'team-skills');
     await scaffoldRegistry(registry, 'acme/team');
+    const globalConfig = join(root, 'config', 'nosey', 'registries.json');
+    vi.stubEnv('XDG_CONFIG_HOME', join(root, 'config'));
+    vi.stubEnv('APPDATA', join(root, 'config'));
     const app = await mount(<App options={{...options, screen: 'registry'}} />);
     await settle();
     await press(app, 'a');
@@ -374,27 +377,28 @@ describe('Registry UI writes', () => {
     await press(app, '\r');
     await settle();
     expect(app.lastFrame()).toContain('Add this registry reference?');
-    expect(app.lastFrame()).toContain(join(root, '.nosey.json'));
+    expect(app.lastFrame()).toContain(globalConfig);
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, 'y');
     await press(app, '\r');
     await settle();
-    expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries[0]).toEqual({
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries[0]).toEqual({
       type: 'local',
-      path: 'team-skills',
+      path: relative(dirname(globalConfig), registry),
     });
+    expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, '\r');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
     await press(app, '\r'); // default No
-    expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries).toHaveLength(1);
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toHaveLength(1);
     await press(app, 'd');
     await press(app, 'y');
     await press(app, '\r');
     await settle();
     await vi.waitFor(() =>
-      expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries).toEqual([]),
+      expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toEqual([]),
     );
     expect(existsSync(join(registry, 'skills-manifest.json'))).toBe(true);
   });
