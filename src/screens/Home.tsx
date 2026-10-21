@@ -16,6 +16,7 @@ import {
   TextField,
 } from '../components';
 import {useScan} from '../features/skills/context';
+import {generateInstallCommands, installationLabel, SKILLS_CLI_AGENTS} from '../features/skills/install';
 import {filterSkills} from '../features/skills/filter';
 import {deriveSkillGroups, orderedSelection, selectedInGroup} from '../features/skills/groups';
 import {useScreenHints, useUiAction} from '../features/ui/context';
@@ -34,7 +35,7 @@ export const scanHints = [
 ];
 
 export function HomeScreen() {
-  const {config, scan, refresh, confirm} = useScan();
+  const {config, scan, refresh, confirm, installSettings} = useScan();
   const {exit} = useApp();
   const {rows} = useTerminalSize();
   const theme = useTheme();
@@ -48,11 +49,23 @@ export function HomeScreen() {
   const report = scan.status === 'success' ? scan.data : undefined;
   const visible = useMemo(() => filterSkills(report?.skills ?? [], filter), [report, filter]);
   const groups = useMemo(() => (report ? deriveSkillGroups(report) : []), [report]);
+  const defaultAgents = installSettings.defaultAgents ?? [];
+  const statusAgents = defaultAgents.length
+    ? defaultAgents
+    : (report?.agents ?? []).map((agent) => agent.agent).filter((name) =>
+      SKILLS_CLI_AGENTS.some((agent) => agent.value === name),
+    );
   const allItems = useMemo(
-    () => (report?.skills ?? []).map((skill) => ({value: skill.id, label: skill.id})),
-    [report],
+    () => (report?.skills ?? []).map((skill) => {
+      const label = installationLabel(skill.installation, statusAgents);
+      return {value: skill.id, label: skill.id + (label ? ' [' + label + ']' : '')};
+    }),
+    [report, statusAgents.join(',')],
   );
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
+  const installPlan = installSettings.enabled
+    ? generateInstallCommands(chosen, report?.skills ?? [], defaultAgents, config.root)
+    : undefined;
   const groupedItems = useMemo(() => {
     const matches = new Set(visible.map((skill) => skill.id));
     const assigned = new Set<string>();
@@ -142,6 +155,10 @@ export function HomeScreen() {
       isActive: mode === 'groups' || mode === 'detail',
     },
   );
+  useKeymap([
+    {key: 'esc', run: () => setMode('browse')},
+    {key: 'b', run: () => setMode('browse')},
+  ], {scope: 'screen', isActive: mode === 'review' && Boolean(installPlan?.errors.length)});
   useScreenHints(
     'home',
     mode === 'browse'
@@ -388,19 +405,35 @@ export function HomeScreen() {
             emptyMessage="No skills selected"
             renderItem={(id) => <Text>{id}</Text>}
           />
-          <Confirm
-            message="Confirm these skill IDs and exit?"
-            onConfirm={(yes) => {
-              if (yes) {
-                confirm(chosen);
-                exit();
-              } else setMode('browse');
-            }}
-          />
+          {installPlan && (
+            <Stack gap={1}>
+              <Muted>Project-only commands will be printed after confirmation, never executed.</Muted>
+              {installPlan.errors.map((error) => (
+                <StatusMessage tone="warn" key={error}>{error}</StatusMessage>
+              ))}
+              {installPlan.commands.map((command) => (
+                <Text key={command} wrap="wrap">{command}</Text>
+              ))}
+              {!installPlan.errors.length && !installPlan.commands.length && (
+                <Muted>No installation commands are needed for this selection.</Muted>
+              )}
+            </Stack>
+          )}
+          {(!installPlan || !installPlan.errors.length) && (
+            <Confirm
+              message={installPlan ? 'Print installation commands and exit?' : 'Confirm these skill IDs and exit?'}
+              onConfirm={(yes) => {
+                if (yes) {
+                  confirm(chosen, installPlan?.commands);
+                  exit();
+                } else setMode('browse');
+              }}
+            />
+          )}
         </>
       )}
       <Box marginTop={1}>
-        <Muted>Suggestions only - no skills were installed.</Muted>
+        <Muted>Suggestions only - no skills were installed by Nosey.</Muted>
       </Box>
     </Panel>
   );
