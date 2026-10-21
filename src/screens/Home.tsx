@@ -33,11 +33,32 @@ export function HomeScreen() {
     () => new Set(filterSkills(report?.skills ?? [], filter).map((skill) => skill.id)),
     [report, filter],
   );
-  const visibleItems = useMemo(
-    () => allItems.filter((item) => visibleIds.has(item.value)),
-    [allItems, visibleIds],
-  );
   const groups = useMemo(() => report ? deriveSkillGroups(report) : [], [report]);
+  // A skill can appear in several technology groups with one shared checked state.
+  const groupedItems = useMemo(() => {
+    const byId = new Map(allItems.map((item) => [item.value, item]));
+    const assigned = new Set<string>();
+    const rows = groups.flatMap((group) => {
+      const matching = group.skillIds.filter((id) => visibleIds.has(id));
+      for (const id of matching) assigned.add(id);
+      return matching.flatMap((id) => {
+        const skill = byId.get(id);
+        return skill ? [{
+          value: skill.value,
+          label: skill.label,
+          group: {key: group.key, label: group.title + ' (' + matching.length + ')'},
+        }] : [];
+      });
+    });
+    // Unmapped custom-registry suggestions still need a home.
+    const remaining = allItems.filter((item) => visibleIds.has(item.value) && !assigned.has(item.value));
+    rows.push(...remaining.map((item) => ({
+      value: item.value,
+      label: item.label,
+      group: {key: 'other', label: 'Other suggestions (' + remaining.length + ')'},
+    })));
+    return rows;
+  }, [groups, allItems, visibleIds]);
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
   const detail = report?.skills.find((skill) => skill.id === detailId);
 
@@ -55,13 +76,13 @@ export function HomeScreen() {
   };
   useKeymap([
     {key: 'r', run: refresh},
-    {key: 'f', run: () => { if (report) beginFilter(); }},
+    // Search uses only '/', so letter shortcuts cannot accidentally open it.
     {key: '/', run: () => { if (report) beginFilter(); }},
     {key: 'g', run: () => { if (report) setMode('groups'); }},
     {key: 'd', run: () => { if (report && report.skills.length > 0) setMode('detail-pick'); }},
     {key: 'c', run: () => setFilter('')},
     // MultiSelect doesn't submit when its filtered list is empty.
-    {key: 'enter', run: () => { if (report && visibleItems.length === 0) setMode('review'); }},
+    {key: 'enter', run: () => { if (report && groupedItems.length === 0) setMode('review'); }},
   ], {isActive: mode === 'browse' && !inputCaptured});
   useKeymap([
     {key: 'esc', run: () => setMode('browse')},
@@ -102,11 +123,11 @@ export function HomeScreen() {
     </Panel>
     {report && <Panel title="Suggested skills"
       footer={mode === 'browse'
-        ? '↑↓ move · space select · enter review · / or f filter · c clear · g groups · d details'
+        ? '↑↓ move · space select · enter review · / search · c clear · g groups · d details'
         : mode === 'filter' ? 'type to filter · enter return to list · esc cancel'
           : mode === 'groups' || mode === 'detail' ? 'b or esc back' : undefined}>
       <Text>{chosen.length} of {report.skills.length} unique skills selected</Text>
-      {filter && <Muted>Filter: {filter} ({visibleItems.length} matches) · c to clear</Muted>}
+      {filter && <Muted>Filter: {filter} ({visibleIds.size} matches) · c to clear</Muted>}
       {mode === 'filter' && <TextField
         label="Filter skills"
         value={filter}
@@ -116,7 +137,7 @@ export function HomeScreen() {
         onCancel={() => { setFilter(previousFilter); setMode('browse'); }}
       />}
       {(mode === 'browse' || mode === 'filter') && <MultiSelect
-        items={visibleItems}
+        items={groupedItems}
         allItems={allItems}
         value={selected}
         isActive={mode === 'browse'}
@@ -124,7 +145,7 @@ export function HomeScreen() {
         onSubmit={() => setMode('review')}
         emptyMessage={report.skills.length === 0
           ? 'No mapped skills found.'
-          : 'No skills match this filter. Press f to edit or c to clear.'}
+          : 'No skills match this filter. Press / to edit or c to clear.'}
         maxVisible={12}
       />}
       {mode === 'groups' && <>
