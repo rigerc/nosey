@@ -77,6 +77,25 @@ function inside(root: string, target: string): boolean {
     !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
 }
 
+/** Inspect actual local agent skill directories, without inferring installed agents from home. */
+export async function discoverProjectSkillAgents(projectRoot: string): Promise<string[]> {
+  const root = path.resolve(projectRoot);
+  const found: string[] = [];
+  const seen = new Set<string>();
+  for (const agent of SKILLS_CLI_AGENTS) {
+    if (seen.has(agent.directory)) continue;
+    seen.add(agent.directory);
+    const directory = path.join(root, agent.directory);
+    try {
+      const [actual, info] = await Promise.all([fs.realpath(directory), fs.stat(directory)]);
+      if (info.isDirectory() && inside(root, actual)) found.push(agent.value);
+    } catch {
+      // No local skills directory for this agent.
+    }
+  }
+  return found;
+}
+
 /**
  * Read-only project inspection. A same-named folder is not proof of provenance:
  * without a matching project lock entry it is reported as unverified, not installed.
