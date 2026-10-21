@@ -15,6 +15,7 @@ import {
   type RegistryEntry,
 } from '../src/lib/registry/commands.js';
 import type {LoadedRegistry} from '../src/lib/registry/types.js';
+import {runRegistryInProcess} from './helpers/registry-command.js';
 
 const exec = promisify(execFile);
 const tsx = import.meta.resolve('tsx');
@@ -31,11 +32,26 @@ async function fixture<T>(
     globalConfig: string;
     cacheDirectory: string;
     command: (...args: string[]) => Promise<CommandResult>;
+    commandProcess: (...args: string[]) => Promise<CommandResult>;
   }) => Promise<T>,
 ): Promise<T> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-commands-'));
   const registry = path.join(root, 'team-skills');
   const configHome = path.join(root, 'config');
+  const runProcess = async (...args: string[]): Promise<CommandResult> => {
+    const {stdout, stderr} = await exec(process.execPath, ['--import', tsx, cli, ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        XDG_CONFIG_HOME: configHome,
+        APPDATA: configHome,
+        XDG_CACHE_HOME: path.join(root, 'cache'),
+        LOCALAPPDATA: path.join(root, 'cache'),
+      },
+    });
+    return {stdout, stderr};
+  };
   try {
     await scaffoldRegistry(registry, 'acme/skills');
     return await run({
@@ -44,20 +60,15 @@ async function fixture<T>(
       projectConfig: path.join(root, '.nosey.json'),
       globalConfig: path.join(configHome, 'nosey/registries.json'),
       cacheDirectory: path.join(root, 'cache/skillsense/registries'),
-      async command(...args) {
-        const {stdout, stderr} = await exec(process.execPath, ['--import', tsx, cli, ...args], {
-          cwd: root,
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            XDG_CONFIG_HOME: configHome,
-            APPDATA: configHome,
-            XDG_CACHE_HOME: path.join(root, 'cache'),
-            LOCALAPPDATA: path.join(root, 'cache'),
-          },
-        });
-        return {stdout, stderr};
-      },
+      command: (...args) =>
+        args[0] === 'registry' && args[1] !== 'init'
+          ? runRegistryInProcess(args, {
+              root,
+              configHome,
+              cacheHome: path.join(root, 'cache'),
+            })
+          : runProcess(...args),
+      commandProcess: runProcess,
     });
   } finally {
     await fs.rm(root, {recursive: true, force: true});
@@ -155,18 +166,18 @@ test('configuration locks are released after errors and idempotent edits', async
 });
 
 test('separate CLI processes preserve simultaneous global configuration updates', async () => {
-  await fixture(async ({command, globalConfig, projectConfig}) => {
+  await fixture(async ({commandProcess, globalConfig, projectConfig}) => {
     await fs.mkdir(path.dirname(globalConfig), {recursive: true});
     await fs.writeFile(
       globalConfig,
       JSON.stringify({schemaVersion: 1, registries: [], keep: true}),
     );
     const sources = Array.from({length: 6}, (_, index) => './registry-' + index);
-    await Promise.all(sources.map((source) => command('registry', 'add', source)));
+    await Promise.all(sources.map((source) => commandProcess('registry', 'add', source)));
     const document = await jsonFile(globalConfig);
     expect(document.keep).toBe(true);
     expect((document.registries as Array<{path: string}>).length).toBe(sources.length);
-    await Promise.all(sources.map((source) => command('registry', 'remove', source)));
+    await Promise.all(sources.map((source) => commandProcess('registry', 'remove', source)));
     expect((await jsonFile(globalConfig)).registries).toStrictEqual([]);
     await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
   });
