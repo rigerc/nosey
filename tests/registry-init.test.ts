@@ -229,6 +229,13 @@ test('GitHub publication is explicitly selected and defaults to private', async 
     );
     expect(result.githubCreated).toBe(true);
     expect(commands.map((item) => item.command)).toStrictEqual(['git', 'git', 'git', 'gh']);
+    expect(commands[2]?.args).toStrictEqual([
+      '-C',
+      result.directory,
+      'commit',
+      '-m',
+      'chore(registry): initialize Nosey registry',
+    ]);
     expect(commands[commands.length - 1]?.args).toStrictEqual([
       'repo',
       'create',
@@ -320,6 +327,111 @@ test('a failed GitHub operation leaves the scaffold for manual publishing', asyn
     });
     const registry = await loadLocalRegistry(directory);
     expect(registry.manifest.registryId).toBe('acme/skills');
+  });
+});
+
+test('commit hook errors are identified before contacting GitHub and preserve the local result', async () => {
+  await temporary(async (parent) => {
+    const directory = path.join(parent, 'registry');
+    const commands: string[] = [];
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {
+        async run(command, args) {
+          commands.push(command);
+          if (args.includes('commit')) {
+            throw Object.assign(new Error('Command failed: git commit'), {
+              stdout:
+                '\u001b[31mInvalid commit message format\u001b[0m\nExpected: <type>(<scope>): <subject>',
+              stderr: '',
+            });
+          }
+        },
+      },
+    ).catch((reason) => reason);
+    expect(error).toMatchObject({
+      name: 'RegistryInitError',
+      result: {directory, registryId: 'acme/skills', gitInitialized: true, githubCreated: false},
+    });
+    expect(error.message).toContain('initial Git commit failed');
+    expect(error.message).toContain('Invalid commit message format');
+    expect(error.message).toContain('GitHub was not contacted');
+    expect(error.message).not.toContain('Command failed:');
+    expect(error.message).not.toContain('\u001b');
+    expect(commands).not.toContain('gh');
+    expect((await loadLocalRegistry(directory)).manifest.registryId).toBe('acme/skills');
+  });
+});
+
+test('the initial commit passes a conventional commit hook before GitHub publication', async () => {
+  await temporary(async (parent) => {
+    const directory = path.join(parent, 'registry');
+    const hooks = path.join(parent, 'hooks');
+    const gitConfig = path.join(parent, 'gitconfig');
+    await fs.mkdir(hooks);
+    await fs.writeFile(
+      path.join(hooks, 'commit-msg'),
+      [
+        '#!/bin/sh',
+        'if ! head -n 1 "$1" | grep -Eq "^[a-z]+\\([a-z-]+\\): .+"; then',
+        '  echo "Invalid commit message format. Expected: <type>(<scope>): <subject>" >&2',
+        '  exit 1',
+        'fi',
+        '',
+      ].join('\n'),
+      {mode: 0o755},
+    );
+    await fs.writeFile(gitConfig, '[core]\n\thooksPath = ' + JSON.stringify(hooks) + '\n');
+    const env = {
+      ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))),
+      GIT_CONFIG_GLOBAL: gitConfig,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_AUTHOR_NAME: 'Registry Test',
+      GIT_AUTHOR_EMAIL: 'test@example.invalid',
+      GIT_COMMITTER_NAME: 'Registry Test',
+      GIT_COMMITTER_EMAIL: 'test@example.invalid',
+    };
+    let published = false;
+    await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {
+        async run(command, args) {
+          if (command === 'gh') published = true;
+          else await execFileAsync(command, args, {env});
+        },
+      },
+    );
+    expect(published).toBe(true);
+    const {stdout} = await execFileAsync('git', ['-C', directory, 'log', '-1', '--format=%s'], {
+      env,
+    });
+    expect(stdout.trim()).toBe('chore(registry): initialize Nosey registry');
+  });
+});
+
+test('GitHub errors include gh diagnostics and preserve the created local registry', async () => {
+  await temporary(async (parent) => {
+    const directory = path.join(parent, 'registry');
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {
+        async run(command) {
+          if (command === 'gh')
+            throw Object.assign(new Error('Command failed: gh repo create'), {
+              stderr: 'GraphQL: Name already exists on this account',
+            });
+        },
+      },
+    ).catch((reason) => reason);
+    expect(error).toMatchObject({
+      name: 'RegistryInitError',
+      result: {directory, registryId: 'acme/skills', gitInitialized: true, githubCreated: false},
+    });
+    expect(error.message).toContain('GitHub creation failed');
+    expect(error.message).toContain('Name already exists');
+    expect(error.message).toContain('gh auth status');
+    expect(error.message).not.toContain('Command failed:');
+    expect((await loadLocalRegistry(directory)).manifest.registryId).toBe('acme/skills');
   });
 });
 

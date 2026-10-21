@@ -5,7 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import {createInterface} from 'node:readline/promises';
 import {fileURLToPath} from 'node:url';
-import {promisify} from 'node:util';
+import {promisify, stripVTControlCharacters} from 'node:util';
 import {loadLocalRegistry} from './load.js';
 import type {RegistryManifest, RegistryMap} from './types.js';
 
@@ -49,6 +49,30 @@ export type RegistryInitResult = {
   gitInitialized: boolean;
   githubCreated: boolean;
 };
+
+/** A scaffold exists and must not be created again after a later setup failure. */
+export class RegistryInitError extends Error {
+  constructor(
+    message: string,
+    readonly result: RegistryInitResult,
+    cause: unknown,
+  ) {
+    super(message, {cause});
+    this.name = 'RegistryInitError';
+  }
+}
+
+function commandFailureDetail(error: unknown): string {
+  const output =
+    error && typeof error === 'object'
+      ? [(error as {stderr?: unknown}).stderr, (error as {stdout?: unknown}).stdout]
+          .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+          .join('\n')
+      : '';
+  return stripVTControlCharacters(
+    output || (error instanceof Error ? error.message : String(error)),
+  ).trim();
+}
 
 type CommandRunner = (command: string, args: string[]) => Promise<void>;
 
@@ -316,24 +340,47 @@ export async function runRegistryInit(
       registryId,
       dependencies.templateDirectory,
     );
+    const result: RegistryInitResult = {
+      directory: destination,
+      registryId,
+      gitInitialized: false,
+      githubCreated: false,
+    };
 
     if (initializeGit) {
       try {
         await runner('git', ['init', '--initial-branch=main', destination]);
       } catch (error: unknown) {
-        throw new Error(
+        throw new RegistryInitError(
           'Registry created at ' +
             destination +
             ', but Git initialization failed: ' +
-            (error instanceof Error ? error.message : String(error)),
+            commandFailureDetail(error),
+          result,
+          error,
         );
       }
+      result.gitInitialized = true;
     }
 
     if (createGitHub) {
       try {
         await runner('git', ['-C', destination, 'add', '--all']);
-        await runner('git', ['-C', destination, 'commit', '-m', 'Initial Nosey registry']);
+        await runner('git', [
+          '-C',
+          destination,
+          'commit',
+          '-m',
+          'chore(registry): initialize Nosey registry',
+        ]);
+      } catch (error: unknown) {
+        throw new RegistryInitError(
+          `Local registry created at ${destination}, but preparing the initial Git commit failed. Check Git identity and commit hooks, then commit and publish from this directory. GitHub was not contacted.\n${commandFailureDetail(error)}`,
+          result,
+          error,
+        );
+      }
+      try {
         await runner('gh', [
           'repo',
           'create',
@@ -346,21 +393,16 @@ export async function runRegistryInit(
           '--' + (visibility ?? 'private'),
         ]);
       } catch (error: unknown) {
-        throw new Error(
-          'Local registry created at ' +
-            destination +
-            ', but GitHub creation failed. Check gh authentication and Git identity, then publish manually. ' +
-            (error instanceof Error ? error.message : String(error)),
+        throw new RegistryInitError(
+          `Local registry created at ${destination}, but GitHub creation failed or the initial push failed. Run gh auth status and check whether ${registryId} already exists before publishing from this directory.\n${commandFailureDetail(error)}`,
+          result,
+          error,
         );
       }
+      result.githubCreated = true;
     }
 
-    return {
-      directory: destination,
-      registryId,
-      gitInitialized: initializeGit,
-      githubCreated: createGitHub,
-    };
+    return result;
   } finally {
     reader?.close();
   }

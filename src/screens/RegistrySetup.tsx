@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import {resolve} from 'node:path';
 import {Text} from 'ink';
 import {
+  Alert,
   Confirm,
   Muted,
   Panel,
@@ -20,6 +21,7 @@ import {useScan} from '../features/skills/context';
 import {useScreenHints} from '../features/ui/context';
 import {useInputCapture, useKeymap, useRouter} from '../hooks';
 import {
+  RegistryInitError,
   runRegistryInit,
   validateRegistryDestination,
   validateRegistryId,
@@ -40,7 +42,7 @@ export function RegistrySetupScreen() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [created, setCreated] = useState('');
+  const [created, setCreated] = useState<{message: string; warning?: string}>();
   useInputCapture(!created);
   useKeymap([{key: 'ctrl+x', run: () => router.replace('registry')}], {
     scope: 'screen',
@@ -66,12 +68,27 @@ export function RegistrySetupScreen() {
       title="Initialize registry"
       description="Review every write before creating files"
     >
-      <Panel title={created ? 'Registry created' : 'New registry'}>
+      <Panel
+        title={
+          created?.warning
+            ? 'Registry created locally'
+            : created
+              ? 'Registry created'
+              : 'New registry'
+        }
+      >
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
         {busy && <Spinner label="Creating registry..." />}
         {created ? (
           <Stack gap={1}>
-            <StatusMessage tone="success">{created}</StatusMessage>
+            {created.warning ? (
+              <Alert tone="warn" title="Setup incomplete">
+                {created.warning}
+              </Alert>
+            ) : (
+              <StatusMessage tone="success">{created.message}</StatusMessage>
+            )}
+            {created.warning && <Text>{created.message}</Text>}
             <Select
               items={[{value: 'return', label: 'Return to Registries'}]}
               onSelect={() => router.replace('registry')}
@@ -190,11 +207,19 @@ export function RegistrySetupScreen() {
                     },
                     {interactive: false},
                   );
-                  setCreated(
-                    `Created ${result.registryId} at ${result.directory}. Git: ${result.gitInitialized ? 'initialized' : 'not requested'}. GitHub: ${result.githubCreated ? 'created' : 'not requested'}.`,
-                  );
+                  setCreated({
+                    message: `Created ${result.registryId} at ${result.directory}. Git: ${result.gitInitialized ? 'initialized' : 'not requested'}. GitHub: ${result.githubCreated ? 'created' : 'not requested'}.`,
+                  });
                   return true;
                 } catch (reason) {
+                  if (reason instanceof RegistryInitError) {
+                    setCreated({
+                      message:
+                        'Your local registry files have been preserved. Add the registry from Registries to use it.',
+                      warning: reason.message,
+                    });
+                    return true;
+                  }
                   failed(reason);
                   return false;
                 } finally {
