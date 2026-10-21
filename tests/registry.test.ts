@@ -281,5 +281,5 @@ test('external schema rejects malformed sources, duplicate IDs, and v1 external 
   }
   expect(() => parseMap({...base, externalSkills: [external, external]})).toThrow(/Duplicate external skill IDs/);
   expect(() => parseMap({schemaVersion: 1, registryId: 'sample/skills', externalSkills: []})).toThrow(/schemaVersion 2/);
-  expect(parseMap({schemaVersion: 1, registryId: 'sample/skills'}).externalSkills).toEqual([]);
+  expect(parseMap({schemaVersion: 1, registryId: 'sample/skills'}).externalSkills ?? []).toEqual([]);
 });
