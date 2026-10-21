@@ -30,7 +30,7 @@ export function HelpScreen() {
           <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
         </Panel>
         <Panel title="Registries" tone="muted">
-          <Text>a Add globally / i Initialize / r Refresh / Enter Details</Text>
+          <Text>a Add globally / i Initialize / r Reload references / Enter Details</Text>
           <Text>In details: v Validate local / u Build metadata / d Remove reference / b Back</Text>
           <Text>
             a in local details marks Always recommend skills; Space toggles, / filters, s reviews.
@@ -44,12 +44,14 @@ export function HelpScreen() {
           <Text>Up/down Section / Enter Edit / Escape Back / s Save / d Discard / w Wizard</Text>
           <Text>Skills CLI: opt in and choose default target agents for project-only commands.
             Drafts survive tab changes. Preview themes in Settings without saving.</Text>
+          <Text>Enable check-on-start in Registries to fetch remote changes on launch.</Text>
+          <Text>Registry updates can suggest npx skills update; Nosey never runs it.</Text>
           <Text>NO_COLOR always forces mono. --ascii uses ASCII borders and symbols.</Text>
         </Panel>
         <Panel title="CLI / safety" tone="muted">
           <Text>nosey [path] [--explain | --json | --skills-only | --plain]</Text>
           <Text>nosey scan [path] --depth 8 --max-files 20000</Text>
-          <Text>nosey registry init|list|add|remove|show|validate|build</Text>
+          <Text>nosey registry init|list|add|remove|show|validate|build|refresh</Text>
           <Text>nosey doctor --json / nosey --setup</Text>
           <Text>--no-interactive produces a plain report. Piped output never prompts.</Text>
           <Text>
