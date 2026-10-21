@@ -176,3 +176,33 @@ test('reject dangerous Git URL schemes and revision option injection', async () 
     ).rejects.toThrow(/Invalid Git revision/);
   });
 });
+
+test('Git snapshots round-trip v2 external skill declarations through the cache', async () => {
+  await cacheFixture(async cacheDirectory => {
+    const externalId = 'acme/upstream/react-helper';
+    const externalMap = {
+      ...map,
+      schemaVersion: 2 as const,
+      externalSkills: [{
+        id: externalId, name: 'React helper', source: 'acme/upstream', skill: 'react-helper',
+      }],
+      technologySkills: [{technologyId: 'react', skills: [externalId]}],
+    };
+    const first = await loadGitRegistry(spec, {
+      cacheDirectory, now: 500,
+      async fetcher() {
+        return {loaded: {manifest, map: externalMap, source: 'fixture'}, commit};
+      },
+    });
+    const cached = await loadGitRegistry(spec, {
+      cacheDirectory, now: 501,
+      async fetcher() {
+        throw new Error('unexpected remote fetch');
+      },
+    });
+    expect(first.warnings).toEqual([]);
+    expect(cached.warnings).toEqual([]);
+    expect(cached.loaded.map.externalSkills).toEqual(externalMap.externalSkills);
+    expect(cached.loaded.map.technologySkills[0]?.skills).toEqual([externalId]);
+  });
+});
