@@ -19,6 +19,7 @@ import {InputActivityProvider} from './hooks/useInputActivity';
 import {FooterHintsProvider, useActiveFooterHints} from './hooks/useFooterHints';
 import {getGlobalBindings, getGlobalKeys, type KeyHint} from './keys';
 import {canonicalScreen, navScreens, screens} from './screens';
+import {CompactScanScreen} from './screens/CompactScan';
 import {ThemeProvider, useThemeControls} from './theme/context';
 import type {ThemeName} from './theme/tokens';
 import {ScanProvider, useScan, type ScanConfig} from './features/skills/context';
@@ -30,6 +31,7 @@ import type {RegistryInitOptions} from './lib/registry/init';
 export interface AppOptions {
   theme: ThemeName;
   ascii: boolean;
+  compactMode?: boolean;
   debug: boolean;
   screen: string;
   configFile?: string;
@@ -197,7 +199,13 @@ function Shell() {
 }
 export const App = ({options}: {options: AppOptions}) => (
   <AppProviders options={options}>
-    <Shell />
+    {options.compactMode && canonicalScreen(options.screen) === 'home' ? (
+      <InputActivityProvider active>
+        <CompactScanScreen />
+      </InputActivityProvider>
+    ) : (
+      <Shell />
+    )}
   </AppProviders>
 );
 export function PlainView({options}: {options: AppOptions}) {

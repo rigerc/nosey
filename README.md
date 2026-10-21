@@ -26,9 +26,9 @@
 
 <div align="center">
   <a href="assets/recordings/home-nosey-100-video.mp4">
-    <img src="assets/recordings/home-nosey-100-video.gif" alt="Nosey terminal walkthrough: scan a workspace, filter React skill suggestions, and explore Registries, Settings, and Help" width="920">
+    <img src="assets/recordings/home-nosey-100-video.gif" alt="Nosey terminal walkthrough: slowly browse skill suggestions, filter React skills, then open Registries" width="920">
   </a>
-  <p><sub>Interactive terminal walkthrough · <a href="assets/recordings/home-nosey-100-video.mp4">Watch MP4</a> · <a href="assets/recordings/home-nosey-100-video.png">View still frame</a></sub></p>
+  <p><sub>Slow Scan + Registries demo · <a href="assets/recordings/home-nosey-100-video.mp4">Watch MP4</a> · <a href="assets/recordings/home-nosey-100-video.png">View still frame</a></sub></p>
 </div>
 
 ## Quick start
@@ -175,6 +175,8 @@ npm run dev -- --setup
 ~~~
 
 Settings are saved only when you choose to save them. Theme previews do not change saved preferences.
+
+**Compact mode** is an optional toggle in Settings (off by default). When enabled, launching the interactive Scan directly with `nosey [path]` opens a minimal interface without application tabs or the command menu. You can still select skills with Space, review them with Enter, rescan with `r`, or quit with `q`. The compact Scan supports the same opt-in Skills CLI commands and installed status labels as the full Scan. Launches that start on another screen retain the standard interface. The explicit `nosey scan [path]` command, `--plain`, and noninteractive reports remain headless and unchanged. Restart Nosey after saving this setting.
 
 ## Development
 
