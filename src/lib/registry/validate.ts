@@ -274,7 +274,7 @@ export function parseMap(raw: unknown): RegistryMap {
     alwaysRecommend: optionalStrings(value['alwaysRecommend'], 'alwaysRecommend'),
     schemaVersion: version,
     registryId,
-    externalSkills: external.map((item: unknown) => externalSkill(item)),
+    ...(version === 2 ? {externalSkills: external.map((item: unknown) => externalSkill(item))} : {}),
     technologies: technologies.map((entry: unknown) => {
       const item = object(entry, 'technology');
       return {
