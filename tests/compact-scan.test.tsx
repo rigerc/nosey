@@ -96,7 +96,7 @@ describe('compact Scan setting', () => {
 
   it('surfaces partial-scan warnings without adding full-screen panels', async () => {
     const {options} = setup();
-    const partial: Report = {...report, truncated: true, skippedFiles: [{path: 'broken', reason: 'error'}]};
+    const partial: Report = {...report, truncated: true, skippedFiles: [{file: 'broken', reason: 'unreadable'}]};
     const app = await mount(<App options={{...options, report: partial}} />);
     expect(app.lastFrame()).toContain('Partial scan');
     expect(app.lastFrame()).toContain('Scan limit reached');
