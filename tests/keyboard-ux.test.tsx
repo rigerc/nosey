@@ -30,7 +30,7 @@ it('processes rapid checkbox navigation, Space, and Enter without losing a toggl
   app.stdin.write(' ');
   app.stdin.write('\r');
   await settle();
-  expect(submit).toHaveBeenCalledExactlyOnceWith(['one', 'three']);
+  await vi.waitFor(() => expect(submit).toHaveBeenCalledExactlyOnceWith(['one', 'three']));
 });
 
 it('accepts Yes followed immediately by Enter as one explicit confirmation', async () => {
@@ -50,7 +50,7 @@ it('retains rapid typed characters when Enter arrives in the same render batch',
   app.stdin.write('t');
   app.stdin.write('\r');
   await settle();
-  expect(submit).toHaveBeenCalledExactlyOnceWith('q1t');
+  await vi.waitFor(() => expect(submit).toHaveBeenCalledExactlyOnceWith('q1t'));
 });
 
 it('selects against the latest search text when Enter arrives before a repaint', async () => {
@@ -61,5 +61,5 @@ it('selects against the latest search text when Enter arrives before a repaint',
   app.stdin.write('r');
   app.stdin.write('\r');
   await settle();
-  expect(choose).toHaveBeenCalledExactlyOnceWith('three');
+  await vi.waitFor(() => expect(choose).toHaveBeenCalledExactlyOnceWith('three'));
 });

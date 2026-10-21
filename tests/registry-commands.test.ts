@@ -544,7 +544,7 @@ test('recommendation writes reject unknown IDs and survive manifest regeneration
     expect(report.registryWarnings).toEqual([
       {
         source: path.resolve(registry),
-        message: 'Always recommended skill not in registry manifest: ' + id,
+        message: 'Always recommended skill not declared in registry: ' + id,
       },
     ]);
     expect(stderr).toContain('nosey: registry warning [' + path.resolve(registry) + ']');

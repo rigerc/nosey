@@ -87,7 +87,8 @@ describe('Nosey scan interaction', () => {
     expect(app.lastFrame()).toContain('npx skills add acme/skills');
     expect(app.lastFrame()).toContain('--agent claude-code');
     expect(app.lastFrame()).not.toContain('--agent codex');
-    expect(app.lastFrame()).toContain('--yes --json');
+    expect(app.lastFrame()).toContain('--yes');
+    expect(app.lastFrame()).toContain('--json');
     await press(app, 'y');
     await press(app, '\r');
     expect(confirmed).toHaveBeenCalledTimes(1);
@@ -334,7 +335,7 @@ describe('Registry UI writes', () => {
       await press(app, 'y');
       await press(app, '\r');
       await settle();
-      expect(app.lastFrame()).toContain('Registry created locally');
+      await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created locally'));
       expect(app.lastFrame()).toContain('Invalid commit message format');
       expect(app.lastFrame()).toContain('Expected: <type>(<scope>): <subject>');
       expect(app.lastFrame()).not.toContain('Create this registry?');
@@ -376,7 +377,7 @@ describe('Registry UI writes', () => {
     await press(app, './team-skills');
     await press(app, '\r');
     await settle();
-    expect(app.lastFrame()).toContain('Add this registry reference?');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Add this registry reference?'));
     expect(app.lastFrame()).toContain(globalConfig);
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, 'y');
@@ -387,18 +388,25 @@ describe('Registry UI writes', () => {
       path: relative(dirname(globalConfig), registry),
     });
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
+    // Adding the reference saves first, then asynchronously reloads the list.
+    // Wait for an interactive list so Enter isn't dispatched while still busy.
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'), {timeout: 5000});
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('[enter] details'), {timeout: 5000});
     await press(app, '\r');
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'), {timeout: 5000});
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, '\r'); // default No
+    await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Remove reference from'));
     expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toHaveLength(1);
     await press(app, 'd');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, 'y');
     await press(app, '\r');
-    await settle();
     await vi.waitFor(() =>
       expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toEqual([]),
+      {timeout: 3000},
     );
     expect(existsSync(join(registry, 'skills-manifest.json'))).toBe(true);
   });
@@ -493,7 +501,7 @@ describe('Registry UI writes', () => {
     await press(app, 'y');
     await press(app, '\r');
     await settle();
-    expect(app.lastFrame()).toContain('Registry created');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created'));
     expect(JSON.parse(readFileSync(join(destination, 'registry.json'), 'utf8')).registryId).toBe(
       'acme/created',
     );

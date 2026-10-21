@@ -43,8 +43,10 @@ export function validAgents(agents: readonly string[]): boolean {
 export function skillSource(skill: InstallableSkill): SkillInstallSource | undefined {
   if (skill.installSource) return skill.installSource;
   const parts = skill.id.split('/');
-  if (parts.length !== 3 || !parts.every((part) => safeIdentifier.test(part))) return;
-  return {source: parts[0] + '/' + parts[1], name: parts[2]};
+  const [owner, repository, name] = parts;
+  if (parts.length !== 3 || !owner || !repository || !name ||
+      !parts.every((part) => safeIdentifier.test(part))) return;
+  return {source: owner + '/' + repository, name};
 }
 
 /** Canonicalize GitHub shorthand and URLs; keep local paths separate. */
