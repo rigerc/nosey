@@ -36,6 +36,7 @@ export interface AppOptions {
   configFile?: string;
   configFlags?: Partial<Config>;
   skillsCli?: Config['skillsCli'];
+  registrySettings?: Config['registries'];
   scan?: ScanConfig;
   report?: Report;
   registryInit?: RegistryInitOptions;
@@ -59,6 +60,7 @@ export function AppProviders({options, children}: {options: AppOptions; children
                         enabled={!options.static}
                         onConfirm={options.onConfirm}
                         installSettings={options.skillsCli}
+                        checkRegistryUpdatesOnStart={options.registrySettings?.checkOnStart}
                       >
                         <ErrorBoundary debug={options.debug}>{children}</ErrorBoundary>
                       </ScanProvider>
