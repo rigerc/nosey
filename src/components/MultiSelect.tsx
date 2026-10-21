@@ -6,9 +6,14 @@ import {useTheme} from '../theme/context';
 import type {SelectItem} from './Select';
 import {Muted} from './typography';
 
+/** A selectable row may appear in several technology groups without duplicating its selection. */
+export type GroupedSelectItem<T extends string> = SelectItem<T> & {
+  group?: {key: string; label: string};
+};
+
 export interface MultiSelectProps<T extends string> {
   /** Items visible in the current view, optionally filtered. */
-  items: readonly SelectItem<T>[];
+  items: readonly GroupedSelectItem<T>[];
   /** Full item order for preserving selections hidden by a filter. */
   allItems?: readonly SelectItem<T>[];
   value?: readonly T[];
@@ -76,18 +81,30 @@ export function MultiSelect<T extends string>({
     <Box flexDirection="column">
       {items.length === 0 && <Muted>{emptyMessage}</Muted>}
       {items.slice(start, end).map((item, offset) => {
-        const focused = isActive && start + offset === index;
+        const row = start + offset;
+        const focused = isActive && row === index;
+        const groupStart = item.group && (
+          row === start || items[row - 1]?.group?.key !== item.group.key
+        );
         return (
-          <Text
-            key={item.value}
-            bold={focused}
-            color={focused ? t.color.primary : t.color.text}
-            wrap="truncate-end"
+          <Box
+            key={item.group ? item.group.key + '/' + item.value : item.value}
+            flexDirection="column"
+            marginTop={groupStart && row > start ? 1 : 0}
           >
-            {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
-            {item.label}
-            {item.hint ? ' - ' + item.hint : ''}
-          </Text>
+            {groupStart && <Text bold color={t.color.accent} wrap="truncate-end">
+              {item.group!.label}
+            </Text>}
+            <Text
+              bold={focused}
+              color={focused ? t.color.primary : t.color.text}
+              wrap="truncate-end"
+            >
+              {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
+              {item.label}
+              {item.hint ? ' - ' + item.hint : ''}
+            </Text>
+          </Box>
         );
       })}
       {sourceItems.length > 0 && (
