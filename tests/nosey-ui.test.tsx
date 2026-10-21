@@ -388,8 +388,12 @@ describe('Registry UI writes', () => {
       path: relative(dirname(globalConfig), registry),
     });
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
+    // Adding the reference saves first, then asynchronously reloads the list.
+    // Wait for an interactive list so Enter isn't dispatched while still busy.
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'), {timeout: 5000});
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('[enter] details'), {timeout: 5000});
     await press(app, '\r');
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'), {timeout: 5000});
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
