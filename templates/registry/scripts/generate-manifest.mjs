@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Dependency-free manifest generator for the Nosey registry template.
 // Scans skill files, never executes them, and never writes skills-map.json.
-import {readFile, readdir, lstat, writeFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {readFile, readdir, lstat, writeFile, rename, rm} from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -119,6 +120,16 @@ async function main() {
       2,
     ) + '\n';
   const manifestPath = path.join(root, 'skills-manifest.json');
+  let mode = 0o666;
+  try {
+    const info = await lstat(manifestPath);
+    if (!info.isFile() || info.isSymbolicLink()) {
+      throw new Error('skills-manifest.json must be a regular file, not a symlink');
+    }
+    mode = info.mode & 0o777;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   if (check) {
     const current = await readFile(manifestPath, 'utf8').catch(() => '');
     if (output !== current)
@@ -127,7 +138,15 @@ async function main() {
     return;
   }
 
-  await writeFile(manifestPath, output);
+  // Replace the directory entry rather than following a symlink or modifying a
+  // hard-linked file. Exclusive temporary creation also prevents partial writes.
+  const temporary = manifestPath + '.' + randomUUID() + '.tmp';
+  try {
+    await writeFile(temporary, output, {flag: 'wx', mode});
+    await rename(temporary, manifestPath);
+  } finally {
+    await rm(temporary, {force: true});
+  }
   console.log('Generated skills-manifest.json (' + records.length + ' skills).');
 }
 
