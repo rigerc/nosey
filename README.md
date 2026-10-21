@@ -1,5 +1,10 @@
 # nosey
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/nosey-brand-kit/svg/logo/nosey-logo-for-dark.svg">
+  <img src="assets/nosey-brand-kit/svg/logo/nosey-logo-for-light.svg" alt="Nosey logo: :^) nosey" width="360">
+</picture>
+
 Workspace detection and agent skill suggestions, with an Ink 8 / React 19 terminal shell.
 Requires Node.js 24+ (matching Nosey's runtime requirement).
 
