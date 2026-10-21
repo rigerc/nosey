@@ -16,6 +16,9 @@ headless commands, without adding a separate UI framework dependency.
   configuration discovery, migration compatibility, initialization, and commands.
 - `src/data/skills-map.ts` contains built-in technology and skill mappings.
 - `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
+- `src/features/skills/install.ts` inspects project-local installations (lock provenance
+  and agent folders) and generates copyable `skills add --yes --json` commands.
+  It never executes them.
 - `templates/registry/` is the packaged registry template and trusted manifest generator.
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
@@ -31,6 +34,9 @@ The no-argument CLI and project-path form open Scan in a TTY. Explicit `scan`, J
 skills-only, plain, and noninteractive modes reuse the same engine without mounting
 Ink. Non-Scan plain previews remain separate. Confirmed skill IDs are printed only
 after Ink exits; quit/cancel never confirms a selection.
+When Skills CLI is enabled in saved settings, confirmations instead print grouped
+project-only commands targeting the selected agents; fully installed targets are
+omitted. Disabled mode retains ID output.
 
 `src/app.tsx` owns one provider tree and shell. Visited primary screens remain
 mounted, retaining their local selections, filters, cursors, and drafts. Each is
