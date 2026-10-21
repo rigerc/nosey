@@ -1,6 +1,6 @@
 import {createContext, useContext, useEffect, type ReactNode} from 'react';
 import type {Config} from '../../config';
-import {inspectInstalledSkills, SKILLS_CLI_AGENTS} from './install';
+import {inspectInstalledSkills, discoverProjectSkillAgents} from './install';
 import {resolve} from 'node:path';
 import {detectProject, type Report} from '../../lib/detect';
 import {resolveRegistries} from '../../lib/registry/resolve';
@@ -33,16 +33,15 @@ function useScanState(
       registry: resolved.registry,
       registryWarnings: resolved.warnings,
     });
-    const knownAgents = new Set<string>(SKILLS_CLI_AGENTS.map((agent) => agent.value));
     const agents = installSettings?.defaultAgents?.length
       ? installSettings.defaultAgents
-      : report.agents.map((agent) => agent.agent).filter((agent) => knownAgents.has(agent));
+      : await discoverProjectSkillAgents(config.root);
     const sourced = report.skills.map((skill) => ({
       ...skill,
       installSource: resolved.registry.skillInstallSources?.get(skill.id),
     }));
     const installed = await inspectInstalledSkills(config.root, sourced, agents);
-    return {...report, skills: sourced.map((skill) => ({
+    return {...report, inspectedAgents: agents, skills: sourced.map((skill) => ({
       ...skill, installation: installed.get(skill.id),
     }))};
   }, initialReport);
