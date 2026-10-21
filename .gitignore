@@ -2,7 +2,7 @@ node_modules
 dist
 build
 *.log
-screenshots/
+/screenshots/
 .vitest/
 
 # Tool state and scaffold scratch output

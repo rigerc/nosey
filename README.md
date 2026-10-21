@@ -3,6 +3,8 @@
 Workspace detection and agent skill suggestions, with an Ink 8 / React 19 terminal shell.
 Requires Node.js 24+ (matching Nosey's runtime requirement).
 
+![Nosey Scan showing detected technologies and grouped skill suggestions](docs/screenshots/home-nosey-96.png)
+
 Generated with preset **standard**, package manager **npm**,
 and toolchain **vite-plus**.
 
@@ -65,6 +67,37 @@ metadata builds, and initialization show exact write targets and require explici
 confirmation. The initialization wizard supports optional Git and GitHub creation;
 Ctrl+X cancels without creating anything before final confirmation. Settings uses
 drafts: `s` saves, `d` discards, and `w` opens guided setup. Theme cycling does not save.
+
+### Screenshots
+
+The main tabs in the default Nosey theme. Scan uses a demo React, TypeScript,
+Vite, and Vitest workspace; Registries shows the initial state before adding references.
+
+<details>
+<summary>Registries, Settings, and Help</summary>
+
+![Registries with project scope, write target, and no references configured](docs/screenshots/registry-nosey-96.png)
+
+![Settings showing appearance preferences and save/discard controls](docs/screenshots/settings-nosey-96.png)
+
+![Help showing navigation, scan, registry, and settings shortcuts](docs/screenshots/help-nosey-96.png)
+
+</details>
+
+Regenerate these images from the current UI:
+
+```bash
+npx playwright install chromium
+npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
+```
+
+The screenshot script defaults to the four visible tabs across all themes at 80
+and 120 columns, using an isolated demo workspace and configuration. Captures go
+to the ignored `screenshots/` directory unless `--output-dir` is supplied. Use
+`--project ../project` to scan a real workspace, repeat `--screen` or `--theme` to
+limit captures, and set `--rows` or `--ascii` to preview other terminal layouts.
+Hidden screens such as `gallery` and `registry-setup` can be requested explicitly.
+Registry previews show the empty state and do not load or modify host references.
 
 ## Scan a workspace
 
