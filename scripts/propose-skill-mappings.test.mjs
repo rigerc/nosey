@@ -5,7 +5,7 @@ import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
-import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../source/data/skills-map.ts';
+import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.ts';
 import {RemoteSource} from './build-skills-catalog.ts';
 import {
 	allCandidates,

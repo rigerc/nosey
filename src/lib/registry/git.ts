@@ -58,11 +58,11 @@ export function validateSource(spec: GitSpec): void {
 	}
 }
 
-function defaultCacheDirectory(): string {
+function defaultCacheDirectory(namespace: 'nosey' | 'skillsense' = 'nosey'): string {
 	if (process.platform === 'win32') {
 		return path.join(
 			process.env['LOCALAPPDATA'] ?? os.tmpdir(),
-			'skillsense',
+			namespace,
 			'registries',
 		);
 	}
@@ -73,7 +73,7 @@ function defaultCacheDirectory(): string {
 			: path.join(os.homedir(), '.cache');
 	return path.join(
 		process.env['XDG_CACHE_HOME'] ?? homeCache,
-		'skillsense',
+		namespace,
 		'registries',
 	);
 }
@@ -189,14 +189,20 @@ export async function loadGitRegistry(
 	const source = spec.url + '#' + (spec.ref ?? 'HEAD');
 	let previous: LoadedRegistry | undefined;
 	let fetchedAt = 0;
-	try {
-		const raw = JSON.parse(
-			await fs.readFile(filename, 'utf8'),
-		) as CachedSnapshot;
-		previous = restore(raw, source);
-		fetchedAt = raw.fetchedAt;
-	} catch {
-		// Absent or damaged cache: proceed with the remote fetch.
+	// Preserve offline access to SkillSense caches without writing to their paths.
+	const filenames = options.cacheDirectory
+		? [filename]
+		: [filename, path.join(defaultCacheDirectory('skillsense'), cacheKey(spec), 'snapshot.json')];
+	for (const candidate of filenames) {
+		try {
+			// eslint-disable-next-line no-await-in-loop
+			const raw = JSON.parse(await fs.readFile(candidate, 'utf8')) as CachedSnapshot;
+			previous = restore(raw, source);
+			fetchedAt = raw.fetchedAt;
+			break;
+		} catch {
+			// A missing or corrupt entry cannot block a remote refresh.
+		}
 	}
 
 	const ttl = (spec.refreshHours ?? defaultTtlHours) * 60 * 60 * 1000;

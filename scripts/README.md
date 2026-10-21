@@ -2,7 +2,7 @@
 
 Builds a merged, de-duplicated `skills-catalog.json` from
 [officialskills.sh](https://officialskills.sh/) and omgskills' gold basket, excluding every
-ID this project already maps in [`source/data/skills-map.ts`](../source/data/skills-map.ts).
+ID this project already maps in [`src/data/skills-map.ts`](../src/data/skills-map.ts).
 
 The exclusion set is read from the typed map with a direct import — `SKILLS_MAP`,
 `COMBO_SKILLS_MAP` and `FRONTEND_BONUS_SKILLS` — so no network request is made for it and the
@@ -74,7 +74,7 @@ judgments, a separate `choice` question identifies skill scope
 (technology-specific, combination-specific, task-specific, general, unclear).
 
 No skill is installed, no scanned project is modified, and
-`source/data/skills-map.ts` is **never changed by this command**.
+`src/data/skills-map.ts` is **never changed by this command**.
 Outputs are review proposals, not approved mappings.
 
 ### Quick start
