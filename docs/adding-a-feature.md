@@ -1,55 +1,19 @@
-# Add your first feature
+# Adding a Nosey feature
 
-The skeleton has no predefined business domain. Add only the pieces needed by
-your application.
+New domain features belong under `src/features/<feature>/` for operations and models,
+or `src/lib/` for pure shared services. Keep services independent of React and Ink
+so the CLI and TUI can use the same operations.
 
-1. Create `src/features/example/` for pure models and operations if needed.
-2. Add `src/screens/Example.tsx` and register the screen in `src/screens/index.ts`.
-3. If required, add a noninteractive subcommand to `src/commands/index.ts`.
-4. Add typed configuration in `src/config/schema.ts` only when necessary.
-5. Write tests under `tests/` and run the typecheck, tests, and build.
+1. Implement a pure feature service with unit tests in `tests/`.
+2. Add a screen in `src/screens/`, building its controls with `src/components/`
+   and `src/hooks/`.
+3. Register it in `src/screens/index.ts` and update global key/help hints if needed.
+4. Add a headless command to `src/cli.tsx` or `src/commands/` when the operation
+   should also support scripts and pipes.
+5. Only extend the versioned app config or registry config when the feature needs
+   persisted settings.
+6. Validate with `npm run typecheck`, `npm test`, `npm run build`, and `npm run check`.
 
-## Minimal screen
-
-```tsx
-// src/screens/Example.tsx
-import {Text} from 'ink';
-import {Panel} from '../components';
-
-export function ExampleScreen() {
-  return (
-    <Panel title="Example">
-      <Text>Your content goes here.</Text>
-    </Panel>
-  );
-}
-```
-
-Import and register it in `src/screens/index.ts`:
-
-```ts
-import {ExampleScreen} from './Example';
-
-// Add to the exported screens array:
-{id: 'example', label: 'Example', Component: ExampleScreen},
-```
-
-The screen now has a tab, numeric shortcut, and `--screen example`. Update
-`src/keys.ts` to keep the shortcut range displayed in the footer and Help
-accurate.
-
-## Minimal headless command
-
-In `runCommand()` of `src/commands/index.ts`:
-
-```ts
-if (name === 'example') {
-  if (args.length) throw new AppError('example takes no arguments', {exitCode: 2});
-  console.log('Example command');
-  return true;
-}
-```
-
-A real command should call a pure feature operation. Import that same operation
-from an Ink screen when interactive access is useful. Do not couple business
-logic to React hooks or terminal rendering.
+Do not introduce another application shell, theme provider, router, terminal-key dispatcher,
+or generic UI component library. The SkillSense integration established a single,
+Nosey-native interface and shared domain services.

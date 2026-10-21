@@ -1,58 +1,69 @@
 # Architecture
 
-This project is intentionally **domain-agnostic**. It includes terminal
-infrastructure and a functioning configuration flow, but no product domain.
+Nosey is an Ink 8/React 19 command-line application with a single, branded UI framework.
+The scanner and registry services were ported from SkillSense; all interactive feature
+screens use Nosey's existing components, hooks, router and theme.
 
-## Entry points
+## Program entry points
 
-- `src/cli.tsx` handles command-line arguments and chooses headless or Ink mode.
-- `src/commands/index.ts` registers commands. Commands never need a TTY.
-- `src/app.tsx` composes providers, navigation, and global keys.
-- `src/screens/index.ts` declares screen IDs, visible tab order, and shortcuts.
-- `src/screens/Gallery.tsx` is a development-only UI component reference.
-- `src/components/`, `src/hooks/`, and `src/theme/` supply reusable UI building blocks.
-- `src/config/schema.ts` defines Zod configuration and editor metadata.
-- `src/lib/config.ts` defines the app name and versioned configuration store.
+- `src/cli.tsx`: parses CLI options; dispatches headless scanning, registry commands,
+  diagnostics, or the interactive Nosey application.
+- `src/app.tsx`: composes the Nosey theme, configuration, router, input-capture,
+  scan and registry providers. The shell owns global keys and tab navigation.
+- `src/screens/index.ts`: screen registry and visible navigation order.
+- `src/commands/index.ts`: noninteractive diagnostics.
+- `src/screens/SkillBrowser.tsx`: skill selection and evidence views.
+- `src/screens/RegistryManager.tsx`: registry browse/edit workflow.
+- `src/screens/RegistrySetup.tsx`: Nosey-native registry initialization wizard.
+- `src/components/`, `src/hooks/`, `src/theme/`: the **only** generic Ink UI layer.
 
-## Application features
+## Pure domain services
 
-Create `src/features/<feature>/` when you implement an actual feature. Keep
-models and operations independent of React/Ink so a TUI screen and a headless
-CLI command can share them. Add `src/services/` or `src/integrations/` if
-your application develops a need for cross-feature logic or external adapters.
-The skeleton does not impose a database, HTTP client, or state framework.
+- `src/lib/scanner.ts`: bounded project traversal without symlink following or code execution.
+- `src/lib/manifests.ts`: ecosystem dependency extraction.
+- `src/lib/detect.ts`: evidence-based technology and skill matching; JSON report model.
+- `src/data/skills-map.ts`: built-in mappings.
+- `src/features/skills/groups.ts` and `filter.ts`: pure grouping/filtering helpers.
+- `src/lib/registry/`: configuration, validation, read-only Git snapshot retrieval,
+  merge logic, initialization and registry commands.
+- `src/lib/report.ts`: plain text formatter, deliberately distinct from UI presentation.
 
-See [adding-a-feature.md](adding-a-feature.md) for minimal examples.
+React screens call pure services through feature/context boundaries. Services never
+import Ink or React, and the CLI does not create a terminal UI when producing JSON
+or plain-text output.
 
-## Navigation and input
+## Registry configuration
 
-Home, Settings, and Help are visible tabs. The gallery is accessible with
-`--screen gallery` but hidden from the tab bar. Tab and numeric keys traverse
-visible screens only. When a control captures input, global bindings are
-paused via `src/hooks/useInputCapture.tsx`.
+Nosey's normal appearance settings remain versioned and validated under
+`src/config/`. Registry configuration uses a separate, versioned document:
+project `.nosey.json` or global `nosey/registries.json`.
 
-## Configuration
+The registry resolver additionally discovers legacy SkillSense configuration files
+for compatibility, without editing them. Git caches are written under the Nosey
+namespace; validated SkillSense snapshots remain usable as a read-only fallback.
 
-The configuration store persists versioned JSON and validates it with Zod.
-Precedence is defaults, saved file, environment, then CLI flags. Edits in
-Settings or the wizard are drafts until Save and are written atomically.
-Add new fields in both the schema and the fields registry.
+## Brand and interaction
 
-## Theme and brand
+The palette is sourced from `assets/nosey-brand-kit/` and exposed through
+`src/theme/`. Global key handling is owned by the app shell and suspended while
+Nosey text controls hold input capture.
 
-`src/theme/tokens.ts` lists the theme names, `themes.ts` defines each palette,
-and `src/theme/palette.ts` mirrors the brand kit's `palette/colors.json` as typed
-constants. The `nosey` theme is the default and is built from those constants;
-`tests/brand.test.ts` reads the kit JSON so the two copies cannot drift.
-Screenshots pick their page background from a per-theme ground in
-`scripts/screenshot.tsx`.
+## Safety
 
-Brand text (`:^)`, the tagline) lives in `src/lib/brand.ts` for plain console
-output. The TUI never types the mark into a string: `<BrandMark />`
-(`src/components/BrandMark.tsx`) draws it and colors the caret — the nose — with
-the theme accent, so mono and ASCII modes keep working.
+Project scanning never writes to the scanned project, follows symlinks, or executes
+project code. Reads are limited by maximum depth, files, individual file size and cache.
+Registry validation rejects unsafe paths and inconsistent manifests. Git snapshot
+retrieval does not checkout remote content. Registry creation and publishing are separate,
+explicitly requested write actions.
 
-## Quality gates
+## Validation
 
-Run `npm run typecheck`, `npm test`, and `npm run build`. CI in
-`.github/workflows/ci.yml` runs these checks plus headless CLI smoke tests.
+```sh
+npm run typecheck
+npm test
+npm run build
+npm run check
+```
+
+Domain regression tests are migrated from SkillSense. New interactive behavior is
+implemented with Nosey primitives, never by copying SkillSense's UI code.
