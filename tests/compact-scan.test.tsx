@@ -3,7 +3,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vite-plus/test';
 import {App, type AppOptions} from '../src/app';
-import {appConfig, resolveConfig} from '../src/config';
+import {appConfig, resolveConfig, type Config} from '../src/config';
 import {defaultScan} from '../src/features/skills/context';
 import type {Report} from '../src/lib/detect';
 import {loadConfig, saveConfig} from '../src/lib/config';
@@ -53,7 +53,7 @@ afterEach(() => {
 describe('compact Scan setting', () => {
   it('defaults to disabled and persists as a typed setting', () => {
     const {path} = setup();
-    expect(resolveConfig(appConfig.fields, {}, {env: {}}).values.compactMode).toBe(false);
+    expect(resolveConfig<Config>(appConfig.fields, {}, {env: {}}).values.compactMode).toBe(false);
     saveConfig({compactMode: true}, path);
     expect(loadConfig(path).config.compactMode).toBe(true);
     expect(readFileSync(path, 'utf8')).toContain('"compactMode": true');
