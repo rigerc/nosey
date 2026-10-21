@@ -30,10 +30,10 @@ export function HelpScreen() {
         ))}
       </Panel>
       <Panel title="Scan and skill selection">
-        <Text>Space select · Enter review · / or f filter · c clear</Text>
+        <Text>Space select · Enter review · / filter · c clear</Text>
         <Text>Filter: type to search · Enter apply · Esc cancel</Text>
-        <Text>g group selection · d inspect skill · r rescan</Text>
-        <Muted>Typing in a filter never triggers application shortcuts.</Muted>
+        <Text>g group selection · d inspect focused skill · r rescan</Text>
+        <Muted>Skills are grouped by technology; typing in a filter never triggers shortcuts.</Muted>
       </Panel>
       <Panel title="Flags and commands">
         <Text>--theme nosey|dark|light|contrast|mono|auto</Text>

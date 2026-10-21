@@ -30,7 +30,10 @@ screens use Nosey's existing components, hooks, router and theme.
 
 Scan and skill selection share a single screen and selection state. `MultiSelect` accepts
 `allItems` when displaying a filtered subset, so hidden selections are retained when toggling
-or submitting visible items. The filter uses a controlled Nosey `TextField` and input capture
+or submitting visible items. Grouped skill rows have technology/combination headings and
+spacing, while duplicate IDs across groups share one checked state and review entry.
+The `d` shortcut inspects the currently focused `MultiSelect` row rather than opening
+another searchable picker. Only `/` opens the filter input. The filter uses a controlled Nosey `TextField` and input capture
 suspends the shell's shortcuts while editing.
 
 React screens call pure services through feature/context boundaries. Services never

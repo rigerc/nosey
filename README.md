@@ -44,17 +44,20 @@ nosey . --registry https://github.com/org/skills.git
 
 A noninteractive terminal automatically produces the plain-text report. The interactive
 **Scan** screen displays detected technologies, matching combinations and suggested
-skills together. The skill picker uses Nosey's MultiSelect; filtered-out selections stay
-selected. Confirmed skill IDs print to stdout after Ink exits. No skills are installed.
+skills together. The skill picker uses Nosey's MultiSelect, with each technology's skills
+under a distinct heading and blank spacing between groups. Skills shared by multiple
+technologies stay checked consistently and count only once. Filtered-out selections
+stay selected. Confirmed skill IDs print to stdout after Ink exits. No skills are installed.
 
 ### Nosey interface
 
 Navigation uses **Tab** or **1–4** across Scan, Registries, Settings and Help.
 Use **t** to cycle themes and **q** to quit. Within Scan, **Space** toggles a
-suggested skill and **Enter** reviews selections. Press **/** or **f** to filter
-the MultiSelect, **Enter** to return to the list, **Escape** to cancel an edit,
-or **c** to clear the filter. **g** toggles skills by technology group,
-**d** opens skill details, and **r** rescans.
+suggested skill and **Enter** reviews selections. Press **/** to filter the
+MultiSelect, **Enter** to return to the list, **Escape** to cancel an edit,
+or **c** to clear the filter. The letter **f** is not a search shortcut.
+**g** toggles skills by technology group; **d** opens the focused skill's
+details directly (without launching another search); **r** rescans.
 
 While the filter input is focused, typing characters such as q, t, g, f, or ?
 does not execute shortcuts. The old `--screen skills` flag remains a hidden
