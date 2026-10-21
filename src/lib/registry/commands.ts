@@ -184,7 +184,7 @@ export async function setAlwaysRecommend(
     const loaded = await loadLocalRegistry(root);
     const available = new Set([
       ...loaded.manifest.skills.map((skill) => skill.id),
-      ...loaded.map.externalSkills.map((skill) => skill.id),
+      ...(loaded.map.externalSkills ?? []).map((skill) => skill.id),
     ]);
     const requested = [...new Set(skills)];
     const unknown = requested.filter((id) => !available.has(id));
