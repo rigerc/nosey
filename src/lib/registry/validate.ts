@@ -299,7 +299,7 @@ export function parseMap(raw: unknown): RegistryMap {
     frontendPackages: optionalStrings(value['frontendPackages'], 'frontendPackages'),
     webFrontendExtensions: optionalStrings(value['webFrontendExtensions'], 'webFrontendExtensions'),
   };
-  unique(map.externalSkills.map((item) => item.id), 'external skill IDs');
+  unique((map.externalSkills ?? []).map((item) => item.id), 'external skill IDs');
   unique(
     map.technologies.map((item) => item.id),
     'technology IDs',
