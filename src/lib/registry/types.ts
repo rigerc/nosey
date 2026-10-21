@@ -35,7 +35,10 @@ export type LoadedRegistry = {
   source: string;
 };
 
+export type SkillInstallSource = {source: string; name: string};
+
 export type MergedRegistry = {
+  skillInstallSources?: Map<string, SkillInstallSource>;
   alwaysRecommend: Array<{registryId: string; skills: string[]}>;
   technologies: Technology[];
   combinations: ComboSkill[];

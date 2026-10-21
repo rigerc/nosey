@@ -84,6 +84,84 @@ describe('compact Scan setting', () => {
     expect(onConfirm).toHaveBeenCalledExactlyOnceWith(['demo/one', 'demo/two']);
   });
 
+  it('marks installed skills and prints JSON commands only for missing agents', async () => {
+    const {options} = setup();
+    const onConfirm = vi.fn();
+    const installationReport: Report = {
+      ...report,
+      inspectedAgents: ['codex', 'claude-code'],
+      skills: [
+        {id: 'acme/skills/alpha',
+          sources: [{type: 'technology', id: 'react', name: 'React'}],
+          installation: {installedAgents: ['codex'], unverifiedAgents: []}},
+        {id: 'acme/skills/beta',
+          sources: [{type: 'technology', id: 'react', name: 'React'}]},
+      ],
+    };
+    const app = await mount(<App options={{
+      ...options, report: installationReport, onConfirm,
+      skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
+    }} />);
+    expect(app.lastFrame()).toContain('Partial 1/2');
+    await press(app, ' ');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Print installation commands and exit?');
+    expect(app.lastFrame()).toContain('npx skills add acme/skills');
+    expect(app.lastFrame()).toContain('--skill alpha');
+    expect(app.lastFrame()).toContain('--agent claude-code');
+    expect(app.lastFrame()).not.toContain('--agent codex');
+    expect(app.lastFrame()).toContain('--yes --json');
+    await press(app, '\r'); // No by default.
+    expect(onConfirm).not.toHaveBeenCalled();
+    await press(app, '\r');
+    await press(app, 'y');
+    await press(app, '\r');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm.mock.calls[0]?.[0]).toEqual(['acme/skills/alpha']);
+    expect(onConfirm.mock.calls[0]?.[1]).toEqual([
+      expect.stringContaining('--agent claude-code --yes --json'),
+    ]);
+  });
+
+  it('blocks command confirmation without configured agents and Escape returns to browse', async () => {
+    const {options} = setup();
+    const onConfirm = vi.fn();
+    const app = await mount(<App options={{
+      ...options, onConfirm,
+      report: {...report, skills: [
+        {id: 'acme/skills/alpha', sources: [{type: 'technology', id: 'react', name: 'React'}]},
+      ]},
+      skillsCli: {enabled: true, defaultAgents: []},
+    }} />);
+    await press(app, ' ');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Choose default agents in Settings');
+    expect(app.lastFrame()).not.toContain('Print installation commands and exit?');
+    await press(app, '\u001b');
+    expect(app.lastFrame()).toContain('Suggested skills');
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('omits install commands for skills already installed for all configured agents', async () => {
+    const {options} = setup();
+    const onConfirm = vi.fn();
+    const app = await mount(<App options={{
+      ...options, onConfirm,
+      report: {...report, skills: [
+        {id: 'acme/skills/alpha', sources: [{type: 'technology', id: 'react', name: 'React'}],
+          installation: {installedAgents: ['claude-code'], unverifiedAgents: []}},
+      ]},
+      skillsCli: {enabled: true, defaultAgents: ['claude-code']},
+    }} />);
+    expect(app.lastFrame()).toContain('[Installed]');
+    await press(app, ' ');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('No installation commands are needed');
+    await press(app, 'y');
+    await press(app, '\r');
+    expect(onConfirm).toHaveBeenCalledWith(['acme/skills/alpha'], []);
+  });
+
   it('preserves the full application shell when disabled or started on another screen', async () => {
     const {options} = setup();
     const fullScan = await mount(<App options={{...options, compactMode: false}} />);

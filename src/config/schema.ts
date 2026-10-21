@@ -3,10 +3,15 @@ import pkg from '../../package.json';
 import {themeNames} from '../theme/tokens';
 import {defaultTheme} from '../theme/resolve';
 import {defineConfig} from './definition';
+import {SKILLS_CLI_AGENTS, validAgents} from '../features/skills/install';
 
 /** Loose parsing retains application-specific extension keys during edits. */
 export const configSchema = z.looseObject({
   version: z.number().int().positive().optional(),
+  skillsCli: z.object({
+    enabled: z.boolean().optional(),
+    defaultAgents: z.array(z.string()).refine(validAgents, 'Unsupported or duplicate agent').optional(),
+  }).optional(),
   theme: z.enum(['auto', ...themeNames]).optional(),
   ascii: z.boolean().optional(),
   compactMode: z.boolean().optional(),
@@ -30,6 +35,23 @@ export const appConfig = defineConfig({
         {value: 'auto', label: 'Auto (terminal default)'},
         ...themeNames.map((value) => ({value, label: value})),
       ],
+    },
+    {
+      path: 'skillsCli.enabled',
+      label: 'Generate Skills CLI commands',
+      section: 'Skills CLI',
+      kind: 'toggle',
+      description: 'Only print project-local install commands after confirmation; never run them.',
+      defaultValue: false,
+    },
+    {
+      path: 'skillsCli.defaultAgents',
+      label: 'Default target agents',
+      section: 'Skills CLI',
+      kind: 'multi',
+      description: 'Commands target these agents in the scanned project only.',
+      defaultValue: [],
+      options: SKILLS_CLI_AGENTS,
     },
     {
       path: 'ascii',

@@ -71,6 +71,46 @@ afterEach(() => {
 });
 
 describe('Nosey scan interaction', () => {
+  it('shows installed status and prints only missing project agent commands', async () => {
+    const confirmed = vi.fn();
+    const app = await mount(<App options={{
+      ...options,
+      onConfirm: confirmed,
+      skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
+      report: {...report, skills: report.skills.map((skill) => skill.id.endsWith('/alpha') ? ({
+        ...skill, installation: {installedAgents: ['codex'], unverifiedAgents: []},
+      }) : skill)},
+    }} />);
+    expect(app.lastFrame()).toContain('Partial 1/2');
+    await press(app, ' '); // alpha
+    await press(app, '\r'); // review
+    expect(app.lastFrame()).toContain('npx skills add acme/skills');
+    expect(app.lastFrame()).toContain('--agent claude-code');
+    expect(app.lastFrame()).not.toContain('--agent codex');
+    expect(app.lastFrame()).toContain('--yes --json');
+    await press(app, 'y');
+    await press(app, '\r');
+    expect(confirmed).toHaveBeenCalledTimes(1);
+    expect(confirmed.mock.calls[0]?.[0]).toEqual(['acme/skills/alpha']);
+    expect(confirmed.mock.calls[0]?.[1]).toEqual([
+      expect.stringContaining('--agent claude-code --yes --json'),
+    ]);
+  });
+
+  it('does not allow printing commands before default agents are configured', async () => {
+    const confirmed = vi.fn();
+    const app = await mount(<App options={{
+      ...options, onConfirm: confirmed,
+      skillsCli: {enabled: true, defaultAgents: []},
+    }} />);
+    await press(app, ' ');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Choose default agents in Settings');
+    expect(confirmed).not.toHaveBeenCalled();
+    await press(app, '\u001b');
+    expect(app.lastFrame()).toContain('Suggested skills');
+  });
+
   it('routes rapid filter input to the newly opened editor', async () => {
     const app = await mount(<App options={{...options, static: true, theme: 'nosey'}} />);
     app.stdin.write('/');

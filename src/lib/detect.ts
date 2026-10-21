@@ -2,7 +2,7 @@ import path from 'node:path';
 import type {ConfigFileContentBlock, DetectConfig, Technology} from '../data/skills-map.js';
 import {AGENT_FOLDER_MAP} from '../data/skills-map.js';
 import {builtInRegistry} from './registry/merge.js';
-import type {MergedRegistry, RegistryWarning} from './registry/types.js';
+import type {MergedRegistry, RegistryWarning, SkillInstallSource} from './registry/types.js';
 import {matchesPath, scanProject} from './scanner.js';
 import type {ProjectTree, ScanOptions, SkippedFile} from './scanner.js';
 import {manifestGroups, allPackages, findPackage, indexManifests} from './manifests.js';
@@ -39,6 +39,8 @@ export type SkillSource = {
 export type SuggestedSkill = {
   id: string;
   sources: SkillSource[];
+  installSource?: SkillInstallSource;
+  installation?: {installedAgents: string[]; unverifiedAgents: string[]};
 };
 
 export type DetectedAgentFolder = {
@@ -55,6 +57,7 @@ export type Report = {
   combinations: DetectedCombination[];
   frontendDetected: boolean;
   agents: DetectedAgentFolder[];
+  inspectedAgents?: string[];
   skills: SuggestedSkill[];
   registryWarnings?: RegistryWarning[];
   summary: {
