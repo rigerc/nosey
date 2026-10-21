@@ -424,7 +424,8 @@ export function HomeScreen() {
               message={installPlan ? 'Print installation commands and exit?' : 'Confirm these skill IDs and exit?'}
               onConfirm={(yes) => {
                 if (yes) {
-                  confirm(chosen, installPlan?.commands);
+                  if (installPlan) confirm(chosen, installPlan.commands);
+                  else confirm(chosen);
                   exit();
                 } else setMode('browse');
               }}
