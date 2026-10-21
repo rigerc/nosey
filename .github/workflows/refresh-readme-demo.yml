@@ -1,0 +1,43 @@
+name: Refresh README demo recording (temporary)
+
+on:
+  push:
+    branches:
+      - docs/slower-scan-registry-recording
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-readme-demo
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - uses: charmbracelet/vhs-action@v2
+        with:
+          version: v0.12.1
+          install-fonts: true
+      - name: Record the two-screen demo
+        run: npm run record -- --theme nosey --columns 100 --rows 60 --output-dir assets/recordings --tape scripts/tapes/workflow.tape
+      - name: Commit regenerated media
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/recordings/home-nosey-100-video.gif assets/recordings/home-nosey-100-video.mp4 assets/recordings/home-nosey-100-video.png
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: regenerate slow two-screen terminal demo [skip ci]"
+            git push origin HEAD:docs/slower-scan-registry-recording
+          fi
