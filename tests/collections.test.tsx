@@ -40,6 +40,34 @@ describe('MultiSelect', () => {
     expect(submit).toHaveBeenLastCalledWith(['alpha', 'epsilon']);
   });
 
+  it('preserves selected skills hidden by a filter, ordered by allItems', async () => {
+    const change = vi.fn();
+    const submit = vi.fn();
+    const app = await mount(
+      <MultiSelect
+        items={items.filter((item) => item.value === 'alpha')}
+        allItems={items}
+        value={['gamma']}
+        onChange={change}
+        onSubmit={submit}
+      />,
+    );
+    await press(app, ' ');
+    expect(change).toHaveBeenLastCalledWith(['alpha', 'gamma']);
+    app.rerender(
+      <MultiSelect
+        items={items.filter((item) => item.value === 'alpha')}
+        allItems={items}
+        value={['alpha', 'gamma']}
+        onChange={change}
+        onSubmit={submit}
+      />,
+    );
+    await settle();
+    await press(app, '\r');
+    expect(submit).toHaveBeenCalledWith(['alpha', 'gamma']);
+  });
+
   it('leaves controlled selection to the parent and ignores keys when inactive', async () => {
     const change = vi.fn();
     const app = await mount(<MultiSelect items={items} value={[]} onChange={change} />);
