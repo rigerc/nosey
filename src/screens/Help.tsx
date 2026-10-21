@@ -30,12 +30,12 @@ export function HelpScreen() {
           <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
         </Panel>
         <Panel title="Registries" tone="muted">
-          <Text>a Add / i Initialize / g New scope / r Refresh / Enter Details</Text>
+          <Text>a Add globally / i Initialize / r Refresh / Enter Details</Text>
           <Text>In details: v Validate local / u Build metadata / d Remove reference / b Back</Text>
           <Text>
             a in local details marks Always recommend skills; Space toggles, / filters, s reviews.
           </Text>
-          <Text>Writes require confirmation and show their project/global config target.</Text>
+          <Text>Additions go to global config. Legacy project references can still be removed.</Text>
           <Text>
             Removing references never deletes registry files. Ctrl+X cancels initialization.
           </Text>
