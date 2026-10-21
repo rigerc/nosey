@@ -73,6 +73,10 @@ confirmation. The initialization wizard supports optional Git and GitHub creatio
 Ctrl+X cancels without creating anything before final confirmation. Settings uses
 drafts: `s` saves, `d` discards, and `w` opens guided setup. Theme cycling does not save.
 
+Initialization requires a new destination directory; existing directories, including
+empty ones, are rejected without changing their contents. To use an existing
+registry, add it from Registries instead.
+
 ### Screenshots
 
 The main tabs in the default Nosey theme. Scan uses a demo React, TypeScript,

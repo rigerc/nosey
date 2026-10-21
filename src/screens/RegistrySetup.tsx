@@ -19,7 +19,11 @@ import {useRegistryInitOptions} from '../features/registry/context';
 import {useScan} from '../features/skills/context';
 import {useScreenHints} from '../features/ui/context';
 import {useInputCapture, useKeymap, useRouter} from '../hooks';
-import {runRegistryInit, validateRegistryId} from '../lib/registry/init';
+import {
+  runRegistryInit,
+  validateRegistryDestination,
+  validateRegistryId,
+} from '../lib/registry/init';
 
 export function RegistrySetupScreen() {
   const original = useRegistryInitOptions();
@@ -88,14 +92,23 @@ export function RegistrySetupScreen() {
                   initialValue={directory}
                   isActive={!busy}
                   onCancel={step.cancel}
-                  onSubmit={(value) => {
+                  onSubmit={async (value) => {
                     if (!value) {
                       setError('Directory is required.');
                       return;
                     }
-                    setDirectory(resolve(config.root, value));
-                    setError('');
-                    void step.goNext();
+                    setBusy(true);
+                    try {
+                      const destination = resolve(config.root, value);
+                      await validateRegistryDestination(destination);
+                      setDirectory(destination);
+                      setError('');
+                      await step.goNext();
+                    } catch (reason) {
+                      failed(reason);
+                    } finally {
+                      setBusy(false);
+                    }
                   }}
                 />
               )}

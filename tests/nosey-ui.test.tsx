@@ -254,6 +254,24 @@ describe('Nosey scan interaction', () => {
 });
 
 describe('Registry UI writes', () => {
+  it('keeps an existing destination editable and explains how to recover', async () => {
+    const app = await mount(
+      <App options={{...options, screen: 'registry-setup', registryInit: {directory: root}}} />,
+    );
+    await press(app, '\r');
+    await settle();
+    expect(app.lastFrame()).toContain('Destination already exists');
+    expect(app.lastFrame()).toContain('Choose a new directory');
+    expect(app.lastFrame()).toContain('Directory:');
+    expect(app.lastFrame()).not.toContain('Owner/repository');
+    await press(app, '\u0015'); // clear and choose a fresh relative destination
+    await press(app, 'fresh-registry');
+    await press(app, '\r');
+    await settle();
+    expect(app.lastFrame()).toContain('Owner/repository');
+    expect(app.lastFrame()).not.toContain('Destination already exists');
+    expect(existsSync(join(root, 'fresh-registry'))).toBe(false);
+  });
   it('uses the scanned root, validates before add and removes only after explicit confirmation', async () => {
     const registry = join(root, 'team-skills');
     await scaffoldRegistry(registry, 'acme/team');
