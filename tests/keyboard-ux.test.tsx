@@ -50,7 +50,7 @@ it('retains rapid typed characters when Enter arrives in the same render batch',
   app.stdin.write('t');
   app.stdin.write('\r');
   await settle();
-  expect(submit).toHaveBeenCalledExactlyOnceWith('q1t');
+  await vi.waitFor(() => expect(submit).toHaveBeenCalledExactlyOnceWith('q1t'));
 });
 
 it('selects against the latest search text when Enter arrives before a repaint', async () => {
