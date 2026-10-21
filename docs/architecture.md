@@ -14,6 +14,8 @@ headless commands, without adding a separate UI framework dependency.
   implement bounded scanning, manifest parsing, detection, reporting, and caching.
 - `src/lib/registry/` implements local/Git registry loading, validation, merging,
   configuration discovery, migration compatibility, initialization, and commands.
+  Version 2 maps may declare external GitHub skills independently of the local manifest;
+  references are mapped and deduplicated without fetching external skill files.
 - `src/data/skills-map.ts` contains built-in technology and skill mappings.
 - `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
 - `src/features/skills/install.ts` inspects project-local installations (lock provenance
@@ -52,8 +54,8 @@ once, after Review. Settings drafts survive tab changes; opening the separate
 wizard requires discarding an unsaved draft explicitly.
 
 App appearance uses the existing `nosey` configuration; registry discovery retains
-Nosey's and legacy SkillSense's paths. Interactive project registry writes target
-the scanned project root, with the exact configuration path shown before confirmation.
+Nosey's and legacy SkillSense's paths. New registry references are stored globally;
+legacy project-scoped references remain readable and removable.
 
 Node.js 24+ matches the imported application's runtime requirement. `npm test`
 runs both the runtime/UI tests and the catalog and mapping tool tests. The package

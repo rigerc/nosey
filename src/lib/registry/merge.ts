@@ -6,6 +6,7 @@ import {
   WEB_FRONTEND_EXTENSIONS,
 } from '../../data/skills-map.js';
 import type {LoadedRegistry, MergedRegistry, RegistryWarning} from './types.js';
+import {canonicalExternalSource} from './validate.js';
 
 const addUnique = (target: string[], additions: string[]) => {
   for (const item of additions) if (!target.includes(item)) target.push(item);
@@ -23,6 +24,7 @@ export function builtInRegistry(): MergedRegistry {
   return {
     alwaysRecommend: [],
     skillInstallSources: new Map(),
+    externalSkillIds: new Set(),
     technologies,
     combinations,
     frontendBonusSkills: [...FRONTEND_BONUS_SKILLS],
@@ -46,6 +48,21 @@ function validateAddition(current: MergedRegistry, incoming: LoadedRegistry): vo
   for (const skill of manifest.skills) {
     if (current.skillIds.has(skill.id)) throw new Error('Duplicate skill ID: ' + skill.id);
   }
+  const localIds = new Set(manifest.skills.map((skill) => skill.id));
+  for (const skill of (map.externalSkills ?? [])) {
+    if (localIds.has(skill.id)) throw new Error('External skill duplicates local skill ID: ' + skill.id);
+    if (!current.skillIds.has(skill.id)) continue;
+    const previous = current.skillInstallSources?.get(skill.id);
+    if (!previous && !current.externalSkillIds.has(skill.id)) {
+      // Built-in suggestions can be declared explicitly by registries.
+      continue;
+    }
+    if (!current.externalSkillIds.has(skill.id) || !previous ||
+        canonicalExternalSource(previous.source) !== canonicalExternalSource(skill.source) ||
+        previous.name !== skill.skill) {
+      throw new Error('Conflicting external skill ID: ' + skill.id);
+    }
+  }
 
   const technologyIds = new Set(current.technologies.map((item) => item.id));
   for (const tech of map.technologies) {
@@ -60,7 +77,10 @@ function validateAddition(current: MergedRegistry, incoming: LoadedRegistry): vo
     combinationIds.add(combo.id);
   }
 
-  const registeredSkills = new Set(manifest.skills.map((item) => item.id));
+  const registeredSkills = new Set([
+    ...manifest.skills.map((item) => item.id),
+    ...(map.externalSkills ?? []).map((item) => item.id),
+  ]);
   const mapped = [
     ...map.technologies.flatMap((item) => item.skills),
     ...map.technologySkills.flatMap((item) => item.skills),
@@ -69,7 +89,7 @@ function validateAddition(current: MergedRegistry, incoming: LoadedRegistry): vo
     ...map.frontendBonusSkills,
   ];
   for (const id of mapped) {
-    if (!registeredSkills.has(id)) throw new Error('Skill not in registry manifest: ' + id);
+    if (!registeredSkills.has(id)) throw new Error('Skill not declared in registry: ' + id);
   }
 
   for (const item of map.technologySkills) {
@@ -130,6 +150,13 @@ export function mergeRegistries(registries: LoadedRegistry[]): {
     addUnique(registry.frontendBonusSkills, incoming.map.frontendBonusSkills);
     for (const item of incoming.map.frontendPackages) registry.frontendPackages.add(item);
     for (const item of incoming.map.webFrontendExtensions) registry.webFrontendExtensions.add(item);
+    for (const item of (incoming.map.externalSkills ?? [])) {
+      if (!registry.externalSkillIds.has(item.id)) {
+        registry.skillInstallSources?.set(item.id, {source: item.source, name: item.skill});
+      }
+      registry.skillIds.add(item.id);
+      registry.externalSkillIds.add(item.id);
+    }
     for (const item of incoming.manifest.skills) {
       registry.skillIds.add(item.id);
       registry.skillInstallSources?.set(item.id, {
@@ -137,12 +164,15 @@ export function mergeRegistries(registries: LoadedRegistry[]): {
         name: item.path.split('/').at(-2) ?? item.name,
       });
     }
-    const available = new Set(incoming.manifest.skills.map((skill) => skill.id));
+    const available = new Set([
+      ...incoming.manifest.skills.map((skill) => skill.id),
+      ...(incoming.map.externalSkills ?? []).map((skill) => skill.id),
+    ]);
     const alwaysRecommend = (incoming.map.alwaysRecommend ?? []).filter((id) => {
       if (available.has(id)) return true;
       warnings.push({
         source: incoming.source,
-        message: 'Always recommended skill not in registry manifest: ' + id,
+        message: 'Always recommended skill not declared in registry: ' + id,
       });
       return false;
     });

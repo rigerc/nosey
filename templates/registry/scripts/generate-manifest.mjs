@@ -62,7 +62,11 @@ function metadata(content, filename) {
 async function enumerate(relative = 'skills') {
   const folder = path.join(root, relative);
   const files = [];
-  const entries = await readdir(folder, {withFileTypes: true});
+  // An external-only registry may have no local skills directory.
+  const entries = await readdir(folder, {withFileTypes: true}).catch((error) => {
+    if (relative === 'skills' && error.code === 'ENOENT') return [];
+    throw error;
+  });
   // Traverse one subtree at a time to keep ordering and filesystem usage bounded.
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isSymbolicLink()) continue;
