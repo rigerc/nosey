@@ -1,6 +1,7 @@
 import process from 'node:process';
 import {
 	buildRegistry,
+	commandSource,
 	editRegistry,
 	listRegistries,
 	registryJson,
@@ -9,9 +10,10 @@ import {
 	type RegistryEntry,
 } from './commands.js';
 import type {LoadedRegistry} from './types.js';
+import {loadGitRegistry} from './git.js';
 
 const usage =
-	'Expected: nosey registry <init|list|add|remove|show|validate|build>';
+	'Expected: nosey registry <init|list|add|remove|show|validate|build|refresh>';
 const allowedOptions: Record<string, string[]> = {
 	list: ['json', 'global'],
 	add: ['global', 'ref'],
@@ -19,6 +21,7 @@ const allowedOptions: Record<string, string[]> = {
 	show: ['json', 'ref'],
 	validate: ['json'],
 	build: [],
+	refresh: ['json', 'global', 'ref'],
 };
 
 type CommandFlags = {json: boolean; global?: boolean; project?: boolean; ref?: string};
@@ -95,6 +98,63 @@ async function runValidate(directory: string, json: boolean): Promise<void> {
 	}
 }
 
+/** Force a remote fetch, even while the 24-hour cache is fresh. */
+async function runRefresh(source: string | undefined, flags: CommandFlags): Promise<void> {
+	if (!source && flags.ref !== undefined)
+		throw new Error('--ref requires a Git source for registry refresh');
+	const specs = source
+		? [commandSource(source, flags.ref)]
+		: (await listRegistries(process.cwd(), flags.global))
+				.map(entry => entry.spec)
+				.filter(spec => spec.type === 'git');
+	if (specs.some(spec => spec.type !== 'git'))
+		throw new Error('Registry refresh requires a Git registry URL');
+
+	const results: Array<{
+		source: string;
+		status: 'initialized' | 'updated' | 'unchanged' | 'cached' | 'error';
+		commit?: string;
+		message?: string;
+	}> = [];
+	for (const spec of specs) {
+		if (spec.type !== 'git') continue;
+		const name = spec.url + '#' + (spec.ref ?? 'HEAD');
+		try {
+			// eslint-disable-next-line no-await-in-loop
+			const refreshed = await loadGitRegistry(spec, {forceRefresh: true});
+			const warning = refreshed.warnings.map(item => item.message).join('; ');
+			results.push({
+				source: name,
+				status: warning
+					? 'cached'
+					: refreshed.updated
+						? 'updated'
+						: refreshed.hadCache ? 'unchanged' : 'initialized',
+				commit: refreshed.commit,
+				...(warning ? {message: warning} : {}),
+			});
+		} catch (error: unknown) {
+			results.push({
+				source: name,
+				status: 'error',
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+	if (flags.json) {
+		process.stdout.write(registryJson({registries: results}));
+	} else {
+		if (!results.length) process.stdout.write('No Git registries configured.\\n');
+		for (const item of results) {
+			process.stdout.write(item.source + ': ' + item.status +
+				(item.commit ? ' (' + item.commit.slice(0, 12) + ')' : '') + '\\n');
+			if (item.message) process.stderr.write('nosey: ' + item.message + '\\n');
+		}
+	}
+	if (results.some(item => item.status === 'cached' || item.status === 'error'))
+		process.exitCode = 1;
+}
+
 export async function runRegistryCommand(
 	args: string[],
 	flags: CommandFlags,
@@ -126,6 +186,11 @@ export async function runRegistryCommand(
 					result.configPath
 				}\n`,
 			);
+			break;
+		}
+
+		case 'refresh': {
+			await runRefresh(source, flags);
 			break;
 		}
 
