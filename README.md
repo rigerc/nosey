@@ -174,6 +174,19 @@ Headless initialization requires a destination and `--registry-id`; in a TTY,
 initializes Git by default unless `--no-git` is passed. `--github` explicitly creates and pushes a
 remote with `gh`, with optional `--visibility private|public`.
 
+In Registries, open a local registry and press `a` for **Always recommend**.
+Space marks individual skills, `/` filters, and `s` (or Enter) opens review.
+Confirm to save to that registry's `skills-map.json`; Escape cancels. Rescan to
+apply changes. Marked skills are recommended wherever the registry is used,
+even without matching technologies. Final skill selection stays optional.
+
+Registry authors can also set `alwaysRecommend` to an array of full skill IDs in
+`skills-map.json`. The manifest generator preserves this file. Publish the map
+alongside the manifest so Git registry consumers receive the same recommendations.
+Git references show the marks; edit a local checkout to change them. Missing IDs
+produce warnings while available skills remain usable; `registry validate` reports
+them as errors. Clearing every mark stores an empty `alwaysRecommend` array.
+
 Registry configuration retains Nosey's `.nosey.json` project file and global
 `nosey/registries.json` under the platform config directory. Existing SkillSense
 registry settings and cached snapshots remain readable; edits write Nosey files.

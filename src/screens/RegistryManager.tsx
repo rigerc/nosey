@@ -4,6 +4,7 @@ import {Text} from 'ink';
 import {
   Confirm,
   Muted,
+  MultiSelect,
   PaginatedList,
   Panel,
   ScreenLayout,
@@ -24,6 +25,7 @@ import {
   commandSource,
   editRegistry,
   listRegistries,
+  setAlwaysRecommend,
   validateRegistry,
   type RegistryEntry,
   type RegistryScope,
@@ -40,7 +42,10 @@ type Mode =
   | 'confirm-add'
   | 'detail'
   | 'confirm-remove'
-  | 'confirm-build';
+  | 'confirm-build'
+  | 'recommend'
+  | 'recommend-filter'
+  | 'confirm-recommend';
 const sourceOf = (entry: RegistryEntry) =>
   entry.spec.type === 'local' ? entry.spec.path : entry.spec.url;
 const messageOf = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
@@ -68,6 +73,24 @@ export function RegistryManagerScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [recommended, setRecommended] = useState<string[]>([]);
+  const [skillFilter, setSkillFilter] = useState('');
+  const skillItems = (detail?.manifest.skills ?? []).map((skill) => ({
+    value: skill.id,
+    label: skill.id,
+    hint: skill.name,
+  }));
+  const savedRecommendations = detail?.map.alwaysRecommend ?? [];
+  const knownRecommendations = savedRecommendations.filter((id) =>
+    skillItems.some((skill) => skill.value === id),
+  );
+  const staleRecommendations = savedRecommendations.filter(
+    (id) => !skillItems.some((skill) => skill.value === id),
+  );
+  const filterText = skillFilter.toLowerCase();
+  const visibleSkills = skillItems.filter((skill) =>
+    (skill.label + ' ' + skill.hint).toLowerCase().includes(filterText),
+  );
   const lock = useRef(false);
   const target = scope === 'global' ? globalConfigPath() : projectConfigPath(root);
   const reload = useCallback(async () => {
@@ -108,6 +131,8 @@ export function RegistryManagerScreen() {
   const inspect = (entry: RegistryEntry) => {
     setSelected(entry);
     setDetail(undefined);
+    setRecommended([]);
+    setSkillFilter('');
     setMode('detail');
     void execute(async () => {
       const result = await readRegistry(
@@ -151,6 +176,15 @@ export function RegistryManagerScreen() {
   );
   useKeymap(
     [
+      {
+        key: 'a',
+        run: () => {
+          if (!detail || selected?.spec.type !== 'local') return;
+          setRecommended(knownRecommendations);
+          setSkillFilter('');
+          setMode('recommend');
+        },
+      },
       {key: 'b', run: () => setMode('list')},
       {key: 'esc', run: () => setMode('list')},
       {
@@ -181,6 +215,15 @@ export function RegistryManagerScreen() {
     ],
     {scope: 'screen', isActive: mode === 'detail' && !busy},
   );
+  useKeymap(
+    [
+      {key: 'esc', run: () => setMode('detail')},
+      {key: '/', run: () => setMode('recommend-filter')},
+      {key: 'c', run: () => setSkillFilter('')},
+      {key: 's', run: () => setMode('confirm-recommend')},
+    ],
+    {scope: 'screen', isActive: mode === 'recommend' && !busy},
+  );
   useScreenHints(
     'registry',
     busy
@@ -197,6 +240,9 @@ export function RegistryManagerScreen() {
           ? [
               {key: 'b', label: 'back'},
               {key: 'd', label: 'remove reference'},
+              ...(detail && selected?.spec.type === 'local'
+                ? [{key: 'a', label: 'always recommend'}]
+                : []),
               ...(selected?.spec.type === 'local'
                 ? [
                     {key: 'v', label: 'validate'},
@@ -205,17 +251,25 @@ export function RegistryManagerScreen() {
                 : []),
               {key: 'pageup/down', label: 'page'},
             ]
-          : mode.startsWith('confirm')
+          : mode === 'recommend' || mode === 'recommend-filter'
             ? [
-                {key: 'y/n', label: 'choose'},
-                {key: 'enter', label: 'confirm'},
+                {key: 'space', label: 'toggle'},
+                {key: '/', label: 'filter'},
+                {key: 'c', label: 'clear filter'},
+                {key: 's', label: 'review'},
                 {key: 'esc', label: 'cancel'},
               ]
-            : [
-                {key: 'enter', label: 'continue'},
-                {key: 'esc', label: 'cancel'},
-                {key: 'ctrl+u', label: 'clear'},
-              ],
+            : mode.startsWith('confirm')
+              ? [
+                  {key: 'y/n', label: 'choose'},
+                  {key: 'enter', label: 'confirm'},
+                  {key: 'esc', label: 'cancel'},
+                ]
+              : [
+                  {key: 'enter', label: 'continue'},
+                  {key: 'esc', label: 'cancel'},
+                  {key: 'ctrl+u', label: 'clear'},
+                ],
   );
 
   return (
@@ -342,16 +396,119 @@ export function RegistryManagerScreen() {
                 {selected.spec.type === 'git' && (
                   <Text>Git revision: {selected.spec.ref ?? 'HEAD'} (cached Git objects)</Text>
                 )}
+                {selected.spec.type === 'git' && (
+                  <Muted>
+                    To change skill recommendations, edit skills-map.json in a local checkout and
+                    publish it.
+                  </Muted>
+                )}
                 {detail && (
                   <>
-                    <Text>{detail.manifest.skills.length} skills</Text>
+                    <Text>
+                      {detail.manifest.skills.length} skills · {knownRecommendations.length} always
+                      recommended
+                    </Text>
                     <PaginatedList
                       items={detail.manifest.skills}
                       getKey={(skill) => skill.id}
-                      renderItem={(skill) => <Text>{skill.id}</Text>}
+                      renderItem={(skill) => (
+                        <Text>
+                          {skill.id}
+                          {knownRecommendations.includes(skill.id) ? ' [always recommend]' : ''}
+                        </Text>
+                      )}
                     />
+                    {staleRecommendations.length > 0 && (
+                      <Muted>
+                        Not in this registry's manifest: {staleRecommendations.join(', ')}. Saving
+                        removes these IDs.
+                      </Muted>
+                    )}
                   </>
                 )}
+              </Stack>
+            )}
+            {(mode === 'recommend' || mode === 'recommend-filter') && detail && (
+              <Stack>
+                <Text bold>Always recommend</Text>
+                <Muted>
+                  Mark skills in this registry to recommend on every scan, wherever the registry is
+                  used.
+                </Muted>
+                <Text>Filter: {skillFilter || '(none)'}</Text>
+                {mode === 'recommend-filter' && (
+                  <TextField
+                    label="Filter skills"
+                    initialValue={skillFilter}
+                    onSubmit={(value) => {
+                      setSkillFilter(value);
+                      setMode('recommend');
+                    }}
+                    onCancel={() => setMode('recommend')}
+                  />
+                )}
+                <MultiSelect
+                  items={visibleSkills}
+                  allItems={skillItems}
+                  value={recommended}
+                  onChange={setRecommended}
+                  isActive={mode === 'recommend'}
+                  submitWhenEmpty
+                  onSubmit={() => setMode('confirm-recommend')}
+                  emptyMessage="No skills match this filter."
+                />
+                {staleRecommendations.length > 0 && (
+                  <Muted>Unavailable saved IDs will be removed when you save.</Muted>
+                )}
+              </Stack>
+            )}
+            {mode === 'confirm-recommend' && selected?.spec.type === 'local' && (
+              <Stack>
+                <Text bold>Review always recommended skills</Text>
+                <Text>Registry: {detail?.manifest.registryId}</Text>
+                <Text>Applies wherever this registry is used.</Text>
+                <Text>Write target: {resolve(selected.spec.path, 'skills-map.json')}</Text>
+                <PaginatedList
+                  allowWhenCaptured
+                  items={skillItems.filter((item) => recommended.includes(item.value))}
+                  getKey={(item) => item.value}
+                  renderItem={(item) => <Text>{item.value}</Text>}
+                />
+                <Text>
+                  {recommended.length} skill{recommended.length === 1 ? '' : 's'} will always be
+                  recommended.
+                </Text>
+                {staleRecommendations.length > 0 && (
+                  <Muted>{staleRecommendations.join(', ')} will be removed.</Muted>
+                )}
+                <Confirm
+                  message="Save always recommended skills?"
+                  onCancel={() => setMode('recommend')}
+                  onConfirm={(yes) => {
+                    if (!yes) {
+                      setMode('recommend');
+                      return;
+                    }
+                    void execute(async () => {
+                      if (selected.spec.type !== 'local') return;
+                      // Manifest order keeps the shared map stable across sessions.
+                      await setAlwaysRecommend(
+                        selected.spec.path,
+                        skillItems
+                          .filter((item) => recommended.includes(item.value))
+                          .map((item) => item.value),
+                      );
+                      setDetail(await loadLocalRegistry(selected.spec.path));
+                      setSkillFilter('');
+                      await reload();
+                      setMode('detail');
+                      toast.push(
+                        'Recommendations saved to skills-map.json. Rescan to update suggestions.',
+                        'success',
+                      );
+                    });
+                  }}
+                />
               </Stack>
             )}
             {mode === 'confirm-remove' && selected && (

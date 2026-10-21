@@ -32,6 +32,9 @@ export function HelpScreen() {
         <Panel title="Registries" tone="muted">
           <Text>a Add / i Initialize / g New scope / r Refresh / Enter Details</Text>
           <Text>In details: v Validate local / u Build metadata / d Remove reference / b Back</Text>
+          <Text>
+            a in local details marks Always recommend skills; Space toggles, / filters, s reviews.
+          </Text>
           <Text>Writes require confirmation and show their project/global config target.</Text>
           <Text>
             Removing references never deletes registry files. Ctrl+X cancels initialization.

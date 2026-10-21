@@ -8,6 +8,7 @@ import {App, type AppOptions} from '../src/app';
 import {defaultScan} from '../src/features/skills/context';
 import type {Report} from '../src/lib/detect';
 import {scaffoldRegistry} from '../src/lib/registry/init';
+import * as registryInit from '../src/lib/registry/init';
 import {themeNames} from '../src/theme/tokens';
 import {mount, press, settle} from './helpers/terminal';
 
@@ -254,6 +255,57 @@ describe('Nosey scan interaction', () => {
 });
 
 describe('Registry UI writes', () => {
+  it('shows publication failures without truncation and returns without recreating local files', async () => {
+    const destination = join(root, 'partial-registry');
+    const init = vi.spyOn(registryInit, 'runRegistryInit').mockImplementation(async () => {
+      await scaffoldRegistry(destination, 'acme/partial');
+      throw new registryInit.RegistryInitError(
+        `Local registry created at ${destination}, but the initial Git commit failed.\nInvalid commit message format\nExpected: <type>(<scope>): <subject>`,
+        {
+          directory: destination,
+          registryId: 'acme/partial',
+          gitInitialized: true,
+          githubCreated: false,
+        },
+        new Error('hook rejected'),
+      );
+    });
+    try {
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            screen: 'registry-setup',
+            registryInit: {
+              directory: destination,
+              registryId: 'acme/partial',
+              git: true,
+              github: true,
+            },
+          }}
+        />,
+      );
+      await press(app, '\r'); // destination
+      await press(app, '\r'); // identity
+      await press(app, '\r'); // Git
+      await press(app, '\r'); // GitHub
+      await press(app, '\r'); // private visibility
+      expect(app.lastFrame()).toContain('Create this registry?');
+      await press(app, 'y');
+      await press(app, '\r');
+      await settle();
+      expect(app.lastFrame()).toContain('Registry created locally');
+      expect(app.lastFrame()).toContain('Invalid commit message format');
+      expect(app.lastFrame()).toContain('Expected: <type>(<scope>): <subject>');
+      expect(app.lastFrame()).not.toContain('Create this registry?');
+      expect(existsSync(join(destination, 'skills-manifest.json'))).toBe(true);
+      await press(app, '\r');
+      expect(app.lastFrame()).toContain('Registry references');
+      expect(init).toHaveBeenCalledTimes(1);
+    } finally {
+      init.mockRestore();
+    }
+  });
   it('keeps an existing destination editable and explains how to recover', async () => {
     const app = await mount(
       <App options={{...options, screen: 'registry-setup', registryInit: {directory: root}}} />,
@@ -292,7 +344,8 @@ describe('Registry UI writes', () => {
       path: 'team-skills',
     });
     await press(app, '\r');
-    await settle();
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'));
+    await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
     await press(app, 'd');
     await press(app, '\r'); // default No
     expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries).toHaveLength(1);
@@ -300,8 +353,60 @@ describe('Registry UI writes', () => {
     await press(app, 'y');
     await press(app, '\r');
     await settle();
-    expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries).toEqual([]);
+    await vi.waitFor(() =>
+      expect(JSON.parse(readFileSync(join(root, '.nosey.json'), 'utf8')).registries).toEqual([]),
+    );
     expect(existsSync(join(registry, 'skills-manifest.json'))).toBe(true);
+  });
+  it('filters, reviews, restores and clears always recommended skills without saving cancelled drafts', async () => {
+    const registry = join(root, 'team-skills');
+    await scaffoldRegistry(registry, 'acme/team');
+    const configPath = join(root, '.nosey.json');
+    const mapPath = join(registry, 'skills-map.json');
+    const original = {schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}]};
+    writeFileSync(configPath, JSON.stringify(original));
+    const app = await mount(<App options={{...options, screen: 'registry'}} />);
+    await settle();
+    await press(app, '\r');
+    await settle();
+    await press(app, 'a');
+    expect(app.lastFrame()).toContain('Always recommend');
+    await press(app, ' ');
+    await press(app, '/');
+    await press(app, 'no-match');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('No skills match');
+    await press(app, 's');
+    expect(app.lastFrame()).toContain('acme/team/example-testing');
+    expect(app.lastFrame()).toContain(mapPath);
+    expect(app.lastFrame()).toContain('1 skill will always be recommended');
+    expect(JSON.parse(readFileSync(mapPath, 'utf8')).alwaysRecommend).toEqual([]);
+    await press(app, '\r'); // default No retains the draft
+    expect(app.lastFrame()).toContain('No skills match');
+    await press(app, 's');
+    await press(app, 'y');
+    await press(app, '\r');
+    await settle();
+    const saved = JSON.parse(readFileSync(mapPath, 'utf8'));
+    expect(saved.alwaysRecommend).toEqual(['acme/team/example-testing']);
+    expect(JSON.parse(readFileSync(configPath, 'utf8'))).toEqual(original);
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('1 always'));
+    await press(app, 'a');
+    expect(app.lastFrame()).toContain('[x]');
+    await press(app, ' ');
+    await press(app, '\u001b'); // Cancel draft
+    expect(JSON.parse(readFileSync(mapPath, 'utf8'))).toEqual(saved);
+    await press(app, 'a');
+    expect(app.lastFrame()).toContain('[x]');
+    await press(app, ' ');
+    await press(app, 's');
+    expect(app.lastFrame()).toContain('0 skills will always be recommended');
+    await press(app, 'y');
+    await press(app, '\r');
+    await settle();
+    await vi.waitFor(() =>
+      expect(JSON.parse(readFileSync(mapPath, 'utf8')).alwaysRecommend).toEqual([]),
+    );
   });
   it('initialization writes nothing until the final confirmation and cancels from review', async () => {
     const destination = join(root, 'new-registry');

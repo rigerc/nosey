@@ -46,8 +46,20 @@ IDs use `<registryId>/<relative-directory-under-skills>`. Moving a skill changes
 The manifest lists available skills, but does not automatically recommend them.
 Map skills to built-in technologies with technologySkills, declare new technologies
 with detection rules, declare combinations, extend existing combinations with
-combinationSkills, or add frontendBonusSkills. Referenced skill IDs must appear in
+combinationSkills, add frontendBonusSkills, or list specific skill IDs in
+`alwaysRecommend` to recommend them in every project using this registry. Referenced skill IDs must appear in
 the generated manifest.
+
+For example, in `skills-map.json`:
+
+```json
+"alwaysRecommend": ["example/agent-skills/example-testing"]
+```
+
+You can also mark individual skills through Nosey's Registries tab: open a local
+registry, press `a`, select skills with Space, and save after reviewing the write
+target. This updates `skills-map.json`, which the manifest generator preserves.
+Commit and publish the map to share the marks with Git registry consumers.
 
 ## Use with Nosey
 

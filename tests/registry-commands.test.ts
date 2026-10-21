@@ -8,7 +8,12 @@ import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {test, expect} from 'vite-plus/test';
 import {scaffoldRegistry} from '../src/lib/registry/init.js';
-import {editRegistry, type RegistryEntry} from '../src/lib/registry/commands.js';
+import {
+  buildRegistry,
+  editRegistry,
+  setAlwaysRecommend,
+  type RegistryEntry,
+} from '../src/lib/registry/commands.js';
 import type {LoadedRegistry} from '../src/lib/registry/types.js';
 
 const exec = promisify(execFile);
@@ -427,5 +432,101 @@ test('show loads a pinned Git registry from the existing cache', async () => {
       manifest: {registryId: 'acme/skills'},
     });
     expect(stderr).toBe('');
+  });
+});
+
+test('always recommended skills live in the registry map and reach every headless output', async () => {
+  await fixture(async ({root, registry, command}) => {
+    const project = path.join(root, 'workspace');
+    await fs.mkdir(project);
+    const mapPath = path.join(registry, 'skills-map.json');
+    const original = await jsonFile(mapPath);
+    const projectConfig = path.join(project, '.nosey.json');
+    await editRegistry('add', registry, {root: project, scope: 'project'});
+    const id = 'acme/skills/example-testing';
+    await setAlwaysRecommend(registry, [id, id]);
+    // Only the new key changes; the mark belongs to the registry, not the consumer config.
+    expect(await jsonFile(mapPath)).toEqual({...original, alwaysRecommend: [id]});
+    expect(await jsonFile(projectConfig)).toEqual({
+      schemaVersion: 1,
+      registries: [{type: 'local', path: '../team-skills'}],
+    });
+    // No technology matches or frontend settings are needed.
+    const {stdout} = await command('scan', project, '--json', '--no-frontend-bonus');
+    const report = JSON.parse(stdout);
+    expect(report.technologies).toEqual([]);
+    expect(report.skills).toEqual([
+      {
+        id,
+        sources: [{type: 'always', id: 'acme/skills', name: 'Always recommended (acme/skills)'}],
+      },
+    ]);
+    expect((await command('scan', project, '--skills-only')).stdout.trim()).toBe(id);
+    expect((await command('scan', project, '--explain')).stdout).toContain(
+      'Always recommended (acme/skills)',
+    );
+    // A detected technology keeps its own source instead of hiding the mark.
+    await fs.writeFile(
+      path.join(project, 'package.json'),
+      JSON.stringify({dependencies: {react: '*'}}),
+    );
+    const matching = JSON.parse(
+      (await command('scan', project, '--json', '--no-frontend-bonus')).stdout,
+    );
+    expect(matching.skills.filter((skill: {id: string}) => skill.id === id)).toHaveLength(1);
+    expect(
+      matching.skills
+        .find((skill: {id: string}) => skill.id === id)
+        .sources.map((source: {type: string}) => source.type),
+    ).toEqual(['technology', 'always']);
+    await setAlwaysRecommend(registry, []);
+    expect((await jsonFile(mapPath)).alwaysRecommend).toEqual([]);
+    const cleared = JSON.parse(
+      (await command('scan', project, '--json', '--no-frontend-bonus')).stdout,
+    );
+    expect(
+      cleared.skills.some((skill: {sources: {type: string}[]}) =>
+        skill.sources.some((source) => source.type === 'always'),
+      ),
+    ).toBe(false);
+  });
+});
+
+test('recommendation writes reject unknown IDs and survive manifest regeneration', async () => {
+  await fixture(async ({root, registry, command}) => {
+    const project = path.join(root, 'workspace');
+    await fs.mkdir(project);
+    const mapPath = path.join(registry, 'skills-map.json');
+    const original = await jsonFile(mapPath);
+    const id = 'acme/skills/example-testing';
+    await expect(setAlwaysRecommend(registry, [id, 'acme/skills/missing'])).rejects.toThrow(
+      'Unknown skill IDs in this registry: acme/skills/missing',
+    );
+    expect(await jsonFile(mapPath)).toEqual(original);
+    expect(
+      (await fs.readdir(registry)).filter(
+        (name) => name.endsWith('.lock') || name.endsWith('.tmp'),
+      ),
+    ).toEqual([]);
+    await editRegistry('add', registry, {root: project, scope: 'project'});
+    await setAlwaysRecommend(registry, [id]);
+    expect(await buildRegistry(registry)).toContain('skills-manifest.json');
+    expect((await jsonFile(mapPath)).alwaysRecommend).toEqual([id]);
+    // A deleted skill is a warning, so the rest of the registry keeps working.
+    const edited = await jsonFile(mapPath);
+    await fs.writeFile(mapPath, JSON.stringify({...edited, technologySkills: []}));
+    await fs.rm(path.join(registry, 'skills/example-testing'), {recursive: true});
+    await buildRegistry(registry);
+    const {stdout, stderr} = await command('scan', project, '--json', '--no-frontend-bonus');
+    const report = JSON.parse(stdout);
+    expect(report.skills).toEqual([]);
+    expect(report.registryWarnings).toEqual([
+      {
+        source: path.resolve(registry),
+        message: 'Always recommended skill not in registry manifest: ' + id,
+      },
+    ]);
+    expect(stderr).toContain('nosey: registry warning [' + path.resolve(registry) + ']');
+    await expect(setAlwaysRecommend(registry, [id])).rejects.toThrow('Unknown skill IDs');
   });
 });

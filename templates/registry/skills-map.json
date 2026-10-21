@@ -1,13 +1,12 @@
 {
   "schemaVersion": 1,
   "registryId": "example/agent-skills",
+  "alwaysRecommend": [],
   "technologies": [],
   "technologySkills": [
     {
       "technologyId": "react",
-      "skills": [
-        "example/agent-skills/example-testing"
-      ]
+      "skills": ["example/agent-skills/example-testing"]
     }
   ],
   "combinations": [],

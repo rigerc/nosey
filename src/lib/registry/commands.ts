@@ -60,7 +60,8 @@ async function readConfig(filename: string): Promise<ConfigDocument> {
   return document as ConfigDocument;
 }
 
-async function writeConfig(filename: string, document: ConfigDocument): Promise<void> {
+/** Write JSON atomically so a crash never leaves a partial file. */
+async function writeJsonFile(filename: string, document: Record<string, unknown>): Promise<void> {
   await fs.mkdir(path.dirname(filename), {recursive: true});
   const temporary = filename + '.' + randomUUID() + '.tmp';
   try {
@@ -163,8 +164,34 @@ export async function editRegistry(
       document.registries.push(stored);
     }
 
-    await writeConfig(filename, document);
+    await writeJsonFile(filename, document);
     return {changed: true, configPath: filename};
+  });
+}
+
+/**
+ * Mark individual skills in the registry's shared mapping metadata.
+ * The map is versioned with the registry, so the marks reach every consumer.
+ */
+export async function setAlwaysRecommend(
+  directory: string,
+  skills: readonly string[],
+): Promise<void> {
+  const root = await fs.realpath(path.resolve(directory));
+  const filename = path.join(root, 'skills-map.json');
+  await withConfigLock(filename, async () => {
+    // Loading first validates both registry files before anything is written.
+    const loaded = await loadLocalRegistry(root);
+    const available = new Set(loaded.manifest.skills.map((skill) => skill.id));
+    const requested = [...new Set(skills)];
+    const unknown = requested.filter((id) => !available.has(id));
+    if (unknown.length > 0) {
+      throw new Error('Unknown skill IDs in this registry: ' + unknown.join(', '));
+    }
+
+    const document = JSON.parse(await fs.readFile(filename, 'utf8')) as Record<string, unknown>;
+    document.alwaysRecommend = requested;
+    await writeJsonFile(filename, document);
   });
 }
 
