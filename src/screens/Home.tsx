@@ -16,7 +16,7 @@ import {
   TextField,
 } from '../components';
 import {useScan} from '../features/skills/context';
-import {generateInstallCommands, installationLabel, SKILLS_CLI_AGENTS} from '../features/skills/install';
+import {generateInstallCommands, installationLabel} from '../features/skills/install';
 import {filterSkills} from '../features/skills/filter';
 import {deriveSkillGroups, orderedSelection, selectedInGroup} from '../features/skills/groups';
 import {useScreenHints, useUiAction} from '../features/ui/context';
@@ -50,11 +50,7 @@ export function HomeScreen() {
   const visible = useMemo(() => filterSkills(report?.skills ?? [], filter), [report, filter]);
   const groups = useMemo(() => (report ? deriveSkillGroups(report) : []), [report]);
   const defaultAgents = installSettings.defaultAgents ?? [];
-  const statusAgents = defaultAgents.length
-    ? defaultAgents
-    : (report?.agents ?? []).map((agent) => agent.agent).filter((name) =>
-      SKILLS_CLI_AGENTS.some((agent) => agent.value === name),
-    );
+  const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
   const allItems = useMemo(
     () => (report?.skills ?? []).map((skill) => {
       const label = installationLabel(skill.installation, statusAgents);
