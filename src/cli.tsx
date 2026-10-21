@@ -19,7 +19,7 @@ const cli = meow(
     $ ${APP_NAME} [options]
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
-    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build>
+    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh>
     $ ${APP_NAME} doctor [--json] [--config path]
     $ ${APP_NAME} --setup [--config path]
 
@@ -109,6 +109,7 @@ function presentation(screen: string, root: string): AppOptions {
     configFile: flags.config,
     configFlags,
     skillsCli: resolved.values.skillsCli,
+    registrySettings: resolved.values.registries,
     scan: {
       root,
       depth: flags.depth ?? 8,
