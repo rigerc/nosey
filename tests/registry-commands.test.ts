@@ -567,3 +567,19 @@ test('recommendation writes reject unknown IDs and survive manifest regeneration
     await expect(setAlwaysRecommend(registry, [id])).rejects.toThrow('Unknown skill IDs');
   });
 });
+
+test('always recommend accepts declared external skill IDs and preserves the map', async () => {
+  await fixture(async ({registry}) => {
+    const mapPath = path.join(registry, 'skills-map.json');
+    const original = await jsonFile(mapPath);
+    const externalId = 'acme/upstream/react-helper';
+    await fs.writeFile(mapPath, JSON.stringify({...original, schemaVersion: 2,
+      externalSkills: [{id: externalId, name: 'React helper', source: 'acme/upstream', skill: 'react-helper'}],
+    }));
+    await setAlwaysRecommend(registry, [externalId, externalId]);
+    expect(await jsonFile(mapPath)).toMatchObject({
+      schemaVersion: 2, alwaysRecommend: [externalId],
+    });
+    await expect(setAlwaysRecommend(registry, ['unknown/skill/id'])).rejects.toThrow(/Unknown skill IDs/);
+  });
+});

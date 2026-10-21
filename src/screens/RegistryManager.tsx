@@ -73,11 +73,18 @@ export function RegistryManagerScreen() {
   const [message, setMessage] = useState('');
   const [recommended, setRecommended] = useState<string[]>([]);
   const [skillFilter, setSkillFilter] = useState('');
-  const skillItems = (detail?.manifest.skills ?? []).map((skill) => ({
-    value: skill.id,
-    label: skill.id,
-    hint: skill.name,
-  }));
+  const skillItems = [
+    ...(detail?.manifest.skills ?? []).map((skill) => ({
+      value: skill.id,
+      label: skill.id,
+      hint: skill.name + ' (local)',
+    })),
+    ...(detail?.map.externalSkills ?? []).map((skill) => ({
+      value: skill.id,
+      label: skill.id,
+      hint: skill.name + ' (external: ' + skill.source + ')',
+    })),
+  ];
   const savedRecommendations = detail?.map.alwaysRecommend ?? [];
   const knownRecommendations = savedRecommendations.filter((id) =>
     skillItems.some((skill) => skill.value === id),
@@ -401,22 +408,22 @@ export function RegistryManagerScreen() {
                 {detail && (
                   <>
                     <Text>
-                      {detail.manifest.skills.length} skills · {knownRecommendations.length} always
-                      recommended
+                      {detail.manifest.skills.length} local · {(detail.map.externalSkills?.length ?? 0)} external ·{' '}
+                      {knownRecommendations.length} always recommended
                     </Text>
                     <PaginatedList
-                      items={detail.manifest.skills}
-                      getKey={(skill) => skill.id}
+                      items={skillItems}
+                      getKey={(skill) => skill.value}
                       renderItem={(skill) => (
                         <Text>
-                          {skill.id}
-                          {knownRecommendations.includes(skill.id) ? ' [always recommend]' : ''}
+                          {skill.value} ({skill.hint})
+                          {knownRecommendations.includes(skill.value) ? ' [always recommend]' : ''}
                         </Text>
                       )}
                     />
                     {staleRecommendations.length > 0 && (
                       <Muted>
-                        Not in this registry's manifest: {staleRecommendations.join(', ')}. Saving
+                        Not declared in this registry: {staleRecommendations.join(', ')}. Saving
                         removes these IDs.
                       </Muted>
                     )}

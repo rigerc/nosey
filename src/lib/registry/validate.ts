@@ -2,6 +2,7 @@ import path from 'node:path';
 import type {ConfigFileContentBlock, DetectConfig} from '../../data/skills-map.js';
 import type {
   CombinationSkills,
+  ExternalSkillRecord,
   RegistryManifest,
   RegistryMap,
   SkillRecord,
@@ -214,9 +215,55 @@ function bindings(
   }) as Array<TechnologySkills & CombinationSkills>;
 }
 
+/** Normalize GitHub remote spellings for cross-registry external identity checks. */
+export function canonicalExternalSource(value: string): string {
+  const match = /^(?:https:\/\/github\.com\/|git@github\.com:)?([A-Za-z0-9][\w.-]*\/[A-Za-z0-9][\w.-]*?)(?:\.git)?\/?$/i.exec(value);
+  if (!match) throw new Error('External skill source must be a GitHub owner/repository or GitHub HTTPS/SSH URL');
+  const [owner, repo] = match[1]!.split('/');
+  if (!owner || !repo || repo === '..' || owner.endsWith('.') || repo.endsWith('.')) {
+    throw new Error('Invalid external skill source: ' + value);
+  }
+  return owner.toLowerCase() + '/' + repo.toLowerCase();
+}
+
+function externalSkill(value: unknown): ExternalSkillRecord {
+  const item = object(value, 'external skill');
+  const id = text(item['id'], 'external skill.id');
+  if (!/^[A-Za-z0-9_.@-]+\/[A-Za-z0-9_.@-]+\/[A-Za-z0-9_.@-]+$/.test(id) ||
+      id.split('/').some((part) => part === '.' || part === '..')) {
+    throw new Error('Invalid external skill ID: ' + id);
+  }
+  const source = text(item['source'], 'external skill.source');
+  canonicalExternalSource(source);
+  const skillName = text(item['skill'], 'external skill.skill');
+  if (!/^[A-Za-z0-9_.@-]+$/.test(skillName) || skillName === '.' || skillName === '..') {
+    throw new Error('Invalid external skill name: ' + skillName);
+  }
+  for (const key of Object.keys(item)) {
+    if (!['id', 'name', 'description', 'source', 'skill'].includes(key)) {
+      throw new Error('Unknown external skill field: ' + key);
+    }
+  }
+  const result: ExternalSkillRecord = {id, name: text(item['name'], 'external skill.name'), source, skill: skillName};
+  if (item['description'] !== undefined)
+    result.description = text(item['description'], 'external skill.description');
+  return result;
+}
+
 export function parseMap(raw: unknown): RegistryMap {
   const value = object(raw, 'skills-map.json');
-  const registryId = header(value);
+  if (value['schemaVersion'] !== 1 && value['schemaVersion'] !== 2) {
+    throw new Error('Unsupported skills-map.json schemaVersion (expected 1 or 2)');
+  }
+  const version = value['schemaVersion'];
+  const registryId = text(value['registryId'], 'registryId');
+  if (version === 1 && value['externalSkills'] !== undefined) {
+    throw new Error('externalSkills requires skills-map.json schemaVersion 2');
+  }
+  const external = value['externalSkills'] ?? [];
+  if (!Array.isArray(external) || external.length > 20_000) {
+    throw new Error('externalSkills must be an array of at most 20000 entries');
+  }
   const technologies = (value['technologies'] ?? []) as unknown;
   const combinations = (value['combinations'] ?? []) as unknown;
   if (!Array.isArray(technologies) || !Array.isArray(combinations)) {
@@ -225,8 +272,9 @@ export function parseMap(raw: unknown): RegistryMap {
 
   const map: RegistryMap = {
     alwaysRecommend: optionalStrings(value['alwaysRecommend'], 'alwaysRecommend'),
-    schemaVersion: 1,
+    schemaVersion: version,
     registryId,
+    ...(version === 2 ? {externalSkills: external.map((item: unknown) => externalSkill(item))} : {}),
     technologies: technologies.map((entry: unknown) => {
       const item = object(entry, 'technology');
       return {
@@ -251,6 +299,7 @@ export function parseMap(raw: unknown): RegistryMap {
     frontendPackages: optionalStrings(value['frontendPackages'], 'frontendPackages'),
     webFrontendExtensions: optionalStrings(value['webFrontendExtensions'], 'webFrontendExtensions'),
   };
+  unique((map.externalSkills ?? []).map((item) => item.id), 'external skill IDs');
   unique(
     map.technologies.map((item) => item.id),
     'technology IDs',

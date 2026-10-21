@@ -89,3 +89,27 @@ test('generator replaces hard-linked manifests and creates missing manifests wit
     await fs.rm(directory, {recursive: true, force: true});
   }
 });
+
+test('generator supports registries containing only external skills', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-external-only-'));
+  try {
+    await fs.cp(source, directory, {recursive: true});
+    await fs.rm(path.join(directory, 'skills'), {recursive: true});
+    const mapPath = path.join(directory, 'skills-map.json');
+    const map = JSON.parse(await fs.readFile(mapPath, 'utf8'));
+    map.externalSkills = [{
+      id: 'acme/tools/react-helper',
+      name: 'React helper',
+      source: 'acme/tools',
+      skill: 'react-helper',
+    }];
+    map.technologySkills = [{technologyId: 'react', skills: ['acme/tools/react-helper']}];
+    await fs.writeFile(mapPath, JSON.stringify(map));
+    await run(process.execPath, [generator], {cwd: directory});
+    await run(process.execPath, [generator, '--check'], {cwd: directory});
+    const manifest = JSON.parse(await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'));
+    expect(manifest.skills).toEqual([]);
+  } finally {
+    await fs.rm(directory, {recursive: true, force: true});
+  }
+});

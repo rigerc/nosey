@@ -182,7 +182,10 @@ export async function setAlwaysRecommend(
   await withConfigLock(filename, async () => {
     // Loading first validates both registry files before anything is written.
     const loaded = await loadLocalRegistry(root);
-    const available = new Set(loaded.manifest.skills.map((skill) => skill.id));
+    const available = new Set([
+      ...loaded.manifest.skills.map((skill) => skill.id),
+      ...(loaded.map.externalSkills ?? []).map((skill) => skill.id),
+    ]);
     const requested = [...new Set(skills)];
     const unknown = requested.filter((id) => !available.has(id));
     if (unknown.length > 0) {

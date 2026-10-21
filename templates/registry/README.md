@@ -43,18 +43,33 @@ Alternatively, copy this directory manually, including
 
 IDs use `<registryId>/<relative-directory-under-skills>`. Moving a skill changes its ID.
 
-The manifest lists available skills, but does not automatically recommend them.
+The manifest lists local skills, but does not automatically recommend them.
 Map skills to built-in technologies with technologySkills, declare new technologies
 with detection rules, declare combinations, extend existing combinations with
 combinationSkills, add frontendBonusSkills, or list specific skill IDs in
-`alwaysRecommend` to recommend them in every project using this registry. Referenced skill IDs must appear in
-the generated manifest.
+`alwaysRecommend` to recommend them in every project using this registry. Mapped skill IDs must be declared either in the local manifest or in `externalSkills` in the map.
 
-For example, in `skills-map.json`:
+For an external upstream skill, use `schemaVersion: 2` in `skills-map.json` and add:
 
 ```json
-"alwaysRecommend": ["example/agent-skills/example-testing"]
+"externalSkills": [
+  {
+    "id": "acme/upstream-skills/example-testing",
+    "name": "External testing guidance",
+    "source": "acme/upstream-skills",
+    "skill": "example-testing"
+  }
+],
+"technologySkills": [
+  {"technologyId": "react", "skills": ["acme/upstream-skills/example-testing"]}
+],
+"alwaysRecommend": []
 ```
+
+External sources accept GitHub `owner/repo`, `https://github.com/owner/repo`, and
+`git@github.com:owner/repo` forms. Nosey reads declarative metadata only: it
+never downloads or executes external skills when scanning. Skill existence upstream
+is not automatically verified. Version 1 maps without `externalSkills` remain valid.
 
 You can also mark individual skills through Nosey's Registries tab: open a local
 registry, press `a`, select skills with Space, and save after reviewing the write
@@ -77,9 +92,10 @@ For a published registry, use:
 nosey registry add https://github.com/your-org/your-skills.git --ref main
 ```
 
-These commands save references in the project's `.nosey.json`. Use `--global`
-with `registry add` to make a registry available across projects. For a single scan
-without saving a reference, run `nosey scan . --registry /path/to/my-registry`.
+Added registries are saved globally and available across projects. Existing
+project-scoped references still load; use `registry remove <source> --project` to
+remove a legacy reference. For a single scan without saving a reference, run
+`nosey scan . --registry /path/to/my-registry`.
 
 Validate a registry with `nosey registry validate /path/to/my-registry`. To check
 whether its manifest is up to date, run

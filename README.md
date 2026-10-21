@@ -190,7 +190,7 @@ To create a registry in a **new** directory:
 npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
 ~~~
 
-Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
+Registries may declare external skills in `skills-map.json` version 2 and map them to detected technologies without storing their `SKILL.md` files. The upstream source is retained for opt-in install command generation. Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
 ## Appearance
 
