@@ -81,6 +81,18 @@ Navigate four tabs in one terminal session:
 
 Selections stay intact when you filter results or switch tabs. Confirming the selection prints distinct skill IDs after the terminal UI exits. Confirmation defaults to **No**.
 
+### Optional Skills CLI commands
+
+Open **Settings → Skills CLI** to enable installation command generation and select one or more default agents. This feature is **off by default**. After selecting skills, Scan previews copy-pasteable project-local commands instead of installing anything. Confirming prints the commands only after the terminal UI exits.
+
+~~~bash
+cd /path/to/your-project && npx skills add vercel-labs/agent-skills --skill react-best-practices --agent claude-code --agent codex --yes --json
+~~~
+
+The generated commands always use the scanned project directory, include `--yes --json`, and never use `--global`. **Running a generated command yourself installs skills; printing it in Nosey does not.** Multiple repositories or differing agent requirements yield multiple commands.
+
+Scan also checks project-local skill directories and `skills-lock.json` without launching the Skills CLI. Skills with matching lock provenance and local files are marked **Installed** (all inspected agents) or **Partial** (some agents). Matching file names without verified provenance are marked **Present (unverified)**; Nosey will not silently treat them as installed. Global installations do not count. Fully installed targets are omitted from generated commands; partially installed skills target only missing agents.
+
 ## Screenshots
 
 These tracked captures use the Nosey terminal theme. Scan shows a demo React, TypeScript, Vite, and Vitest workspace. The Registries image shows the initial state before references are added.
