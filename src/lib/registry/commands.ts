@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {existsSync} from 'node:fs';
 import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -20,12 +21,9 @@ import {parseManifest} from './validate.js';
 import type {LoadedRegistry} from './types.js';
 
 const run = promisify(execFile);
-const generator = fileURLToPath(
-	new URL(
-		'../../../templates/registry/scripts/generate-manifest.mjs',
-		import.meta.url,
-	),
-);
+const sourceGenerator = fileURLToPath(new URL('../../../templates/registry/scripts/generate-manifest.mjs', import.meta.url));
+const bundledGenerator = fileURLToPath(new URL('../templates/registry/scripts/generate-manifest.mjs', import.meta.url));
+const generator = existsSync(sourceGenerator) ? sourceGenerator : bundledGenerator;
 
 type ConfigDocument = Record<string, unknown> & {registries: unknown[]};
 export type RegistryScope = 'project' | 'global';
@@ -154,7 +152,7 @@ export async function showRegistry(
 	if (spec.type === 'local') return loadLocalRegistry(spec.path);
 	const result = await loadGitRegistry(spec);
 	for (const warning of result.warnings) {
-		process.stderr.write('skillsense: ' + warning.message + '\n');
+		process.stderr.write('nosey: ' + warning.message + '\n');
 	}
 
 	return result.loaded;

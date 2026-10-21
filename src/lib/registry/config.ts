@@ -21,11 +21,11 @@ function configDirectory(): string {
 }
 
 export function globalConfigPath(): string {
-	return path.join(configDirectory(), 'skillsense', 'config.json');
+	return path.join(configDirectory(), 'nosey', 'registries.json');
 }
 
 export function projectConfigPath(projectRoot: string): string {
-	return path.join(path.resolve(projectRoot), '.skillsense.json');
+	return path.join(path.resolve(projectRoot), '.nosey.json');
 }
 
 function parseEntry(input: unknown, base: string): RegistrySpec {
@@ -128,7 +128,12 @@ export async function discoverRegistries(
 ): Promise<{sources: ConfiguredRegistry[]; warnings: RegistryWarning[]}> {
 	const warnings: RegistryWarning[] = [];
 	const sources: ConfiguredRegistry[] = [];
-	for (const file of [globalConfigPath(), projectConfigPath(projectRoot)]) {
+	for (const file of [
+    path.join(configDirectory(), 'skillsense', 'config.json'),
+    path.join(path.resolve(projectRoot), '.skillsense.json'),
+    globalConfigPath(),
+    projectConfigPath(projectRoot),
+  ]) {
 		try {
 			// Read sources in precedence order, including their warnings.
 			// eslint-disable-next-line no-await-in-loop

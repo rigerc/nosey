@@ -16,12 +16,14 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: node dist/cli.js --plain
+      - run: node dist/cli.js . --json > report.json
+      - run: node dist/cli.js . --skills-only
       - run: node dist/cli.js --screen gallery --plain
       - run: node dist/cli.js doctor --json
+      - run: npm pack --dry-run

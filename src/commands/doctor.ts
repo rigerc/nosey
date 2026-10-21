@@ -19,8 +19,8 @@ export function inspectEnvironment(configFile?: string): DoctorReport {
   const checks: DoctorCheck[] = [
     {
       name: 'node',
-      ok: nodeMajor >= 22,
-      detail: `Node.js ${process.versions.node} (requires 22+)`,
+      ok: nodeMajor >= 24,
+      detail: `Node.js ${process.versions.node} (requires 24+)`,
     },
     {
       name: 'configuration',

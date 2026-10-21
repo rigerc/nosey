@@ -1,4 +1,5 @@
 import {execFile} from 'node:child_process';
+import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -9,9 +10,9 @@ import {loadLocalRegistry} from './load.js';
 import type {RegistryManifest, RegistryMap} from './types.js';
 
 const execFileAsync = promisify(execFile);
-const templateRoot = fileURLToPath(
-	new URL('../../../templates/registry/', import.meta.url),
-);
+const sourceTemplate = fileURLToPath(new URL('../../../templates/registry/', import.meta.url));
+const bundledTemplate = fileURLToPath(new URL('../templates/registry/', import.meta.url));
+const templateRoot = existsSync(sourceTemplate) ? sourceTemplate : bundledTemplate;
 // Repository-local variables exported by Git must not redirect initialization,
 // staging, commits, or the Git commands gh runs into the caller's repository.
 const repositoryEnvironmentVariables = new Set([
@@ -239,7 +240,7 @@ export async function runRegistryInit(
 				: undefined);
 		if (!directoryInput) {
 			throw new Error(
-				'Specify a destination directory: skillsense registry init <directory> --registry-id owner/repo',
+				'Specify a destination directory: nosey registry init <directory> --registry-id owner/repo',
 			);
 		}
 

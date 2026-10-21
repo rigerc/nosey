@@ -11,7 +11,7 @@ import {
 import type {LoadedRegistry} from './types.js';
 
 const usage =
-	'Expected: skillsense registry <init|list|add|remove|show|validate|build>';
+	'Expected: nosey registry <init|list|add|remove|show|validate|build>';
 const allowedOptions: Record<string, string[]> = {
 	list: ['json', 'global'],
 	add: ['global', 'ref'],
@@ -41,7 +41,7 @@ function validateArguments(command: string, args: string[]): void {
 	}
 
 	if (['add', 'remove', 'show'].includes(command) && args[1] === undefined) {
-		throw new Error(`Expected: skillsense registry ${command} <source>`);
+		throw new Error(`Expected: nosey registry ${command} <source>`);
 	}
 }
 

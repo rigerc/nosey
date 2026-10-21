@@ -6,7 +6,8 @@
     "nosey": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "templates/registry"
   ],
   "type": "module",
   "scripts": {
@@ -14,10 +15,16 @@
     "gallery": "tsx src/cli.tsx --screen gallery",
     "build": "vp pack",
     "typecheck": "tsc --noEmit",
-    "test": "vp test run",
+    "test": "vp test run && npm run test:catalog && npm run test:map",
     "screenshot": "node --import tsx scripts/screenshot.tsx",
     "start": "node dist/cli.js",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "test:unit": "vp test run",
+    "test:catalog": "node --import=tsx --test scripts/build-skills-catalog.test.mjs",
+    "test:map": "node --import=tsx --test scripts/propose-skill-mappings.test.mjs",
+    "skills-catalog": "node --experimental-strip-types scripts/build-skills-catalog.ts",
+    "skills-map:propose": "node --experimental-strip-types scripts/propose-skill-mappings.ts",
+    "check": "vp check"
   },
   "dependencies": {
     "ink": "^8.0.0",
@@ -42,6 +49,6 @@
     "vitest": "5.0.5"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   }
 }
