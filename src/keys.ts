@@ -5,7 +5,7 @@ export interface KeyHint {
   label: string;
 }
 
-type Action = 'next' | 'previous' | 'jump' | 'commands' | 'theme' | 'help' | 'quit';
+type Action = 'next' | 'previous' | 'jump' | 'commands' | 'help' | 'quit';
 
 /** The single registry for global key behavior, footer hints, and Help. */
 export const globalKeys: ReadonlyArray<KeyHint & {action: Action}> = [
@@ -13,7 +13,6 @@ export const globalKeys: ReadonlyArray<KeyHint & {action: Action}> = [
   {action: 'previous', key: 'shift+tab', label: 'previous screen'},
   {action: 'jump', key: '1-9', label: 'jump to screen'},
   {action: 'commands', key: 'ctrl+k', label: 'commands'},
-  {action: 'theme', key: 't', label: 'cycle theme'},
   {action: 'help', key: '?', label: 'help'},
   {action: 'quit', key: 'q', label: 'quit'},
 ];
