@@ -1,4 +1,4 @@
-name: Update SkillSense manifest
+name: Update Nosey manifest
 
 on:
   push:
