@@ -4,15 +4,24 @@ import {ScreenState, StatusBar, Muted} from '../components';
 import {CompactScanSummary} from '../components/scan/CompactScanSummary';
 import {CompactSkillPicker} from '../components/scan/CompactSkillPicker';
 import {useScan} from '../features/skills/context';
+import {orderedSelection} from '../features/skills/groups';
+import {generateInstallCommands} from '../features/skills/install';
 import {useKeymap} from '../hooks/useKeymap';
 
 /** Direct-launch Scan: only the results, essential controls, and confirmation. */
 export function CompactScanScreen() {
-  const {config, scan, refresh, confirm} = useScan();
+  const {config, scan, refresh, confirm, installSettings} = useScan();
   const {exit} = useApp();
   const [selected, setSelected] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const report = scan.status === 'success' ? scan.data : undefined;
+  const defaultAgents = installSettings.defaultAgents ?? [];
+  const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
+  const chosen = report ? orderedSelection(report, new Set(selected)) : [];
+  const installPlan = installSettings.enabled
+    ? generateInstallCommands(chosen, report?.skills ?? [], defaultAgents, config.root)
+    : undefined;
+  const cannotConfirm = reviewing && Boolean(installPlan?.errors.length);
 
   // A rescan invalidates previous selections and any open confirmation.
   useEffect(() => {
@@ -28,11 +37,13 @@ export function CompactScanScreen() {
     {scope: 'screen', isActive: !reviewing},
   );
   const hints = reviewing
-    ? [
-        {key: 'y/n', label: 'choose'},
-        {key: 'enter', label: 'confirm'},
-        {key: 'esc', label: 'back'},
-      ]
+    ? cannotConfirm
+      ? [{key: 'esc', label: 'back'}]
+      : [
+          {key: 'y/n', label: 'choose'},
+          {key: 'enter', label: 'confirm'},
+          {key: 'esc', label: 'back'},
+        ]
     : report
       ? [
           {key: 'space', label: 'select'},
@@ -61,13 +72,16 @@ export function CompactScanScreen() {
             <CompactScanSummary report={report} />
             <CompactSkillPicker
               report={report}
+              statusAgents={statusAgents}
+              installPlan={installPlan}
               selected={selected}
               onSelect={setSelected}
               reviewing={reviewing}
               onReview={() => setReviewing(true)}
               onBack={() => setReviewing(false)}
-              onConfirm={(ids) => {
-                confirm(ids);
+              onConfirm={(ids, commands) => {
+                if (commands) confirm(ids, commands);
+                else confirm(ids);
                 exit();
               }}
             />
