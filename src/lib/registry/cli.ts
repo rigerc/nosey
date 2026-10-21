@@ -144,11 +144,11 @@ async function runRefresh(source: string | undefined, flags: CommandFlags): Prom
 	if (flags.json) {
 		process.stdout.write(registryJson({registries: results}));
 	} else {
-		if (!results.length) process.stdout.write('No Git registries configured.\\n');
+		if (!results.length) process.stdout.write('No Git registries configured.\n');
 		for (const item of results) {
 			process.stdout.write(item.source + ': ' + item.status +
-				(item.commit ? ' (' + item.commit.slice(0, 12) + ')' : '') + '\\n');
-			if (item.message) process.stderr.write('nosey: ' + item.message + '\\n');
+				(item.commit ? ' (' + item.commit.slice(0, 12) + ')' : '') + '\n');
+			if (item.message) process.stderr.write('nosey: ' + item.message + '\n');
 		}
 	}
 	if (results.some(item => item.status === 'cached' || item.status === 'error'))
