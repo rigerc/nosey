@@ -22,6 +22,7 @@ export function builtInRegistry(): MergedRegistry {
   }));
   return {
     alwaysRecommend: [],
+    skillInstallSources: new Map(),
     technologies,
     combinations,
     frontendBonusSkills: [...FRONTEND_BONUS_SKILLS],
@@ -129,7 +130,13 @@ export function mergeRegistries(registries: LoadedRegistry[]): {
     addUnique(registry.frontendBonusSkills, incoming.map.frontendBonusSkills);
     for (const item of incoming.map.frontendPackages) registry.frontendPackages.add(item);
     for (const item of incoming.map.webFrontendExtensions) registry.webFrontendExtensions.add(item);
-    for (const item of incoming.manifest.skills) registry.skillIds.add(item.id);
+    for (const item of incoming.manifest.skills) {
+      registry.skillIds.add(item.id);
+      registry.skillInstallSources?.set(item.id, {
+        source: incoming.source.replace(/#HEAD$/, ''),
+        name: item.path.split('/').at(-2) ?? item.name,
+      });
+    }
     const available = new Set(incoming.manifest.skills.map((skill) => skill.id));
     const alwaysRecommend = (incoming.map.alwaysRecommend ?? []).filter((id) => {
       if (available.has(id)) return true;
