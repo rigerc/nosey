@@ -13,3 +13,6 @@ tttt/
 # Catalog snapshots, mapping proposals, and HTTP caches
 out/
 skills-catalog.json
+
+# Capture replay scaffolding beside tracked captures
+assets/**/tapes/
