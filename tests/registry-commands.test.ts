@@ -68,6 +68,22 @@ async function jsonFile(filename: string): Promise<Record<string, unknown>> {
   return JSON.parse(await fs.readFile(filename, 'utf8')) as Record<string, unknown>;
 }
 
+test('registry refresh with no Git sources reports empty results', async () => {
+  await fixture(async ({command}) => {
+    const {stdout} = await command('registry', 'refresh', '--json');
+    expect(JSON.parse(stdout)).toStrictEqual({registries: []});
+    const plain = await command('registry', 'refresh');
+    expect(plain.stdout).toContain('No Git registries configured.');
+  });
+});
+
+test('registry refresh rejects local registry paths and ref without a source', async () => {
+  await fixture(async ({command}) => {
+    await expect(command('registry', 'refresh', './team-skills')).rejects.toThrow();
+    await expect(command('registry', 'refresh', '--ref', 'main')).rejects.toThrow();
+  });
+});
+
 test('add is global, idempotent, and preserves unrelated settings and relative paths', async () => {
   await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     const original = {schemaVersion: 1, registries: [], other: {keep: true}};
