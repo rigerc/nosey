@@ -68,19 +68,36 @@ async function jsonFile(filename: string): Promise<Record<string, unknown>> {
   return JSON.parse(await fs.readFile(filename, 'utf8')) as Record<string, unknown>;
 }
 
-test('add is idempotent, preserves unrelated settings and stores relative local paths', async () => {
-  await fixture(async ({command, projectConfig, registry}) => {
+test('add is global, idempotent, and preserves unrelated settings and relative paths', async () => {
+  await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     const original = {schemaVersion: 1, registries: [], other: {keep: true}};
-    await fs.writeFile(projectConfig, JSON.stringify(original));
+    await fs.mkdir(path.dirname(globalConfig), {recursive: true});
+    await fs.writeFile(globalConfig, JSON.stringify(original));
     await command('registry', 'add', './team-skills');
     const {stdout} = await command('registry', 'add', registry);
     expect(stdout).toMatch(/already configured/);
-    expect(await jsonFile(projectConfig)).toStrictEqual({
+    expect(await jsonFile(globalConfig)).toStrictEqual({
       ...original,
-      registries: [{type: 'local', path: 'team-skills'}],
+      registries: [{type: 'local', path: path.relative(path.dirname(globalConfig), registry)}],
     });
+    await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
     const scan = await command('.', '--json', '--no-frontend-bonus');
     expect(scan.stderr.includes('registry warning')).toBe(false);
+  });
+});
+
+test('globally added registries are loaded when scanning a different project', async () => {
+  await fixture(async ({command, root, registry, projectConfig}) => {
+    const id = 'acme/skills/example-testing';
+    await setAlwaysRecommend(registry, [id]);
+    await command('registry', 'add', './team-skills');
+    const other = path.join(root, 'different-project');
+    await fs.mkdir(other);
+    const result = await command('scan', other, '--json', '--no-frontend-bonus');
+    const report = JSON.parse(result.stdout) as {skills: Array<{id: string}>};
+    expect(report.skills.some((skill) => skill.id === id)).toBe(true);
+    await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
+    await expect(fs.stat(path.join(other, '.nosey.json'))).rejects.toMatchObject({code: 'ENOENT'});
   });
 });
 
@@ -121,21 +138,21 @@ test('configuration locks are released after errors and idempotent edits', async
   });
 });
 
-test('separate CLI processes preserve simultaneous configuration updates', async () => {
-  await fixture(async ({command, projectConfig}) => {
+test('separate CLI processes preserve simultaneous global configuration updates', async () => {
+  await fixture(async ({command, globalConfig, projectConfig}) => {
+    await fs.mkdir(path.dirname(globalConfig), {recursive: true});
     await fs.writeFile(
-      projectConfig,
+      globalConfig,
       JSON.stringify({schemaVersion: 1, registries: [], keep: true}),
     );
     const sources = Array.from({length: 6}, (_, index) => './registry-' + index);
     await Promise.all(sources.map((source) => command('registry', 'add', source)));
-    const document = await jsonFile(projectConfig);
+    const document = await jsonFile(globalConfig);
     expect(document.keep).toBe(true);
-    expect(
-      (document.registries as Array<{path: string}>).map((entry) => entry.path).sort(),
-    ).toStrictEqual(sources.map((source) => source.slice(2)).sort());
+    expect((document.registries as Array<{path: string}>).length).toBe(sources.length);
     await Promise.all(sources.map((source) => command('registry', 'remove', source)));
-    expect((await jsonFile(projectConfig)).registries).toStrictEqual([]);
+    expect((await jsonFile(globalConfig)).registries).toStrictEqual([]);
+    await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
   });
 });
 
@@ -152,11 +169,14 @@ test('build refuses symlink manifests without overwriting their targets', async 
   });
 });
 
-test('list includes both scopes and refs, --global lists only global entries without fetching', async () => {
+test('list includes legacy project entries, --global lists only global entries', async () => {
   await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     const remote = 'https://example.invalid/team/skills.git';
-    await command('registry', 'add', remote, '--global', '--ref', 'v1');
-    await command('registry', 'add', registry);
+    await command('registry', 'add', remote, '--ref', 'v1');
+    await fs.writeFile(
+      projectConfig,
+      JSON.stringify({schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}]}),
+    );
     const {stdout} = await command('registry', 'list', '--json');
     const {registries} = JSON.parse(stdout) as {registries: RegistryEntry[]};
     expect(registries).toStrictEqual([
@@ -188,41 +208,38 @@ test('empty list has readable text and structured JSON', async () => {
   });
 });
 
-test('remove changes only the selected scope and preserves files and unrelated settings', async () => {
+test('remove defaults to global, --project removes legacy entries without deleting registry files', async () => {
   await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     await fs.writeFile(
       projectConfig,
-      JSON.stringify({schemaVersion: 1, registries: [], keep: 'yes'}),
+      JSON.stringify({schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}], keep: 'yes'}),
     );
     await command('registry', 'add', registry);
-    await command('registry', 'add', registry, '--global');
-    await command('registry', 'remove', './team-skills');
+    await command('registry', 'remove', './team-skills', '--project');
     expect(await jsonFile(projectConfig)).toStrictEqual({
       schemaVersion: 1,
       registries: [],
       keep: 'yes',
     });
-    const global = await jsonFile(globalConfig);
-    expect((global['registries'] as unknown[]).length).toBe(1);
+    expect((await jsonFile(globalConfig)).registries).toHaveLength(1);
     const manifest = await fs.stat(path.join(registry, 'skills-manifest.json'));
     expect(manifest.isFile()).toBe(true);
-    await command('registry', 'remove', registry, '--global');
-    const remaining = await jsonFile(globalConfig);
-    expect(remaining['registries']).toStrictEqual([]);
+    await command('registry', 'remove', registry);
+    expect((await jsonFile(globalConfig)).registries).toStrictEqual([]);
     const before = await fs.readFile(projectConfig, 'utf8');
-    await expect(command('registry', 'remove', registry)).rejects.toThrow(/not configured/);
+    await expect(command('registry', 'remove', registry, '--project')).rejects.toThrow(/not configured/);
     expect(await fs.readFile(projectConfig, 'utf8')).toBe(before);
   });
 });
 
-test('Git identity includes revision and remove can target a pinned entry', async () => {
-  await fixture(async ({command, projectConfig}) => {
+test('global Git identity includes revision and remove can target a pinned entry', async () => {
+  await fixture(async ({command, globalConfig}) => {
     const remote = 'https://example.invalid/team/skills';
     await command('registry', 'add', remote + '.git', '--ref', 'v1');
     await command('registry', 'add', remote, '--ref', 'v1');
     await command('registry', 'add', remote, '--ref', 'v2');
     await command('registry', 'remove', remote, '--ref', 'v1');
-    const remaining = await jsonFile(projectConfig);
+    const remaining = await jsonFile(globalConfig);
     expect(remaining['registries']).toStrictEqual([{type: 'git', url: remote, ref: 'v2'}]);
   });
 });
@@ -235,11 +252,12 @@ for (const original of [
   test(
     'configuration commands reject malformed config without overwriting it: ' + original,
     async () => {
-      await fixture(async ({command, projectConfig, registry}) => {
-        await fs.writeFile(projectConfig, original);
+      await fixture(async ({command, globalConfig, registry}) => {
+        await fs.mkdir(path.dirname(globalConfig), {recursive: true});
+        await fs.writeFile(globalConfig, original);
         for (const action of ['add', 'remove']) {
           await expect(command('registry', action, registry)).rejects.toThrow();
-          expect(await fs.readFile(projectConfig, 'utf8')).toBe(original);
+          expect(await fs.readFile(globalConfig, 'utf8')).toBe(original);
         }
 
         await expect(command('registry', 'list', '--json')).rejects.toThrow();
@@ -396,6 +414,9 @@ test('invalid command syntax and flags fail before creating configuration', asyn
       ['registry', 'build', './team-skills', '--no-git'],
       ['registry', 'list', '--registry', './team-skills'],
       ['registry', 'init', '--global'],
+      ['registry', 'add', './team-skills', '--project'],
+      ['registry', 'remove', './team-skills', '--global', '--project'],
+      ['registry', 'list', '--project'],
       ['--global'],
       ['--ref', 'main'],
     ]) {
