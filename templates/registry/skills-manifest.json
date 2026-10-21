@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "registryId": "example/agent-skills",
+  "skills": [
+    {
+      "id": "example/agent-skills/example-testing",
+      "name": "example-testing",
+      "path": "skills/example-testing/SKILL.md",
+      "description": "Example testing conventions for a React project."
+    }
+  ]
+}
