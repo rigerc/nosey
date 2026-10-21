@@ -29,7 +29,8 @@ export type RegistryMap = {
   alwaysRecommend: string[];
   /** V1 maps contain local skills only; V2 allows external skill declarations. */
   schemaVersion: 1 | 2;
-  externalSkills: ExternalSkillRecord[];
+  /** Absent in legacy v1 maps constructed directly or persisted before v2. */
+  externalSkills?: ExternalSkillRecord[];
   registryId: string;
   technologies: Technology[];
   technologySkills: TechnologySkills[];
