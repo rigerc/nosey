@@ -110,7 +110,7 @@ describe('compact Scan setting', () => {
     expect(app.lastFrame()).toContain('--skill alpha');
     expect(app.lastFrame()).toContain('--agent claude-code');
     expect(app.lastFrame()).not.toContain('--agent codex');
-    expect(app.lastFrame()).toContain('--yes --json');
+    expect(app.lastFrame()).toMatch(/--yes\s+--json/);
     await press(app, '\r'); // No by default.
     expect(onConfirm).not.toHaveBeenCalled();
     await press(app, '\r');
