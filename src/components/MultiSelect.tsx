@@ -47,7 +47,7 @@ export function MultiSelect<T extends string>({
   if (cursor !== index) setCursor(index);
   const sourceItems = allItems ?? items;
   const selected = new Set(value ?? internal);
-  const values = () => sourceItems.filter((item) => selected.has(item.value)).map((item) => item.value);
+  const values = () => [...new Set(sourceItems.filter((item) => selected.has(item.value)).map((item) => item.value))];
   const move = (delta: number) => {
     if (items.length) setCursor((index + delta + items.length) % items.length);
   };
@@ -57,7 +57,7 @@ export function MultiSelect<T extends string>({
     const next = new Set(selected);
     if (next.has(item.value)) next.delete(item.value);
     else next.add(item.value);
-    const result = sourceItems.filter((entry) => next.has(entry.value)).map((entry) => entry.value);
+    const result = [...new Set(sourceItems.filter((entry) => next.has(entry.value)).map((entry) => entry.value))];
     if (value === undefined) setInternal(result);
     onChange?.(result);
   };
