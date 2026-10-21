@@ -87,7 +87,7 @@ describe('Nosey scan interaction', () => {
     expect(app.lastFrame()).toContain('npx skills add acme/skills');
     expect(app.lastFrame()).toContain('--agent claude-code');
     expect(app.lastFrame()).not.toContain('--agent codex');
-    expect(app.lastFrame()).toContain('--yes --json');
+    expect(app.lastFrame()).toMatch(/--yes\s+--json/);
     await press(app, 'y');
     await press(app, '\r');
     expect(confirmed).toHaveBeenCalledTimes(1);
@@ -334,7 +334,7 @@ describe('Registry UI writes', () => {
       await press(app, 'y');
       await press(app, '\r');
       await settle();
-      expect(app.lastFrame()).toContain('Registry created locally');
+      await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created locally'));
       expect(app.lastFrame()).toContain('Invalid commit message format');
       expect(app.lastFrame()).toContain('Expected: <type>(<scope>): <subject>');
       expect(app.lastFrame()).not.toContain('Create this registry?');
@@ -376,7 +376,7 @@ describe('Registry UI writes', () => {
     await press(app, './team-skills');
     await press(app, '\r');
     await settle();
-    expect(app.lastFrame()).toContain('Add this registry reference?');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Add this registry reference?'));
     expect(app.lastFrame()).toContain(globalConfig);
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     await press(app, 'y');
@@ -493,7 +493,7 @@ describe('Registry UI writes', () => {
     await press(app, 'y');
     await press(app, '\r');
     await settle();
-    expect(app.lastFrame()).toContain('Registry created');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created'));
     expect(JSON.parse(readFileSync(join(destination, 'registry.json'), 'utf8')).registryId).toBe(
       'acme/created',
     );
