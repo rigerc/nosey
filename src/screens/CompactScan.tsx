@@ -1,6 +1,6 @@
 import {Box, Text, useApp} from 'ink';
 import {useEffect, useState} from 'react';
-import {ScreenState, StatusBar, Muted} from '../components';
+import {ScreenState, StatusBar, Muted, StatusMessage} from '../components';
 import {CompactScanSummary} from '../components/scan/CompactScanSummary';
 import {CompactSkillPicker} from '../components/scan/CompactSkillPicker';
 import {useScan} from '../features/skills/context';
@@ -69,6 +69,12 @@ export function CompactScanScreen() {
       >
         {report && (
           <Box flexDirection="column">
+            {!!report.updatedRegistries?.length && (
+              <StatusMessage tone="info">
+                Updated Git registries: {report.updatedRegistries.join(', ')}.
+                {installSettings.enabled ? ' Run `npx skills update` to update installed skills.' : ''}
+              </StatusMessage>
+            )}
             <CompactScanSummary report={report} />
             <CompactSkillPicker
               report={report}
