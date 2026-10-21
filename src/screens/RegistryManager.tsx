@@ -28,9 +28,8 @@ import {
   setAlwaysRecommend,
   validateRegistry,
   type RegistryEntry,
-  type RegistryScope,
 } from '../lib/registry/commands';
-import {globalConfigPath, projectConfigPath} from '../lib/registry/config';
+import {globalConfigPath} from '../lib/registry/config';
 import {loadLocalRegistry} from '../lib/registry/load';
 import {loadGitRegistry} from '../lib/registry/git';
 import type {LoadedRegistry} from '../lib/registry/types';
@@ -64,7 +63,6 @@ export function RegistryManagerScreen() {
   const toast = useToast();
   const [entries, setEntries] = useState<RegistryEntry[]>([]);
   const [mode, setMode] = useState<Mode>('list');
-  const [scope, setScope] = useState<RegistryScope>('project');
   const [source, setSource] = useState('');
   const [ref, setRef] = useState('');
   const [selected, setSelected] = useState<RegistryEntry>();
@@ -92,7 +90,7 @@ export function RegistryManagerScreen() {
     (skill.label + ' ' + skill.hint).toLowerCase().includes(filterText),
   );
   const lock = useRef(false);
-  const target = scope === 'global' ? globalConfigPath() : projectConfigPath(root);
+  const target = globalConfigPath();
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -169,7 +167,6 @@ export function RegistryManagerScreen() {
           void reload();
         },
       },
-      {key: 'g', run: () => setScope((value) => (value === 'project' ? 'global' : 'project'))},
       {key: 'b', run: () => router.replace('home')},
     ],
     {scope: 'screen', isActive: mode === 'list' && !busy && !loading},
@@ -233,7 +230,6 @@ export function RegistryManagerScreen() {
             {key: 'enter', label: 'details'},
             {key: 'a', label: 'add'},
             {key: 'i', label: 'initialize'},
-            {key: 'g', label: 'new scope'},
             {key: 'r', label: 'refresh'},
           ]
         : mode === 'detail'
@@ -276,7 +272,7 @@ export function RegistryManagerScreen() {
     <ScreenLayout title="Registries" description="Manage references, not installed skills">
       <Panel title="Registry references" tone="muted">
         <Text>Project: {root}</Text>
-        <Text>New entries: {scope}</Text>
+        <Text>New registry references: global</Text>
         <Muted>Write target: {target}</Muted>
         {message && <StatusMessage tone="info">{message}</StatusMessage>}
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
@@ -356,7 +352,7 @@ export function RegistryManagerScreen() {
                   Source: {source}
                   {ref ? '#' + ref : ''}
                 </Text>
-                <Text>Scope: {scope}</Text>
+                <Text>Scope: global</Text>
                 <Text>Config: {target}</Text>
                 <Confirm
                   message="Add this registry reference?"
@@ -369,7 +365,7 @@ export function RegistryManagerScreen() {
                     void execute(async () => {
                       const result = await editRegistry('add', source, {
                         root,
-                        scope,
+                        scope: 'global',
                         ref: ref || undefined,
                       });
                       await reload();
