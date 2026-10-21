@@ -10,38 +10,49 @@ import {brandMarkAnsi, brandTagline} from './lib/brand';
 import {AppError, toAppError} from './lib/errors';
 import {logger} from './lib/logger';
 import {isInteractive, noColor, supportsUnicode} from './lib/terminal';
+import {detectProject} from './lib/detect.js';
+import {formatReport} from './lib/report';
+import {resolveRegistries} from './lib/registry/resolve.js';
+import {runRegistryCommand} from './lib/registry/cli.js';
+import {runRegistryInit, type RegistryInitOptions} from './lib/registry/init.js';
 import {isScreenId, screenIds} from './screens';
 import {resolveThemeName} from './theme/resolve';
 
 const cli = meow(
-  `
-${brandMarkAnsi({color: !noColor() && Boolean(process.stdout.isTTY)})}  ${APP_NAME}
-${brandTagline}
-
-  Usage
-    $ ${APP_NAME} [options]
-    $ ${APP_NAME} doctor [--json] [--config path]
-    $ ${APP_NAME} --setup [--config path]
-
-  Options
-    --theme <name>   nosey | dark | light | contrast | mono | auto
-    --screen <id>    ${screenIds.join(' | ')}
-    --ascii          Use ASCII symbols and borders
-    --config <path>  Read/write a specific JSON configuration file
-    --setup          Open the interactive configuration wizard
-    --plain          Print once and exit (also the default when piped or in CI)
-    --json           JSON output for headless commands (doctor)
-    --debug          Write logs to a file and show stack traces
-
-  Environment
-    NO_COLOR=1       Force the mono theme
-    ${APP_THEME_ENV}    Default theme
-    CLI_ASCII=1      Force ASCII symbols
-`,
+  [
+    brandMarkAnsi({color: !noColor() && Boolean(process.stdout.isTTY)}) + '  ' + APP_NAME,
+    brandTagline, '',
+    'Usage',
+    '  nosey [path] [--json | --skills-only | --no-interactive]',
+    '  nosey registry [init|list|add|remove|show|validate|build]',
+    '  nosey doctor [--json]',
+    'Options',
+    '  --json               Print a structured detection report',
+    '  --skills-only        Print only suggested skill IDs',
+    '  --explain            Include detection evidence in text output',
+    '  --no-interactive     Print report without the skill picker',
+    '  --no-frontend-bonus Disable frontend bonus suggestions',
+    '  --registry SOURCE    Add registry source (repeatable)',
+    '  --depth N            Maximum scan depth (default: 8)',
+    '  --max-files N        Maximum files (default: 20000)',
+    '  --theme NAME         nosey|dark|light|contrast|mono|auto',
+    '  --screen ID          ' + screenIds.join('|'),
+    '  --ascii             ASCII terminal symbols',
+    '  --plain             Print without the interactive UI',
+    '  --setup             Open application settings wizard',
+    '  --config PATH       Nosey application settings JSON path',
+    '  --global            Use global scope for registry add/list/remove',
+    '  --ref REVISION      Pin a Git registry revision',
+    '  --registry-id ID    owner/repository for registry init',
+    '  --yes               Noninteractive registry initialization',
+    '  --no-git            Do not initialize a local Git repository',
+    '  --github            Create a GitHub repository (requires gh)',
+    '  --visibility LEVEL  private|public for GitHub initialization',
+  ].join('\n'),
   {
     importMeta: import.meta,
-    // The banner below already carries the tagline from package.json.
     description: false,
+    booleanDefault: undefined,
     flags: {
       theme: {type: 'string'},
       screen: {type: 'string', default: 'home'},
@@ -50,82 +61,144 @@ ${brandTagline}
       setup: {type: 'boolean'},
       plain: {type: 'boolean'},
       json: {type: 'boolean'},
+      skillsOnly: {type: 'boolean'},
+      explain: {type: 'boolean'},
+      interactive: {type: 'boolean', default: true},
+      frontendBonus: {type: 'boolean', default: true},
+      registry: {type: 'string', isMultiple: true},
+      depth: {type: 'number', default: 8},
+      maxFiles: {type: 'number', default: 20_000},
+      global: {type: 'boolean'},
+      ref: {type: 'string'},
+      registryId: {type: 'string'},
+      yes: {type: 'boolean'},
+      git: {type: 'boolean'},
+      github: {type: 'boolean'},
+      visibility: {type: 'string'},
       debug: {type: 'boolean'},
     },
   },
 );
 
-async function main() {
-  const {flags, input} = cli;
-  logger.setDebug(Boolean(flags.debug));
-
-  if (input.length > 0) {
-    if (flags.setup || flags.plain)
-      throw new AppError('Subcommands cannot be combined with --setup or --plain', {exitCode: 2});
-    if (runCommand(input[0]!, input.slice(1), {configFile: flags.config, json: flags.json})) return;
-    throw new AppError(`Unknown command "${input[0]}"`, {
-      exitCode: 2,
-      hint: `Run ${APP_NAME} --help for available commands.`,
-    });
-  }
-  if (flags.json)
-    throw new AppError('--json requires a headless subcommand (e.g. doctor)', {exitCode: 2});
-  if (!isScreenId(flags.screen))
-    throw new AppError(`Unknown screen "${flags.screen}"`, {
-      exitCode: 2,
-      hint: `Try one of: ${screenIds.join(', ')}`,
-    });
-
+function validate() {
+  if (cli.flags.json && cli.flags.skillsOnly)
+    throw new AppError('--json and --skills-only cannot be combined', {exitCode: 2});
+  if (!Number.isSafeInteger(cli.flags.depth) || cli.flags.depth < 0)
+    throw new AppError('--depth requires a non-negative integer', {exitCode: 2});
+  if (!Number.isSafeInteger(cli.flags.maxFiles) || cli.flags.maxFiles < 1)
+    throw new AppError('--max-files requires a positive integer', {exitCode: 2});
+  if (cli.flags.visibility && !['private', 'public'].includes(cli.flags.visibility))
+    throw new AppError('--visibility requires private or public', {exitCode: 2});
+}
+function initOptions(directory?: string): RegistryInitOptions {
+  return {
+    directory,
+    registryId: cli.flags.registryId,
+    yes: cli.flags.yes,
+    git: cli.flags.git,
+    github: cli.flags.github,
+    visibility: cli.flags.visibility as 'private' | 'public' | undefined,
+  };
+}
+function presentation(screen: string, root: string, registryInit?: RegistryInitOptions): AppOptions {
+  const {flags} = cli;
   const {config, error} = loadConfig(flags.config);
   if (error) logger.error('config:', error);
   if (flags.setup && error)
     throw new AppError('Cannot edit invalid configuration', {hint: error, exitCode: 2});
-
   const configFlags: Partial<Config> = {
-    theme:
-      flags.theme && appConfig.fields[0]?.options?.some((item) => item.value === flags.theme)
-        ? (flags.theme as Config['theme'])
-        : undefined,
+    theme: flags.theme && appConfig.fields[0]?.options?.some((entry) => entry.value === flags.theme)
+      ? flags.theme as Config['theme'] : undefined,
     ascii: flags.ascii ? true : undefined,
   };
   const resolved = resolveConfig(appConfig.fields, config, {flags: configFlags});
-  const options: AppOptions = {
+  return {
     theme: resolveThemeName({
-      flag: flags.theme,
-      env: process.env[APP_THEME_ENV],
-      config: config.theme,
-      noColor: noColor(),
+      flag: flags.theme, env: process.env[APP_THEME_ENV],
+      config: config.theme, noColor: noColor(),
     }),
     ascii: resolved.values.ascii ?? !supportsUnicode(),
-    debug: Boolean(flags.debug),
-    screen: flags.screen,
-    configFile: flags.config,
-    configFlags,
+    debug: Boolean(flags.debug), screen,
+    configFile: flags.config, configFlags, registryInit,
+    scan: {
+      root, depth: flags.depth, maxFiles: flags.maxFiles,
+      frontendBonus: flags.frontendBonus,
+      registry: flags.registry ?? [], explain: Boolean(flags.explain),
+    },
   };
-  logger.debug('options', options);
-
-  if (flags.setup && (flags.plain || !isInteractive()))
-    throw new AppError('Configuration wizard requires an interactive terminal', {
-      exitCode: 2,
-      hint: `Run ${APP_NAME} --setup in a TTY, or edit the JSON config directly.`,
-    });
-
-  if (flags.plain || !isInteractive()) {
-    console.log(
-      renderToString(<PlainView options={options} />, {
-        columns: process.stdout.columns || 80,
-      }),
-    );
+}
+async function showApp(options: AppOptions) {
+  let confirmed: string[] | undefined;
+  await render(<App options={{...options, onConfirm: (ids) => { confirmed = ids; }}} />).waitUntilExit();
+  if (confirmed) process.stdout.write(confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n');
+}
+async function main() {
+  const {flags, input} = cli;
+  logger.setDebug(Boolean(flags.debug));
+  validate();
+  if (input[0] === 'doctor') {
+    if (flags.setup || flags.plain || input.length !== 1)
+      throw new AppError('Invalid doctor arguments', {exitCode: 2});
+    runCommand('doctor', [], {configFile: flags.config, json: flags.json});
     return;
   }
-
-  await render(
-    flags.setup ? <ConfigSetup options={options} /> : <App options={options} />,
-  ).waitUntilExit();
+  if (input[0] === 'registry') {
+    if (flags.setup || flags.skillsOnly || flags.explain)
+      throw new AppError('Scan and setup flags cannot be used with registry subcommands', {exitCode: 2});
+    if (input[1] === 'init') {
+      if (input.length > 3) throw new AppError('Expected registry init [directory]', {exitCode: 2});
+      const options = initOptions(input[2]);
+      if (isInteractive() && flags.interactive && !flags.yes) {
+        await showApp(presentation('registry-setup', '.', options));
+      } else {
+        const result = await runRegistryInit({...options, yes: true}, {interactive: false});
+        process.stdout.write('Created registry ' + result.registryId + ' at ' + result.directory + '\n');
+      }
+      return;
+    }
+    if (input.length === 1 && isInteractive() && flags.interactive && !flags.json) {
+      await showApp(presentation('registry', '.'));
+      return;
+    }
+    await runRegistryCommand(input.slice(1), {json: Boolean(flags.json), global: flags.global, ref: flags.ref});
+    return;
+  }
+  if (input.length > 1) throw new AppError('Expected at most one project path', {exitCode: 2});
+  const root = input[0] ?? '.';
+  if (!isScreenId(flags.screen))
+    throw new AppError('Unknown screen ' + flags.screen, {exitCode: 2});
+  if (flags.setup && (!isInteractive() || flags.plain))
+    throw new AppError('Configuration wizard requires an interactive terminal', {exitCode: 2});
+  const options = presentation(flags.screen, root);
+  if (flags.setup) {
+    await render(<ConfigSetup options={options} />).waitUntilExit();
+    return;
+  }
+  if (flags.screen !== 'home' && (flags.plain || !isInteractive())) {
+    process.stdout.write(renderToString(<PlainView options={options} />, {
+      columns: process.stdout.columns || 80,
+    }) + '\n');
+    return;
+  }
+  if (flags.plain || flags.json || flags.skillsOnly || !flags.interactive || !isInteractive()) {
+    const resolved = await resolveRegistries(root, flags.registry ?? []);
+    for (const warning of resolved.warnings)
+      process.stderr.write('nosey: registry warning [' + warning.source + ']: ' + warning.message + '\n');
+    const report = await detectProject(root, {
+      depth: flags.depth, maxFiles: flags.maxFiles,
+      frontendBonus: flags.frontendBonus,
+      registry: resolved.registry, registryWarnings: resolved.warnings,
+    });
+    const result = flags.json ? JSON.stringify(report, null, 2)
+      : flags.skillsOnly ? report.skills.map((skill) => skill.id).join('\n')
+      : formatReport(report, Boolean(flags.explain));
+    process.stdout.write(result + '\n');
+    return;
+  }
+  await showApp(options);
 }
-
 main().catch((error: unknown) => {
   const err = toAppError(error);
-  console.error(`${err.message}${err.hint ? `\n${err.hint}` : ''}`);
+  process.stderr.write('nosey: ' + err.message + (err.hint ? '\n' + err.hint : '') + '\n');
   process.exitCode = err.exitCode;
 });
