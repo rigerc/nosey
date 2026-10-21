@@ -408,7 +408,7 @@ export function RegistryManagerScreen() {
                 {detail && (
                   <>
                     <Text>
-                      {detail.manifest.skills.length} local · {detail.map.externalSkills.length} external ·{' '}
+                      {detail.manifest.skills.length} local · {(detail.map.externalSkills?.length ?? 0)} external ·{' '}
                       {knownRecommendations.length} always recommended
                     </Text>
                     <PaginatedList
@@ -423,7 +423,7 @@ export function RegistryManagerScreen() {
                     />
                     {staleRecommendations.length > 0 && (
                       <Muted>
-                        Not in this registry's manifest: {staleRecommendations.join(', ')}. Saving
+                        Not declared in this registry: {staleRecommendations.join(', ')}. Saving
                         removes these IDs.
                       </Muted>
                     )}
