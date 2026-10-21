@@ -12,7 +12,7 @@ screens use Nosey's existing components, hooks, router and theme.
   scan and registry providers. The shell owns global keys and tab navigation.
 - `src/screens/index.ts`: screen registry and visible navigation order.
 - `src/commands/index.ts`: noninteractive diagnostics.
-- `src/screens/SkillBrowser.tsx`: skill selection and evidence views.
+- `src/screens/Home.tsx`: unified scan summary, filtered MultiSelect, review and skill evidence views.
 - `src/screens/RegistryManager.tsx`: registry browse/edit workflow.
 - `src/screens/RegistrySetup.tsx`: Nosey-native registry initialization wizard.
 - `src/components/`, `src/hooks/`, `src/theme/`: the **only** generic Ink UI layer.
@@ -27,6 +27,11 @@ screens use Nosey's existing components, hooks, router and theme.
 - `src/lib/registry/`: configuration, validation, read-only Git snapshot retrieval,
   merge logic, initialization and registry commands.
 - `src/lib/report.ts`: plain text formatter, deliberately distinct from UI presentation.
+
+Scan and skill selection share a single screen and selection state. `MultiSelect` accepts
+`allItems` when displaying a filtered subset, so hidden selections are retained when toggling
+or submitting visible items. The filter uses a controlled Nosey `TextField` and input capture
+suspends the shell's shortcuts while editing.
 
 React screens call pure services through feature/context boundaries. Services never
 import Ink or React, and the CLI does not create a terminal UI when producing JSON
