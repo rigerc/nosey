@@ -8,13 +8,13 @@ import {SKILLS_CLI_AGENTS, validAgents} from '../features/skills/install';
 /** Loose parsing retains application-specific extension keys during edits. */
 export const configSchema = z.looseObject({
   version: z.number().int().positive().optional(),
-  theme: z.enum(['auto', ...themeNames]).optional(),
-  ascii: z.boolean().optional(),
-  compactMode: z.boolean().optional(),
   skillsCli: z.object({
     enabled: z.boolean().optional(),
     defaultAgents: z.array(z.string()).refine(validAgents, 'Unsupported or duplicate agent').optional(),
   }).optional(),
+  theme: z.enum(['auto', ...themeNames]).optional(),
+  ascii: z.boolean().optional(),
+  compactMode: z.boolean().optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -37,23 +37,6 @@ export const appConfig = defineConfig({
       ],
     },
     {
-      path: 'ascii',
-      label: 'ASCII symbols',
-      section: 'Appearance',
-      kind: 'toggle',
-      description: 'Use ASCII-only symbols and borders.',
-      defaultValue: false,
-      env: 'CLI_ASCII',
-    },
-    {
-      path: 'compactMode',
-      label: 'Compact mode',
-      section: 'Appearance',
-      kind: 'toggle',
-      description: 'Show a minimal Scan interface when Nosey opens directly on Scan.',
-      defaultValue: false,
-    },
-    {
       path: 'skillsCli.enabled',
       label: 'Generate Skills CLI commands',
       section: 'Skills CLI',
@@ -69,6 +52,23 @@ export const appConfig = defineConfig({
       description: 'Commands target these agents in the scanned project only.',
       defaultValue: [],
       options: SKILLS_CLI_AGENTS,
+    },
+    {
+      path: 'ascii',
+      label: 'ASCII symbols',
+      section: 'Appearance',
+      kind: 'toggle',
+      description: 'Use ASCII-only symbols and borders.',
+      defaultValue: false,
+      env: 'CLI_ASCII',
+    },
+    {
+      path: 'compactMode',
+      label: 'Compact mode',
+      section: 'Appearance',
+      kind: 'toggle',
+      description: 'Show a minimal Scan interface when Nosey opens directly on Scan.',
+      defaultValue: false,
     },
   ],
 });
