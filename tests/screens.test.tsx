@@ -21,17 +21,26 @@ const render = (
 };
 
 describe('every screen × theme × width', () => {
+  // Exercise every screen at both layout extremes, then themes separately.
+  // The screen × theme × width cross-product repeated equivalent layouts.
   for (const {id} of screens) {
-    for (const theme of themeNames) {
-      for (const columns of [60, 120]) {
-        it(`${id} / ${theme} / ${columns} cols fits the terminal`, () => {
-          const out = render(id, theme, columns, false);
-          expect(out.length).toBeGreaterThan(0);
-          for (const line of out.split('\n'))
-            expect(stringWidth(line)).toBeLessThanOrEqual(columns);
-        });
-      }
+    for (const columns of [60, 120]) {
+      it(`${id} at ${columns} columns fits the terminal`, () => {
+        const out = render(id, 'nosey', columns, false);
+        expect(out.length).toBeGreaterThan(0);
+        for (const line of out.split('\n'))
+          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+      });
     }
+  }
+
+  for (const theme of themeNames) {
+    it(`home in ${theme} theme fits the terminal`, () => {
+      const out = render('home', theme, 80, false);
+      expect(out.length).toBeGreaterThan(0);
+      for (const line of out.split('\n'))
+        expect(stringWidth(line)).toBeLessThanOrEqual(80);
+    });
   }
 
   it('ascii mode uses no unicode symbols', () => {

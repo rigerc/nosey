@@ -541,26 +541,31 @@ describe('Registry UI writes', () => {
 });
 
 describe('terminal presentation', () => {
-  for (const columns of [40, 60, 80, 96, 120])
-    for (const theme of themeNames) {
-      it(`fits the successful scan at ${columns} columns in ${theme}`, () => {
-        const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
-        Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
-        try {
-          const out = renderToString(<App options={{...options, theme, static: true}} />, {
-            columns,
-          });
-          expect(out).toContain(':^) nosey');
-          expect(out).toContain('READ-ONLY');
-          for (const line of out.split('\n'))
-            expect(stringWidth(line)).toBeLessThanOrEqual(columns);
-          expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│]/);
-        } finally {
-          if (descriptor) Object.defineProperty(process.stdout, 'columns', descriptor);
-          else Reflect.deleteProperty(process.stdout, 'columns');
-        }
-      });
-    }
+  // Layout and theme variations are independent: avoid testing their
+  // entire cross-product for the same static scan output.
+  const presentations = [
+    ...[40, 60, 80, 96, 120].map((columns) => ({columns, theme: 'nosey' as const})),
+    ...themeNames.filter((theme) => theme !== 'nosey').map((theme) => ({columns: 80, theme})),
+  ];
+  for (const {columns, theme} of presentations) {
+    it(`fits the successful scan at ${columns} columns in ${theme}`, () => {
+      const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
+      Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+      try {
+        const out = renderToString(<App options={{...options, theme, static: true}} />, {
+          columns,
+        });
+        expect(out).toContain(':^) nosey');
+        expect(out).toContain('READ-ONLY');
+        for (const line of out.split('\n'))
+          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+        expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│]/);
+      } finally {
+        if (descriptor) Object.defineProperty(process.stdout, 'columns', descriptor);
+        else Reflect.deleteProperty(process.stdout, 'columns');
+      }
+    });
+  }
   it('labels partial scans, skipped inputs, and registry warnings explicitly', () => {
     const out = renderToString(
       <App

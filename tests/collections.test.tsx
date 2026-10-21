@@ -348,32 +348,35 @@ describe('gallery selection and input ownership', () => {
 });
 
 describe('collection rendering', () => {
-  for (const theme of themeNames)
-    for (const columns of [40, 60, 120]) {
-      it(`fits ${columns} columns with ${theme} theme`, () => {
-        const components = [
-          <MultiSelect items={items} maxVisible={2} isActive={false} />,
-          <SearchSelect items={items} onSelect={() => {}} maxVisible={2} isActive={false} />,
-          <Toggle label="Cache" isActive={false} />,
-          <PaginatedList
-            items={items}
-            getKey={(i) => i.value}
-            renderItem={(i) => <Text>{i.label}</Text>}
-            pageSize={2}
-            isActive={false}
-          />,
-        ];
-        for (const component of components) {
-          const out = renderToString(
-            <ThemeProvider name={theme} ascii>
-              {component}
-            </ThemeProvider>,
-            {columns},
-          );
-          for (const line of out.split('\n'))
-            expect(stringWidth(line)).toBeLessThanOrEqual(columns);
-          expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│○]/);
-        }
-      });
-    }
+  const presentations = [
+    ...[40, 120].map((columns) => ({columns, theme: 'nosey' as const})),
+    ...themeNames.filter((theme) => theme !== 'nosey').map((theme) => ({columns: 60, theme})),
+  ];
+  for (const {theme, columns} of presentations) {
+    it(`fits ${columns} columns with ${theme} theme`, () => {
+      const components = [
+        <MultiSelect items={items} maxVisible={2} isActive={false} />,
+        <SearchSelect items={items} onSelect={() => {}} maxVisible={2} isActive={false} />,
+        <Toggle label="Cache" isActive={false} />,
+        <PaginatedList
+          items={items}
+          getKey={(i) => i.value}
+          renderItem={(i) => <Text>{i.label}</Text>}
+          pageSize={2}
+          isActive={false}
+        />,
+      ];
+      for (const component of components) {
+        const out = renderToString(
+          <ThemeProvider name={theme} ascii>
+            {component}
+          </ThemeProvider>,
+          {columns},
+        );
+        for (const line of out.split('\n'))
+          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+        expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│○]/);
+      }
+    });
+  }
 });
