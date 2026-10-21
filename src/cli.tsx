@@ -38,9 +38,9 @@ const cli = meow(
     --registry <source> Add a local or Git skill registry (repeatable)
     --depth <n>      Maximum scan depth (default: 8)
     --max-files <n>  Maximum scanned files (default: 20000)
-    --global         List only global registries (add/remove are global by default)
+    --global         List/refresh only global registries (add/remove are global by default)
     --project        Remove a legacy project-scoped registry reference
-    --ref <revision> Pin a Git registry revision
+    --ref <revision> Select a Git registry revision (add/show/refresh)
     --registry-id <id> owner/repository for registry init
     --yes            Noninteractive registry initialization
     --no-git         Skip Git initialization for a registry
