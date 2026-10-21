@@ -7,6 +7,15 @@ export type SkillRecord = {
   description?: string;
 };
 
+/** An installable skill hosted outside the declaring registry. */
+export type ExternalSkillRecord = {
+  id: string;
+  name: string;
+  source: string;
+  skill: string;
+  description?: string;
+};
+
 export type RegistryManifest = {
   schemaVersion: 1;
   registryId: string;
@@ -18,7 +27,9 @@ export type CombinationSkills = {combinationId: string; skills: string[]};
 
 export type RegistryMap = {
   alwaysRecommend: string[];
-  schemaVersion: 1;
+  /** V1 maps contain local skills only; V2 allows external skill declarations. */
+  schemaVersion: 1 | 2;
+  externalSkills: ExternalSkillRecord[];
   registryId: string;
   technologies: Technology[];
   technologySkills: TechnologySkills[];
@@ -39,6 +50,8 @@ export type SkillInstallSource = {source: string; name: string};
 
 export type MergedRegistry = {
   skillInstallSources?: Map<string, SkillInstallSource>;
+  /** Distinguishes reusable external IDs from locally defined skill IDs. */
+  externalSkillIds: Set<string>;
   alwaysRecommend: Array<{registryId: string; skills: string[]}>;
   technologies: Technology[];
   combinations: ComboSkill[];
