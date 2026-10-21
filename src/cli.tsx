@@ -38,7 +38,8 @@ const cli = meow(
     --registry <source> Add a local or Git skill registry (repeatable)
     --depth <n>      Maximum scan depth (default: 8)
     --max-files <n>  Maximum scanned files (default: 20000)
-    --global         Global scope for registry list/add/remove
+    --global         List only global registries (add/remove are global by default)
+    --project        Remove a legacy project-scoped registry reference
     --ref <revision> Pin a Git registry revision
     --registry-id <id> owner/repository for registry init
     --yes            Noninteractive registry initialization
@@ -71,6 +72,7 @@ const cli = meow(
       depth: {type: 'number'},
       maxFiles: {type: 'number'},
       global: {type: 'boolean'},
+      project: {type: 'boolean'},
       ref: {type: 'string'},
       registryId: {type: 'string'},
       yes: {type: 'boolean'},
@@ -159,6 +161,7 @@ async function main() {
     'depth',
     'maxFiles',
     'global',
+    'project',
     'ref',
     'registryId',
     'yes',
@@ -232,8 +235,8 @@ async function main() {
     throw new AppError('Registry initialization options require: nosey registry init', {
       exitCode: 2,
     });
-  if (flags.global !== undefined || flags.ref !== undefined)
-    throw new AppError('--global and --ref require a registry subcommand', {exitCode: 2});
+  if (flags.global !== undefined || flags.project !== undefined || flags.ref !== undefined)
+    throw new AppError('--global, --project and --ref require a registry subcommand', {exitCode: 2});
   const explicitScan = input[0] === 'scan';
   const paths = explicitScan ? input.slice(1) : input;
   if (paths.length > 1) throw new AppError('Expected at most one project path', {exitCode: 2});
