@@ -103,7 +103,7 @@ export function HomeScreen() {
           Detected technologies: {report.technologies.map((tech) => tech.name).join(', ') || 'none'}
         </Text>
         {report.summary.technologiesWithoutSkills > 0 &&
-          <Muted>{report.summary.technologiesWithoutSkills} technologies have no mapped skills.</Muted>}}
+          <Muted>{report.summary.technologiesWithoutSkills} technologies have no mapped skills.</Muted>}
         {report.skippedFiles.length > 0 &&
           <Muted>{report.skippedFiles.length} skipped files (detection may be incomplete)</Muted>}
         {report.registryWarnings?.map((warning, index) =>
