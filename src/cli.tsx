@@ -192,7 +192,7 @@ async function main() {
     await render(<ConfigSetup options={options} />).waitUntilExit();
     return;
   }
-  if (flags.screen !== 'home' && (flags.plain || !isInteractive())) {
+  if (flags.screen !== 'home' && !flags.json && !flags.skillsOnly && (flags.plain || !isInteractive())) {
     process.stdout.write(renderToString(<PlainView options={options} />, {
       columns: process.stdout.columns || 80,
     }) + '\n');

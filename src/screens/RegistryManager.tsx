@@ -6,7 +6,7 @@ import {useRouter} from '../hooks/useRouter';
 import {buildRegistry, editRegistry, listRegistries, showRegistry, validateRegistry, type RegistryEntry, type RegistryScope} from '../lib/registry/commands.js';
 import type {LoadedRegistry} from '../lib/registry/types.js';
 
-type Mode = 'list' | 'add' | 'detail' | 'confirm-remove' | 'busy';
+type Mode = 'list' | 'add' | 'add-ref' | 'detail' | 'confirm-remove' | 'busy';
 const sourceOf = (entry: RegistryEntry) => entry.spec.type === 'local' ? entry.spec.path : entry.spec.url;
 
 export function RegistryManagerScreen() {
@@ -14,6 +14,7 @@ export function RegistryManagerScreen() {
   const [entries, setEntries] = useState<RegistryEntry[]>([]);
   const [mode, setMode] = useState<Mode>('list');
   const [scope, setScope] = useState<RegistryScope>('project');
+  const [pendingSource, setPendingSource] = useState('');
   const [selected, setSelected] = useState<RegistryEntry>();
   const [detail, setDetail] = useState<LoadedRegistry>();
   const [loading, setLoading] = useState(true);
@@ -78,11 +79,24 @@ export function RegistryManagerScreen() {
         onCancel={() => setMode('list')}
         onSubmit={(source) => {
           if (!source) { setError('A registry path or Git URL is required.'); return; }
+          if (/^(https:\/\/|ssh:\/\/|git@)/.test(source)) {
+            setPendingSource(source);
+            setMode('add-ref');
+            return;
+          }
           void execute(async () => {
             const result = await editRegistry('add', source, {root: process.cwd(), scope});
             return (result.changed ? 'Added registry to ' : 'Registry already in ') + result.configPath;
           });
         }} />}
+      {mode === 'add-ref' && <TextField label="Git revision (optional)" placeholder="HEAD"
+        onCancel={() => setMode('add')}
+        onSubmit={(ref) => { void execute(async () => {
+          const result = await editRegistry('add', pendingSource, {
+            root: process.cwd(), scope, ref: ref || undefined,
+          });
+          return (result.changed ? 'Added registry to ' : 'Registry already in ') + result.configPath;
+        }); }} />}
       {mode === 'detail' && detail && <>
         <Text bold>{detail.manifest.registryId}</Text>
         <Muted>Source: {detail.source}</Muted>
