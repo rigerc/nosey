@@ -10,6 +10,7 @@ export const configSchema = z.looseObject({
   version: z.number().int().positive().optional(),
   theme: z.enum(['auto', ...themeNames]).optional(),
   ascii: z.boolean().optional(),
+  compactMode: z.boolean().optional(),
   skillsCli: z.object({
     enabled: z.boolean().optional(),
     defaultAgents: z.array(z.string()).refine(validAgents, 'Unsupported or duplicate agent').optional(),
@@ -43,6 +44,14 @@ export const appConfig = defineConfig({
       description: 'Use ASCII-only symbols and borders.',
       defaultValue: false,
       env: 'CLI_ASCII',
+    },
+    {
+      path: 'compactMode',
+      label: 'Compact mode',
+      section: 'Appearance',
+      kind: 'toggle',
+      description: 'Show a minimal Scan interface when Nosey opens directly on Scan.',
+      defaultValue: false,
     },
     {
       path: 'skillsCli.enabled',
