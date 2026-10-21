@@ -1,9 +1,6 @@
 name: Screenshots and recordings
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
     inputs:
       screen:
