@@ -36,7 +36,7 @@ export const scanHints = [
 export function HomeScreen() {
   const {config, scan, refresh, confirm} = useScan();
   const {exit} = useApp();
-  const {columns, rows} = useTerminalSize();
+  const {rows} = useTerminalSize();
   const theme = useTheme();
   const [mode, setMode] = useState<Mode>('browse');
   const [selected, setSelected] = useState<string[]>([]);
@@ -416,19 +416,10 @@ export function HomeScreen() {
         message={report ? undefined : `Scanning ${config.root}...`}
       >
         {report && (
-          <Box flexDirection={columns >= 96 ? 'row' : 'column'} gap={1}>
-            <Box width={columns >= 96 ? '35%' : '100%'} flexDirection="column">
-              {overview}
-            </Box>
-            <Box
-              flexGrow={1}
-              flexShrink={1}
-              width={columns >= 96 ? '65%' : '100%'}
-              flexDirection="column"
-            >
-              {picker}
-            </Box>
-          </Box>
+          <Stack gap={1}>
+            {overview}
+            {picker}
+          </Stack>
         )}
       </ScreenState>
       {scan.status === 'error' && <Muted>Check the project path and permissions.</Muted>}

@@ -217,8 +217,8 @@ Scanning is shared through `ScanProvider`; the `report` seed and `static` app op
 support deterministic previews without launching asynchronous work. Production
 scans use `useAsync` so superseded results cannot overwrite a newer scan.
 
-At 96 columns and wider, Scan uses an overview/selection split; smaller terminals
-stack panels. Test all primary flows at 40, 60, 80, 96, and 120 columns, and verify
+Scan stacks the project overview above skill selection in a single column at every
+terminal width. Test all primary flows at 40, 60, 80, 96, and 120 columns, and verify
 mono/ASCII output as well as the Nosey and light palettes.
 
 ## Testing and quality
