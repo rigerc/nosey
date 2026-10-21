@@ -29,7 +29,8 @@
     "theme": "node scripts/theme.mjs",
     "theme:list": "node scripts/theme.mjs list",
     "theme:token": "node scripts/theme.mjs token",
-    "theme:default": "node scripts/theme.mjs default"
+    "theme:default": "node scripts/theme.mjs default",
+    "record": "node --import tsx scripts/screenshot.tsx --video"
   },
   "dependencies": {
     "ink": "^8.0.0",
@@ -41,9 +42,7 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
-    "ansi-to-html": "^0.7.2",
     "ink-testing-library": "^4.0.0",
-    "playwright": "^1.64.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite-plus": "1.3.0",

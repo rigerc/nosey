@@ -96,7 +96,7 @@ Vite, and Vitest workspace; Registries shows the initial state before adding ref
 Regenerate these images from the current UI:
 
 ```bash
-npx playwright install chromium
+# Install VHS 0.12.1+, ttyd and FFmpeg first; see docs/recording.md
 npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
 ```
 
@@ -107,6 +107,31 @@ to the ignored `screenshots/` directory unless `--output-dir` is supplied. Use
 limit captures, and set `--rows` or `--ascii` to preview other terminal layouts.
 Hidden screens such as `gallery` and `registry-setup` can be requested explicitly.
 Registry previews show the empty state and do not load or modify host references.
+
+VHS now captures the terminal directly. To record the real interactive workflow:
+
+```bash
+npm run record                                  # Nosey theme; PNG + GIF + MP4
+npm run record -- --format webm                  # Or WebM
+npm run record -- --tape scripts/tapes/workflow.tape
+npm run record -- --project ../project --columns 120 --rows 60
+npm run screenshot -- --dry-run                  # Generate replayable tapes only
+```
+
+The editable default journey filters the demo Scan results, clears the filter,
+and visits Registries, Settings, and Help. It does not save settings, edit registry
+references, confirm skill selections or install skills. Video defaults are Home,
+Nosey, 100 columns and 60 rows; screenshot defaults stay unchanged. Static image
+viewports expand to fit the rendered frame. Artifacts and replayable tapes go to
+`screenshots/` by default. For tracked documentation images, replay files/fixtures
+are kept under the ignored `screenshots/tapes/` directory.
+See [the recording guide](docs/recording.md) for setup, custom journeys and replay.
+
+The **Screenshots and recordings** GitHub Actions workflow runs on pushes to main,
+pull requests and manual dispatch. It validates the app, captures all 40 default
+PNGs, records the demo and uploads media/tapes as a `terminal-captures` artifact
+for 14 days. Manual inputs select the video screen, theme, width and interaction
+tape. Generated images are review artifacts without a visual baseline comparison.
 
 ## Scan a workspace
 
@@ -195,7 +220,8 @@ npm run test:unit # Runtime, domain, CLI, and existing UI tests
 npm run test:catalog
 npm run test:map
 npm run build
-npm run screenshot # First: npx playwright install chromium
+npm run screenshot # Requires VHS, ttyd, FFmpeg and Chromium
+npm run record     # Interactive GIF + MP4
 ```
 
 A GitHub Actions workflow is included in `.github/workflows/ci.yml`.

@@ -20,6 +20,6 @@ This application uses **Vite+** for building and running tests. Run package.json
 - Install dependencies with `npm install`.
 - Run `npm run typecheck` and `npm run build`.
 - Run `npm run test`; keep interactive and plain-rendering coverage.
-- For screenshot review, install Playwright Chromium and run `npm run screenshot`.
+- For screenshots or recordings, follow [the recording guide](docs/recording.md) for VHS setup and editable interaction tapes.
 - The generated CI workflow lives in `.github/workflows/ci.yml`.
 - Confirm `node dist/cli.js --plain` prints output after a build.

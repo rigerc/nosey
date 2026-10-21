@@ -1,0 +1,74 @@
+name: Screenshots and recordings
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      screen:
+        description: Screen to record
+        default: home
+        type: string
+      theme:
+        description: Theme to record
+        default: nosey
+        type: choice
+        options: [nosey, dark, light, contrast, mono]
+      columns:
+        description: Recording width in columns (40–240)
+        default: '100'
+        type: string
+      rows:
+        description: Recording height in rows (24–100)
+        default: '60'
+        type: string
+      tape:
+        description: Interaction tape relative to the checkout
+        default: scripts/tapes/workflow.tape
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: charmbracelet/vhs-action@v2
+        with:
+          version: v0.12.1
+          install-fonts: true
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run screenshot
+      - name: Record interactive workflow
+        env:
+          CAPTURE_SCREEN: ${{ inputs.screen || 'home' }}
+          CAPTURE_THEME: ${{ inputs.theme || 'nosey' }}
+          CAPTURE_COLUMNS: ${{ inputs.columns || '100' }}
+          CAPTURE_ROWS: ${{ inputs.rows || '60' }}
+          CAPTURE_TAPE: ${{ inputs.tape || 'scripts/tapes/workflow.tape' }}
+        run: npm run record -- --screen "$CAPTURE_SCREEN" --theme "$CAPTURE_THEME" --columns "$CAPTURE_COLUMNS" --rows "$CAPTURE_ROWS" --tape "$CAPTURE_TAPE"
+      - name: Upload screenshots and recordings
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: terminal-captures
+          path: screenshots/
+          if-no-files-found: error
+          retention-days: 14
