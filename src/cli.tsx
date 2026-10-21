@@ -105,6 +105,7 @@ function presentation(screen: string, root: string): AppOptions {
     screen,
     configFile: flags.config,
     configFlags,
+    skillsCli: resolved.values.skillsCli,
     scan: {
       root,
       depth: flags.depth ?? 8,
@@ -117,18 +118,25 @@ function presentation(screen: string, root: string): AppOptions {
 }
 async function showApp(options: AppOptions) {
   let confirmed: string[] | undefined;
+  let generatedCommands: string[] | undefined;
   await render(
     <App
       options={{
         ...options,
-        onConfirm: (ids) => {
+        onConfirm: (ids, commands) => {
           confirmed = ids;
+          generatedCommands = commands;
         },
       }}
     />,
   ).waitUntilExit();
-  if (confirmed)
-    process.stdout.write(confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n');
+  if (confirmed) {
+    if (generatedCommands !== undefined)
+      process.stdout.write(generatedCommands.length
+        ? generatedCommands.join('\n') + '\n'
+        : 'No installation commands necessary.\n');
+    else process.stdout.write(confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n');
+  }
 }
 async function main() {
   const {flags, input} = cli;
