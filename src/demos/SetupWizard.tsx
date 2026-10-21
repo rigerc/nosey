@@ -82,7 +82,7 @@ function ReviewStep({template, isActive}: {template: string; isActive: boolean})
   );
 }
 
-/** Shared by the gallery and the standalone inline demo. */
+/** Demo wizard used by the Stepper tests. */
 export function SetupWizard({
   onFinish,
   isActive = true,

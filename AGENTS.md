@@ -11,7 +11,7 @@ These instructions apply to the **generated application**, not the ink-kit start
 - Use `useKeymap` with `{scope: 'screen'}` for screen shortcuts. Shared key precedence is control > screen > global. Keep only one active keyboard control; text fields must capture input and release capture on close.
 - Style with semantic theme tokens (`useTheme` / `useTone`), not hard-coded ANSI colors; support `NO_COLOR`, `--ascii`, and narrow terminals.
 - Keep terminal rendering free of console logging; maintain headless/`--plain` behavior. Review generated documentation when changing framework conventions.
-- Features are optional. Check `package.json` and the screen/command registries before assuming settings, gallery, doctor, screenshots, tests, or CI are installed.
+- Features are optional. Check `package.json` and the screen/command registries before assuming settings, doctor, screenshots, tests, or CI are installed.
 
 ## Toolchain and checks
 

@@ -30,7 +30,7 @@ headless commands, without adding a separate UI framework dependency.
 - `docs/ui-framework.md` explains composition, input ownership, themes and tests.
 - `src/config/` and `src/lib/config.ts` provide versioned, validated config.
 
-Selected features: settings, doctor, gallery, tests, screenshots, ci.
+Selected features: settings, doctor, tests, screenshots, ci.
 
 The no-argument CLI and project-path form open Scan in a TTY. Explicit `scan`, JSON,
 skills-only, plain, and noninteractive modes reuse the same engine without mounting
@@ -48,7 +48,7 @@ input or dispatch keys. The command menu deactivates every screen while open.
 completions. `src/features/ui/context.tsx` carries contextual hints and command actions.
 
 Scan, Registries, Settings, and Help are the visible routes. `skills` resolves to
-Scan; `registry-setup` and `gallery` are hidden. Registry initialization unmounts
+Scan; `registry-setup` is hidden. Registry initialization unmounts
 on exit so each new wizard starts cleanly. The Stepper locks transitions and writes
 once, after Review. Settings drafts survive tab changes; opening the separate
 wizard requires discarding an unsaved draft explicitly.

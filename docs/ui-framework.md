@@ -2,15 +2,14 @@
 
 This guide explains how to build terminal interfaces with the local **Ink 8 / React 19** UI framework. It applies to both this starter and generated applications. The framework lives in `src/`; it is **not** a separately installed package.
 
-For feature walkthroughs, generated projects include `docs/adding-a-feature.md` and
-`docs/architecture.md`; in this starter their source templates are under
-`templates/app/docs/`. The generated app's `README.md` links to both. The starter's `npm run demo:ui` and `npm run demo:inline` are showcases **only in this repository**. Generated apps include the component gallery only when the `gallery` feature is selected.
+For feature walkthroughs, see `docs/adding-a-feature.md` and
+`docs/architecture.md`. Reusable components and hooks are maintained in `src/`.
 
 ## Start here
 
-1. Run the project's `dev` script in an interactive terminal (in the starter: `npm run dev`); use `--plain` for one-shot output in pipes and CI.
+1. Run `npm run dev` in an interactive terminal; use `--plain` for one-shot output in pipes and CI.
 2. Read `src/app.tsx`, `src/screens/Home.tsx` and `src/screens/index.ts` to see the application shell, screen composition and registration.
-3. Discover reusable exports in `src/components/index.ts` and `src/hooks/index.ts`. The starter's `npm run gallery` demonstrates interactive components.
+3. Discover reusable exports in `src/components/index.ts` and `src/hooks/index.ts`.
 4. Add domain logic outside the React/Ink layer so noninteractive commands can reuse it.
 
 ## Architecture and ownership
@@ -175,7 +174,7 @@ Semantic palettes live in `src/theme/palettes.json` and the project fallback in 
 ## Nosey application contracts
 
 The visible tabs are Scan, Registries, Settings, and Help. `skills` is an alias for
-Scan, with hidden `registry-setup` and `gallery` routes. `Header` uses `BrandMark`
+Scan, with a hidden `registry-setup` route. `Header` uses `BrandMark`
 and the `nosey` name. Dark terminals resolve `auto` to the Nosey palette; light
 terminals use the burnt accent. `NO_COLOR` locks runtime cycling to mono.
 
