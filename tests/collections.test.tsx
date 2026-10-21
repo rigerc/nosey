@@ -68,6 +68,42 @@ describe('MultiSelect', () => {
     expect(submit).toHaveBeenCalledWith(['alpha', 'gamma']);
   });
 
+  it('renders group headers with spacing and shared skill selection across groups', async () => {
+    const grouped = [
+      {value: 'alpha', label: 'Alpha', group: {key: 'react', label: 'React (2)'}},
+      {value: 'shared', label: 'Shared', group: {key: 'react', label: 'React (2)'}},
+      {value: 'shared', label: 'Shared', group: {key: 'next', label: 'Next.js (2)'}},
+      {value: 'delta', label: 'Delta', group: {key: 'next', label: 'Next.js (2)'}},
+    ];
+    const change = vi.fn();
+    const inspect = vi.fn();
+    const app = await mount(
+      <MultiSelect
+        items={grouped}
+        allItems={items}
+        onChange={change}
+        onInspect={inspect}
+        maxVisible={6}
+      />,
+    );
+    let lines = (app.lastFrame() ?? '').split('\n');
+    const next = lines.findIndex((line) => line.includes('Next.js (2)'));
+    const firstShared = lines.findIndex((line) => line.includes('[ ] Shared'));
+    expect(next).toBeGreaterThan(firstShared);
+    expect(lines.slice(firstShared + 1, next).some((line) => line.trim() === '')).toBe(true);
+
+    await press(app, '\u001b[B'); // Focus React's Shared
+    await press(app, 'd'); // Inspect, do not open a search control
+    expect(inspect).toHaveBeenCalledWith('shared');
+    await press(app, ' '); // Select one logical skill
+    lines = (app.lastFrame() ?? '').split('\n');
+    expect(lines.filter((line) => line.includes('[x] Shared'))).toHaveLength(2);
+    expect(app.lastFrame()).toContain('1 selected');
+    await press(app, '\u001b[B'); // Next.js copy of Shared
+    await press(app, ' '); // Unselect the same underlying ID
+    expect(app.lastFrame()).toContain('0 selected');
+  });
+
   it('leaves controlled selection to the parent and ignores keys when inactive', async () => {
     const change = vi.fn();
     const app = await mount(<MultiSelect items={items} value={[]} onChange={change} />);
