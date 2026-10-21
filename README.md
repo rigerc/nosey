@@ -155,6 +155,35 @@ npm run dev -- registry list --json
 npm run dev -- registry validate ./team-skills --json
 ~~~
 
+### Refreshing Git registries
+
+Normally Git registries use a cached snapshot for up to 24 hours. To **force a network
+refresh** of all configured Git registries without waiting for the cache TTL:
+
+~~~bash
+npm run dev -- registry refresh
+npm run dev -- registry refresh --json
+~~~
+
+Refresh a specific Git URL and revision (even when it isn't configured):
+
+~~~bash
+npm run dev -- registry refresh https://github.com/org/skills.git --ref main
+~~~
+
+The command reports `initialized` (first fetch), `updated` (cached revision
+changed), `unchanged`, `cached` (network failure with a previous snapshot), or
+`error`. Network failures use a nonzero exit code. It never runs registry code
+or installs skills.
+
+**Settings → Registries → Check Git registries on startup** is off by default.
+When enabled, an interactive launch forces one Git update check as part of the
+initial scan, regardless of the cache TTL. If a previously cached Git revision
+changed, Nosey displays the affected sources. With **Skills CLI** enabled, it
+also suggests running `npx skills update` yourself. Neither the startup check
+nor the suggestion executes Skills CLI or updates installed skills. Ordinary
+headless scans continue to use the configured registry TTL.
+
 To create a registry in a **new** directory:
 
 ~~~bash

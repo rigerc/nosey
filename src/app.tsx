@@ -1,7 +1,7 @@
 import {Box} from 'ink';
 import {useEffect, useState, type ReactNode} from 'react';
 import pkg from '../package.json';
-import {AppShell, Badge, CommandMenu, ErrorBoundary, Header, StatusBar, Tabs} from './components';
+import {AppShell, Badge, CommandMenu, ErrorBoundary, Header, StatusBar, StatusMessage, Tabs} from './components';
 import {ConfigRuntimeProvider} from './config/context';
 import type {Config} from './config';
 import {
@@ -36,6 +36,7 @@ export interface AppOptions {
   configFile?: string;
   configFlags?: Partial<Config>;
   skillsCli?: Config['skillsCli'];
+  registrySettings?: Config['registries'];
   scan?: ScanConfig;
   report?: Report;
   registryInit?: RegistryInitOptions;
@@ -59,6 +60,7 @@ export function AppProviders({options, children}: {options: AppOptions; children
                         enabled={!options.static}
                         onConfirm={options.onConfirm}
                         installSettings={options.skillsCli}
+                        checkRegistryUpdatesOnStart={options.registrySettings?.checkOnStart}
                       >
                         <ErrorBoundary debug={options.debug}>{children}</ErrorBoundary>
                       </ScanProvider>
@@ -83,7 +85,7 @@ function Shell() {
   const exit = useExit();
   const {theme} = useThemeControls();
   const captured = useHasInputCapture();
-  const {scan} = useScan();
+  const {scan, installSettings} = useScan();
   const hintsMap = useScreenHintsMap();
   const controlHints = useActiveFooterHints();
   const {requestAction} = useUiActions();
@@ -162,6 +164,12 @@ function Shell() {
         />
       }
     >
+      {scan.status === 'success' && !!scan.data.updatedRegistries?.length && (
+        <StatusMessage tone="info">
+          Updated Git registries: {scan.data.updatedRegistries.join(', ')}.
+          {installSettings.enabled ? ' Run `npx skills update` to update installed skills.' : ''}
+        </StatusMessage>
+      )}
       {commandOpen && (
         <CommandMenu
           items={menu}

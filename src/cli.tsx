@@ -19,7 +19,7 @@ const cli = meow(
     $ ${APP_NAME} [options]
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
-    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build>
+    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh>
     $ ${APP_NAME} doctor [--json] [--config path]
     $ ${APP_NAME} --setup [--config path]
 
@@ -38,9 +38,9 @@ const cli = meow(
     --registry <source> Add a local or Git skill registry (repeatable)
     --depth <n>      Maximum scan depth (default: 8)
     --max-files <n>  Maximum scanned files (default: 20000)
-    --global         List only global registries (add/remove are global by default)
+    --global         List/refresh only global registries (add/remove are global by default)
     --project        Remove a legacy project-scoped registry reference
-    --ref <revision> Pin a Git registry revision
+    --ref <revision> Select a Git registry revision (add/show/refresh)
     --registry-id <id> owner/repository for registry init
     --yes            Noninteractive registry initialization
     --no-git         Skip Git initialization for a registry
@@ -109,6 +109,7 @@ function presentation(screen: string, root: string): AppOptions {
     configFile: flags.config,
     configFlags,
     skillsCli: resolved.values.skillsCli,
+    registrySettings: resolved.values.registries,
     scan: {
       root,
       depth: flags.depth ?? 8,

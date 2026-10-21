@@ -8,6 +8,9 @@ import {SKILLS_CLI_AGENTS, validAgents} from '../features/skills/install';
 /** Loose parsing retains application-specific extension keys during edits. */
 export const configSchema = z.looseObject({
   version: z.number().int().positive().optional(),
+  registries: z.object({
+    checkOnStart: z.boolean().optional(),
+  }).optional(),
   skillsCli: z.object({
     enabled: z.boolean().optional(),
     defaultAgents: z.array(z.string()).refine(validAgents, 'Unsupported or duplicate agent').optional(),
@@ -35,6 +38,14 @@ export const appConfig = defineConfig({
         {value: 'auto', label: 'Auto (terminal default)'},
         ...themeNames.map((value) => ({value, label: value})),
       ],
+    },
+    {
+      path: 'registries.checkOnStart',
+      label: 'Check Git registries on startup',
+      section: 'Registries',
+      kind: 'toggle',
+      description: 'Fetch Git registries on interactive launch, bypassing the cache TTL.',
+      defaultValue: false,
     },
     {
       path: 'skillsCli.enabled',

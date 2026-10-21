@@ -1,4 +1,4 @@
-import {createContext, useContext, useEffect, type ReactNode} from 'react';
+import {createContext, useContext, useEffect, useRef, type ReactNode} from 'react';
 import type {Config} from '../../config';
 import {inspectInstalledSkills, discoverProjectSkillAgents} from './install';
 import {resolve} from 'node:path';
@@ -14,6 +14,7 @@ export interface ScanConfig {
   registry: string[];
   explain: boolean;
 }
+type ScanResult = Report & {updatedRegistries?: string[]; inspectedAgents?: string[]};
 export const defaultScan: ScanConfig = {
   root: '.',
   depth: 8,
@@ -25,9 +26,14 @@ export const defaultScan: ScanConfig = {
 function useScanState(
   config: ScanConfig, initialReport?: Report, enabled = true,
   installSettings?: Config['skillsCli'],
+  checkRegistryUpdatesOnStart = false,
 ) {
-  const scan = useAsync(async () => {
-    const resolved = await resolveRegistries(config.root, config.registry);
+  // Startup checking is opt-in and only runs for the first interactive scan.
+  const checkOnNextScan = useRef(checkRegistryUpdatesOnStart && enabled && !initialReport);
+  const scan = useAsync<ScanResult, []>(async () => {
+    const forceRefresh = checkOnNextScan.current;
+    checkOnNextScan.current = false;
+    const resolved = await resolveRegistries(config.root, config.registry, {forceRefresh});
     const report = await detectProject(config.root, {
       ...config,
       registry: resolved.registry,
@@ -41,7 +47,7 @@ function useScanState(
       installSource: resolved.registry.skillInstallSources?.get(skill.id),
     }));
     const installed = await inspectInstalledSkills(config.root, sourced, agents);
-    return {...report, inspectedAgents: agents, skills: sourced.map((skill) => ({
+    return {...report, updatedRegistries: forceRefresh ? resolved.updatedSources : [], inspectedAgents: agents, skills: sourced.map((skill) => ({
       ...skill, installation: installed.get(skill.id),
     }))};
   }, initialReport);
@@ -76,6 +82,7 @@ export function ScanProvider({
   enabled,
   onConfirm,
   installSettings,
+  checkRegistryUpdatesOnStart = false,
   children,
 }: {
   config?: ScanConfig;
@@ -83,9 +90,10 @@ export function ScanProvider({
   enabled?: boolean;
   onConfirm?: (ids: string[], commands?: string[]) => void;
   installSettings?: Config['skillsCli'];
+  checkRegistryUpdatesOnStart?: boolean;
   children: ReactNode;
 }) {
-  const value = useScanState(config, initialReport, enabled, installSettings);
+  const value = useScanState(config, initialReport, enabled, installSettings, checkRegistryUpdatesOnStart);
   return (
     <Context.Provider value={{...value, confirm: (ids, commands) => commands === undefined ? onConfirm?.(ids) : onConfirm?.(ids, commands)}}>
       {children}

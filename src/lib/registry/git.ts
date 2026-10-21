@@ -31,10 +31,19 @@ export type GitLoadOptions = {
 	cacheDirectory?: string;
 	now?: number;
 	fetcher?: GitFetch;
+	/** Ignore the cache TTL when explicitly checking the remote. */
+	forceRefresh?: boolean;
 };
 export type GitLoadResult = {
 	loaded: LoadedRegistry;
 	warnings: RegistryWarning[];
+	/** True only when a successful fetch differs from an existing cached commit. */
+	updated: boolean;
+	/** True only when a remote fetch succeeded. */
+	refreshed: boolean;
+	/** Whether a valid snapshot was present before the fetch. */
+	hadCache: boolean;
+	commit: string;
 };
 
 export function validateSource(spec: GitSpec): void {
@@ -189,6 +198,7 @@ export async function loadGitRegistry(
 	const source = spec.url + '#' + (spec.ref ?? 'HEAD');
 	let previous: LoadedRegistry | undefined;
 	let fetchedAt = 0;
+	let previousCommit: string | undefined;
 	// Preserve offline access to SkillSense caches without writing to their paths.
 	const filenames = options.cacheDirectory
 		? [filename]
@@ -199,6 +209,7 @@ export async function loadGitRegistry(
 			const raw = JSON.parse(await fs.readFile(candidate, 'utf8')) as CachedSnapshot;
 			previous = restore(raw, source);
 			fetchedAt = raw.fetchedAt;
+			previousCommit = raw.commit;
 			break;
 		} catch {
 			// A missing or corrupt entry cannot block a remote refresh.
@@ -206,8 +217,8 @@ export async function loadGitRegistry(
 	}
 
 	const ttl = (spec.refreshHours ?? defaultTtlHours) * 60 * 60 * 1000;
-	if (previous && now - fetchedAt >= 0 && now - fetchedAt < ttl) {
-		return {loaded: previous, warnings: []};
+	if (!options.forceRefresh && previous && now - fetchedAt >= 0 && now - fetchedAt < ttl) {
+		return {loaded: previous, warnings: [], updated: false, refreshed: false, hadCache: true, commit: previousCommit!};
 	}
 
 	try {
@@ -250,11 +261,22 @@ export async function loadGitRegistry(
 			await fs.rm(temporary, {force: true});
 		}
 
-		return {loaded: validated, warnings: []};
+		return {
+			loaded: validated,
+			warnings: [],
+			updated: previousCommit !== undefined && previousCommit !== snapshot.commit,
+			refreshed: true,
+			hadCache: Boolean(previous),
+			commit: snapshot.commit,
+		};
 	} catch (error: unknown) {
 		if (!previous) throw error;
 		return {
 			loaded: previous,
+			updated: false,
+			refreshed: false,
+			hadCache: true,
+			commit: previousCommit!,
 			warnings: [
 				{
 					source,

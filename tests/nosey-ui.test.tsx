@@ -71,6 +71,35 @@ afterEach(() => {
 });
 
 describe('Nosey scan interaction', () => {
+  it('suggests Skills CLI updates only when Git registries changed and Skills CLI is enabled', async () => {
+    const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
+    const enabled = await mount(<App options={{
+      ...options, report: updatedReport, skillsCli: {enabled: true, defaultAgents: []},
+    }} />);
+    expect(enabled.lastFrame()).toContain('Updated Git registries');
+    expect(enabled.lastFrame()).toContain('npx skills update');
+
+    const disabled = await mount(<App options={{
+      ...options, report: updatedReport, skillsCli: {enabled: false, defaultAgents: []},
+    }} />);
+    expect(disabled.lastFrame()).toContain('Updated Git registries');
+    expect(disabled.lastFrame()).not.toContain('npx skills update');
+
+    const noChanges = await mount(<App options={{
+      ...options, skillsCli: {enabled: true, defaultAgents: []},
+    }} />);
+    expect(noChanges.lastFrame()).not.toContain('npx skills update');
+  });
+
+  it('shows registry update suggestion in compact Scan', async () => {
+    const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
+    const compact = await mount(<App options={{
+      ...options, compactMode: true, report: updatedReport,
+      skillsCli: {enabled: true, defaultAgents: []},
+    }} />);
+    expect(compact.lastFrame()).toContain('npx skills update');
+  });
+
   it('shows installed status and prints only missing project agent commands', async () => {
     const confirmed = vi.fn();
     const app = await mount(<App options={{

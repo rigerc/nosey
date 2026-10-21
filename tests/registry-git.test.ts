@@ -206,3 +206,57 @@ test('Git snapshots round-trip v2 external skill declarations through the cache'
     expect(cached.loaded.map.technologySkills[0]?.skills).toEqual([externalId]);
   });
 });
+
+
+test('forced refresh bypasses a warm cache and detects new commits', async () => {
+  await cacheFixture(async (cacheDirectory) => {
+    let requests = 0;
+    const fetcher = async () => ({
+      loaded: {manifest, map, source: 'fixture'},
+      commit: (++requests === 1 ? 'a' : 'b').repeat(40),
+    });
+    const initial = await loadGitRegistry(spec, {cacheDirectory, now: 100, fetcher});
+    expect(initial.hadCache).toBe(false);
+    expect(initial.updated).toBe(false);
+    expect(initial.refreshed).toBe(true);
+
+    const cached = await loadGitRegistry(spec, {cacheDirectory, now: 101, fetcher});
+    expect(cached.refreshed).toBe(false);
+    expect(cached.updated).toBe(false);
+    expect(requests).toBe(1);
+
+    const changed = await loadGitRegistry(spec, {
+      cacheDirectory, now: 102, fetcher, forceRefresh: true,
+    });
+    expect(changed.updated).toBe(true);
+    expect(changed.refreshed).toBe(true);
+    expect(changed.hadCache).toBe(true);
+    expect(changed.commit).toBe('b'.repeat(40));
+    expect(requests).toBe(2);
+
+    const unchanged = await loadGitRegistry(spec, {
+      cacheDirectory, now: 103, fetcher, forceRefresh: true,
+    });
+    expect(unchanged.updated).toBe(false);
+    expect(unchanged.refreshed).toBe(true);
+    expect(requests).toBe(3);
+  });
+});
+
+test('failed forced refresh does not report an update or replace the cache', async () => {
+  await cacheFixture(async (cacheDirectory) => {
+    await loadGitRegistry(spec, {
+      cacheDirectory, now: 0,
+      fetcher: async () => ({loaded: {manifest, map, source: 'fixture'}, commit}),
+    });
+    const fallback = await loadGitRegistry(spec, {
+      cacheDirectory, now: 1, forceRefresh: true,
+      fetcher: async () => { throw new Error('offline'); },
+    });
+    expect(fallback.updated).toBe(false);
+    expect(fallback.refreshed).toBe(false);
+    expect(fallback.hadCache).toBe(true);
+    expect(fallback.commit).toBe(commit);
+    expect(fallback.warnings).toHaveLength(1);
+  });
+});
