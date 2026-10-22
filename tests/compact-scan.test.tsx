@@ -3,6 +3,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vite-plus/test';
 import {App, type AppOptions} from '../src/app';
+import {renderToString} from 'ink';
+import stringWidth from 'string-width';
 import {appConfig, resolveConfig, type Config} from '../src/config';
 import {defaultScan} from '../src/features/skills/context';
 import type {Report} from '../src/lib/detect';
@@ -14,9 +16,7 @@ const report: Report = {
   scannedFiles: 12,
   truncated: false,
   skippedFiles: [],
-  technologies: [
-    {id: 'react', name: 'React', evidence: [], skills: ['demo/one', 'demo/two']},
-  ],
+  technologies: [{id: 'react', name: 'React', evidence: [], skills: ['demo/one', 'demo/two']}],
   combinations: [],
   frontendDetected: true,
   agents: [],
@@ -57,7 +57,9 @@ describe('compact Scan setting', () => {
     saveConfig({compactMode: true}, path);
     expect(loadConfig(path).config.compactMode).toBe(true);
     expect(readFileSync(path, 'utf8')).toContain('"compactMode": true');
-    expect(resolveConfig(appConfig.fields, loadConfig(path).config, {env: {}}).values.compactMode).toBe(true);
+    expect(
+      resolveConfig(appConfig.fields, loadConfig(path).config, {env: {}}).values.compactMode,
+    ).toBe(true);
     expect(() => saveConfig({compactMode: 'yes' as unknown as boolean}, path)).toThrow();
   });
 
@@ -91,17 +93,24 @@ describe('compact Scan setting', () => {
       ...report,
       inspectedAgents: ['codex', 'claude-code'],
       skills: [
-        {id: 'acme/skills/alpha',
+        {
+          id: 'acme/skills/alpha',
           sources: [{type: 'technology', id: 'react', name: 'React'}],
-          installation: {installedAgents: ['codex'], unverifiedAgents: []}},
-        {id: 'acme/skills/beta',
-          sources: [{type: 'technology', id: 'react', name: 'React'}]},
+          installation: {installedAgents: ['codex'], unverifiedAgents: []},
+        },
+        {id: 'acme/skills/beta', sources: [{type: 'technology', id: 'react', name: 'React'}]},
       ],
     };
-    const app = await mount(<App options={{
-      ...options, report: installationReport, onConfirm,
-      skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
-    }} />);
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          report: installationReport,
+          onConfirm,
+          skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
+        }}
+      />,
+    );
     expect(app.lastFrame()).toContain('Partial 1/2');
     await press(app, ' ');
     await press(app, '\r');
@@ -126,13 +135,24 @@ describe('compact Scan setting', () => {
   it('blocks command confirmation without configured agents and Escape returns to browse', async () => {
     const {options} = setup();
     const onConfirm = vi.fn();
-    const app = await mount(<App options={{
-      ...options, onConfirm,
-      report: {...report, skills: [
-        {id: 'acme/skills/alpha', sources: [{type: 'technology', id: 'react', name: 'React'}]},
-      ]},
-      skillsCli: {enabled: true, defaultAgents: []},
-    }} />);
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          onConfirm,
+          report: {
+            ...report,
+            skills: [
+              {
+                id: 'acme/skills/alpha',
+                sources: [{type: 'technology', id: 'react', name: 'React'}],
+              },
+            ],
+          },
+          skillsCli: {enabled: true, defaultAgents: []},
+        }}
+      />,
+    );
     await press(app, ' ');
     await press(app, '\r');
     expect(app.lastFrame()).toContain('Choose default agents in Settings');
@@ -145,14 +165,25 @@ describe('compact Scan setting', () => {
   it('omits install commands for skills already installed for all configured agents', async () => {
     const {options} = setup();
     const onConfirm = vi.fn();
-    const app = await mount(<App options={{
-      ...options, onConfirm,
-      report: {...report, skills: [
-        {id: 'acme/skills/alpha', sources: [{type: 'technology', id: 'react', name: 'React'}],
-          installation: {installedAgents: ['claude-code'], unverifiedAgents: []}},
-      ]},
-      skillsCli: {enabled: true, defaultAgents: ['claude-code']},
-    }} />);
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          onConfirm,
+          report: {
+            ...report,
+            skills: [
+              {
+                id: 'acme/skills/alpha',
+                sources: [{type: 'technology', id: 'react', name: 'React'}],
+                installation: {installedAgents: ['claude-code'], unverifiedAgents: []},
+              },
+            ],
+          },
+          skillsCli: {enabled: true, defaultAgents: ['claude-code']},
+        }}
+      />,
+    );
     expect(app.lastFrame()).toContain('[Installed]');
     await press(app, ' ');
     await press(app, '\r');
@@ -162,11 +193,85 @@ describe('compact Scan setting', () => {
     expect(onConfirm).toHaveBeenCalledWith(['acme/skills/alpha'], []);
   });
 
+  it('fits a populated compact list and long project path in 24-row terminals', () => {
+    const {options} = setup();
+    const descriptors = ['columns', 'rows'].map((key) =>
+      Object.getOwnPropertyDescriptor(process.stdout, key),
+    );
+    const populated = {
+      ...report,
+      skills: Array.from({length: 30}, (_, index) => ({
+        id: `very-long-team/shared-agent-skills/skill-${index + 1}`,
+        sources: report.skills[0]!.sources,
+      })),
+    };
+    try {
+      Object.defineProperty(process.stdout, 'rows', {value: 24, configurable: true});
+      for (const columns of [40, 60, 80, 96, 120]) {
+        Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+        const out = renderToString(
+          <App
+            options={{
+              ...options,
+              report: populated,
+              scan: {...options.scan!, root: '/workspace/' + 'long-directory/'.repeat(20)},
+            }}
+          />,
+          {columns},
+        );
+        expect(out.split('\n').length, out).toBeLessThanOrEqual(24);
+        for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+        expect(out).toContain('[q] quit');
+        expect(out).toContain('[enter] review');
+        if (columns === 40) expect(out).toContain('skill-1');
+        expect(out).not.toContain('Registries');
+        expect(out).not.toContain('Commands');
+      }
+    } finally {
+      ['columns', 'rows'].forEach((key, index) => {
+        const descriptor = descriptors[index];
+        if (descriptor) Object.defineProperty(process.stdout, key, descriptor);
+        else Reflect.deleteProperty(process.stdout, key);
+      });
+    }
+  });
+
+  it('keeps full IDs when selecting abbreviated names in a narrow terminal', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
+    Object.defineProperty(process.stdout, 'columns', {value: 40, configurable: true});
+    const {options} = setup();
+    const id = 'very-long-team/shared-agent-skills/composition-patterns';
+    const onConfirm = vi.fn();
+    try {
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            onConfirm,
+            report: {...report, skills: [{id, sources: report.skills[0]!.sources}]},
+          }}
+        />,
+      );
+      expect(app.lastFrame()).toContain('composition-patterns');
+      await press(app, ' ');
+      await press(app, '\r');
+      await press(app, '\r'); // Confirmation still defaults to No.
+      expect(onConfirm).not.toHaveBeenCalled();
+      await press(app, '\r');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(onConfirm).toHaveBeenCalledExactlyOnceWith([id]);
+    } finally {
+      if (descriptor) Object.defineProperty(process.stdout, 'columns', descriptor);
+      else Reflect.deleteProperty(process.stdout, 'columns');
+    }
+  });
+
   it('preserves the full application shell when disabled or started on another screen', async () => {
     const {options} = setup();
     const fullScan = await mount(<App options={{...options, compactMode: false}} />);
     expect(fullScan.lastFrame()).toContain('Registries');
-    expect(fullScan.lastFrame()).toContain('Project');
+    expect(fullScan.lastFrame()).toContain('Suggested skills');
     const settings = await mount(<App options={{...options, screen: 'settings'}} />);
     expect(settings.lastFrame()).toContain('Registries');
     expect(settings.lastFrame()).toContain('Configuration');
@@ -174,7 +279,11 @@ describe('compact Scan setting', () => {
 
   it('surfaces partial-scan warnings without adding full-screen panels', async () => {
     const {options} = setup();
-    const partial: Report = {...report, truncated: true, skippedFiles: [{file: 'broken', reason: 'unreadable'}]};
+    const partial: Report = {
+      ...report,
+      truncated: true,
+      skippedFiles: [{file: 'broken', reason: 'unreadable'}],
+    };
     const app = await mount(<App options={{...options, report: partial}} />);
     expect(app.lastFrame()).toContain('Partial scan');
     expect(app.lastFrame()).toContain('Scan limit reached');

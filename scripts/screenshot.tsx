@@ -81,6 +81,7 @@ export function captureTape(options: {
     `Wait+Screen@15s /${options.ready ?? '[╭┌+]'}/`,
     'Sleep 500ms',
     'Show',
+    'Sleep 250ms',
     'Screenshot ' + tapeQuote(options.screenshot),
     ...(options.workflow ? [options.workflow] : ['Sleep 100ms']),
     'Hide',
@@ -254,7 +255,8 @@ Requires VHS 0.12.1+, ttyd, FFmpeg and Chromium. See docs/recording.md.`);
             };
             const ansi = renderToString(<App options={options} />, {columns}).replaceAll(
               configDir,
-              path.join(tmpdir(), `${pkg.name}-XXXXXX`),
+              // Keep the same cell width so normalization cannot shift panel borders.
+              path.join(tmpdir(), `${pkg.name}-capture-XXXXXX`),
             );
             terminalRows = Math.max(rows, ansi.split('\n').length + 1);
             if (!ansi.trim()) throw new Error(`Empty render: ${screen}/${theme}/${columns}`);

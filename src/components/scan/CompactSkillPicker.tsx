@@ -34,15 +34,24 @@ export function CompactSkillPicker({
   onBack,
   onConfirm,
 }: Props) {
-  const {rows} = useTerminalSize();
-  const pageSize = Math.max(3, Math.min(10, rows - 10));
+  const {rows, columns} = useTerminalSize();
+  // Reserve the header, summary, selection total, and essential footer controls.
+  const pageSize = Math.max(1, Math.min(16, rows - (columns < 80 ? 12 : 11)));
   const items = report.skills.map((skill) => {
     const status = installationLabel(skill.installation, statusAgents);
-    return {value: skill.id, label: skill.id + (status ? ' [' + status + ']' : '')};
+    const name = columns < 60 ? skill.id.split('/').at(-1)! : skill.id;
+    return {
+      value: skill.id,
+      label: name + (status ? ' [' + status + ']' : ''),
+      hint: columns < 60 ? skill.id : undefined,
+    };
   });
   const chosen = orderedSelection(report, new Set(selected));
   useKeymap(
-    [{key: 'esc', run: onBack}, {key: 'b', run: onBack}],
+    [
+      {key: 'esc', run: onBack},
+      {key: 'b', run: onBack},
+    ],
     {scope: 'screen', isActive: reviewing && Boolean(installPlan?.errors.length)},
   );
 
@@ -61,12 +70,18 @@ export function CompactSkillPicker({
           />
           {installPlan && (
             <Box flexDirection="column">
-              <Muted>Project-only commands will be printed after confirmation, never executed.</Muted>
+              <Muted>
+                Project-only commands will be printed after confirmation, never executed.
+              </Muted>
               {installPlan.errors.map((error) => (
-                <StatusMessage tone="warn" key={error}>{error}</StatusMessage>
+                <StatusMessage tone="warn" key={error}>
+                  {error}
+                </StatusMessage>
               ))}
               {installPlan.commands.map((command) => (
-                <Text key={command} wrap="wrap">{command}</Text>
+                <Text key={command} wrap="wrap">
+                  {command}
+                </Text>
               ))}
               {!installPlan.errors.length && !installPlan.commands.length && (
                 <Muted>No installation commands are needed for this selection.</Muted>
@@ -75,16 +90,19 @@ export function CompactSkillPicker({
           )}
           {(!installPlan || !installPlan.errors.length) && (
             <Confirm
-              message={installPlan ? 'Print installation commands and exit?' : 'Confirm these skill IDs and exit?'}
+              message={
+                installPlan
+                  ? 'Print installation commands and exit?'
+                  : 'Confirm these skill IDs and exit?'
+              }
               onCancel={onBack}
-              onConfirm={(yes) => (yes
-                ? onConfirm(chosen, installPlan?.commands)
-                : onBack())}
+              onConfirm={(yes) => (yes ? onConfirm(chosen, installPlan?.commands) : onBack())}
             />
           )}
         </Box>
       ) : (
         <MultiSelect
+          compact
           items={items}
           value={selected}
           onChange={onSelect}
@@ -100,8 +118,8 @@ export function CompactSkillPicker({
           }
         />
       )}
-      <Box marginTop={1}>
-        <Muted>Suggestions only - no skills were installed by Nosey.</Muted>
+      <Box>
+        <Muted>Nothing installed by Nosey.</Muted>
       </Box>
     </Box>
   );

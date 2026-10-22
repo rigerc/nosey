@@ -1,17 +1,19 @@
 import {Box, Text, useApp} from 'ink';
 import {useEffect, useState} from 'react';
-import {ScreenState, StatusBar, Muted, StatusMessage} from '../components';
+import {BrandMark, ScreenState, StatusBar, StatusMessage} from '../components';
 import {CompactScanSummary} from '../components/scan/CompactScanSummary';
 import {CompactSkillPicker} from '../components/scan/CompactSkillPicker';
 import {useScan} from '../features/skills/context';
 import {orderedSelection} from '../features/skills/groups';
 import {generateInstallCommands} from '../features/skills/install';
 import {useKeymap} from '../hooks/useKeymap';
+import {useTheme} from '../theme/context';
 
 /** Direct-launch Scan: only the results, essential controls, and confirmation. */
 export function CompactScanScreen() {
   const {config, scan, refresh, confirm, installSettings} = useScan();
   const {exit} = useApp();
+  const theme = useTheme();
   const [selected, setSelected] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const report = scan.status === 'success' ? scan.data : undefined;
@@ -32,7 +34,12 @@ export function CompactScanScreen() {
   useKeymap(
     [
       {key: 'q', run: exit},
-      {key: 'r', run: () => { if (scan.status !== 'loading') void refresh(); }},
+      {
+        key: 'r',
+        run: () => {
+          if (scan.status !== 'loading') void refresh();
+        },
+      },
     ],
     {scope: 'screen', isActive: !reviewing},
   );
@@ -53,15 +60,21 @@ export function CompactScanScreen() {
           {key: 'q', label: 'quit'},
         ]
       : scan.status === 'error'
-        ? [{key: 'r', label: 'retry'}, {key: 'q', label: 'quit'}]
+        ? [
+            {key: 'r', label: 'retry'},
+            {key: 'q', label: 'quit'},
+          ]
         : [{key: 'q', label: 'quit'}];
 
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box gap={1}>
+        <BrandMark bold />
         <Text bold>nosey / scan</Text>
-        <Muted>{config.root}</Muted>
       </Box>
+      <Text color={theme.color.muted} wrap="truncate-middle">
+        {config.root}
+      </Text>
       <ScreenState
         status={report ? 'success' : scan.status === 'error' ? 'error' : 'loading'}
         error={scan.status === 'error' ? scan.error : undefined}
@@ -72,7 +85,9 @@ export function CompactScanScreen() {
             {!!report.updatedRegistries?.length && (
               <StatusMessage tone="info">
                 Updated Git registries: {report.updatedRegistries.join(', ')}.
-                {installSettings.enabled ? ' Run `npx skills update` to update installed skills.' : ''}
+                {installSettings.enabled
+                  ? ' Run `npx skills update` to update installed skills.'
+                  : ''}
               </StatusMessage>
             )}
             <CompactScanSummary report={report} />

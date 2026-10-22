@@ -53,7 +53,7 @@ export function StatusBar({
   return (
     <Box flexDirection="column">
       <Divider />
-      <Box justifyContent="space-between" paddingX={1} marginTop={1}>
+      <Box justifyContent="space-between" paddingX={1}>
         <Box columnGap={2} flexWrap="wrap" flexShrink={1}>
           {visible.map((h) => (
             <Box key={h.key} gap={1}>
@@ -65,7 +65,7 @@ export function StatusBar({
         {right}
       </Box>
       {appHints.length > 0 && (
-        <Box columnGap={2} flexWrap="wrap" paddingX={1} marginTop={1}>
+        <Box columnGap={2} flexWrap="wrap" paddingX={1}>
           {appHints.map((hint) => (
             <Box key={hint.key} gap={1}>
               <Kbd>{hint.key}</Kbd>
@@ -106,7 +106,7 @@ export function AppShell({
 }) {
   return (
     <Box flexDirection="column" gap={1}>
-      <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column">
         {header}
         {nav}
       </Box>

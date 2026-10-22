@@ -55,6 +55,7 @@ let root: string;
 let options: AppOptions;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'nosey-ui-'));
+  vi.stubEnv('XDG_CONFIG_HOME', join(root, 'config'));
   options = {
     theme: 'mono',
     ascii: true,
@@ -73,43 +74,78 @@ afterEach(() => {
 describe('Nosey scan interaction', () => {
   it('suggests Skills CLI updates only when Git registries changed and Skills CLI is enabled', async () => {
     const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
-    const enabled = await mount(<App options={{
-      ...options, report: updatedReport, skillsCli: {enabled: true, defaultAgents: []},
-    }} />);
+    const enabled = await mount(
+      <App
+        options={{
+          ...options,
+          report: updatedReport,
+          skillsCli: {enabled: true, defaultAgents: []},
+        }}
+      />,
+    );
     expect(enabled.lastFrame()).toContain('Updated Git registries');
     expect(enabled.lastFrame()).toContain('npx skills update');
 
-    const disabled = await mount(<App options={{
-      ...options, report: updatedReport, skillsCli: {enabled: false, defaultAgents: []},
-    }} />);
+    const disabled = await mount(
+      <App
+        options={{
+          ...options,
+          report: updatedReport,
+          skillsCli: {enabled: false, defaultAgents: []},
+        }}
+      />,
+    );
     expect(disabled.lastFrame()).toContain('Updated Git registries');
     expect(disabled.lastFrame()).not.toContain('npx skills update');
 
-    const noChanges = await mount(<App options={{
-      ...options, skillsCli: {enabled: true, defaultAgents: []},
-    }} />);
+    const noChanges = await mount(
+      <App
+        options={{
+          ...options,
+          skillsCli: {enabled: true, defaultAgents: []},
+        }}
+      />,
+    );
     expect(noChanges.lastFrame()).not.toContain('npx skills update');
   });
 
   it('shows registry update suggestion in compact Scan', async () => {
     const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
-    const compact = await mount(<App options={{
-      ...options, compactMode: true, report: updatedReport,
-      skillsCli: {enabled: true, defaultAgents: []},
-    }} />);
+    const compact = await mount(
+      <App
+        options={{
+          ...options,
+          compactMode: true,
+          report: updatedReport,
+          skillsCli: {enabled: true, defaultAgents: []},
+        }}
+      />,
+    );
     expect(compact.lastFrame()).toContain('npx skills update');
   });
 
   it('shows installed status and prints only missing project agent commands', async () => {
     const confirmed = vi.fn();
-    const app = await mount(<App options={{
-      ...options,
-      onConfirm: confirmed,
-      skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
-      report: {...report, skills: report.skills.map((skill) => skill.id.endsWith('/alpha') ? ({
-        ...skill, installation: {installedAgents: ['codex'], unverifiedAgents: []},
-      }) : skill)},
-    }} />);
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          onConfirm: confirmed,
+          skillsCli: {enabled: true, defaultAgents: ['codex', 'claude-code']},
+          report: {
+            ...report,
+            skills: report.skills.map((skill) =>
+              skill.id.endsWith('/alpha')
+                ? {
+                    ...skill,
+                    installation: {installedAgents: ['codex'], unverifiedAgents: []},
+                  }
+                : skill,
+            ),
+          },
+        }}
+      />,
+    );
     expect(app.lastFrame()).toContain('Partial 1/2');
     await press(app, ' '); // alpha
     await press(app, '\r'); // review
@@ -129,10 +165,15 @@ describe('Nosey scan interaction', () => {
 
   it('does not allow printing commands before default agents are configured', async () => {
     const confirmed = vi.fn();
-    const app = await mount(<App options={{
-      ...options, onConfirm: confirmed,
-      skillsCli: {enabled: true, defaultAgents: []},
-    }} />);
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          onConfirm: confirmed,
+          skillsCli: {enabled: true, defaultAgents: []},
+        }}
+      />,
+    );
     await press(app, ' ');
     await press(app, '\r');
     expect(app.lastFrame()).toContain('Choose default agents in Settings');
@@ -306,6 +347,82 @@ describe('Nosey scan interaction', () => {
     await press(app, '\u001b');
     expect(app.lastFrame()).toContain('Suggested skills');
   });
+  it('shows distinct narrow skill names while confirming their canonical IDs', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
+    Object.defineProperty(process.stdout, 'columns', {value: 40, configurable: true});
+    const ids = [
+      'very-long-team/shared-agent-skills/composition-patterns',
+      'very-long-team/shared-agent-skills/react-best-practices',
+    ];
+    const confirmed = vi.fn();
+    try {
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            onConfirm: confirmed,
+            report: {
+              ...report,
+              frontendDetected: false,
+              technologies: [{...report.technologies[0]!, skills: ids}],
+              skills: ids.map((id) => ({
+                id,
+                sources: [{type: 'technology', id: 'react', name: 'React'}],
+              })),
+            },
+          }}
+        />,
+      );
+      expect(app.lastFrame()).toContain('composition-patterns');
+      expect(app.lastFrame()).toContain('react-best-practices');
+      await press(app, '/');
+      await press(app, 'very-long-team');
+      await press(app, '\r');
+      expect(app.lastFrame()).toContain('composition-patterns');
+      await press(app, ' ');
+      await press(app, '\r');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(confirmed).toHaveBeenCalledWith([ids[0]]);
+    } finally {
+      if (descriptor) Object.defineProperty(process.stdout, 'columns', descriptor);
+      else Reflect.deleteProperty(process.stdout, 'columns');
+    }
+  });
+
+  it('browses help topics while retaining the chosen topic across tab changes', async () => {
+    const app = await mount(<App options={{...options, screen: 'help'}} />);
+    expect(app.lastFrame()).toContain('[up/down] topic');
+    expect(app.lastFrame()).not.toContain('f or / filters');
+    await press(app, '\u001b[B');
+    expect(app.lastFrame()).toContain('f or / filters');
+    await press(app, '1');
+    await press(app, '\u001b[B'); // Hidden Help must not consume Scan's arrow.
+    await press(app, '4');
+    expect(app.lastFrame()).toContain('f or / filters');
+    await press(app, '\u001b[A');
+    expect(app.lastFrame()).not.toContain('f or / filters');
+  });
+
+  it('previews only the active settings section with resolved nested values', async () => {
+    writeFileSync(
+      options.configFile!,
+      JSON.stringify({
+        registries: {checkOnStart: true},
+        skillsCli: {enabled: true, defaultAgents: ['codex']},
+      }),
+    );
+    const app = await mount(<App options={{...options, screen: 'settings'}} />);
+    expect(app.lastFrame()).toContain('Terminal theme:');
+    expect(app.lastFrame()).not.toContain('Check Git registries on startup:');
+    await press(app, '\u001b[B');
+    expect(app.lastFrame()).toContain('Check Git registries on startup: true');
+    expect(app.lastFrame()).not.toContain('Terminal theme:');
+    await press(app, '\u001b[B');
+    expect(app.lastFrame()).toContain('Generate Skills CLI commands: true');
+    expect(app.lastFrame()).toContain('Default target agents: codex');
+  });
+
   it('keeps settings drafts across navigation, and saves only to the selected config file', async () => {
     const app = await mount(<App options={options} />);
     await press(app, '3');
@@ -419,7 +536,9 @@ describe('Registry UI writes', () => {
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     // Adding the reference saves first, then asynchronously reloads the list.
     // Wait for an interactive list so Enter isn't dispatched while still busy.
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'), {timeout: 5000});
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'), {
+      timeout: 5000,
+    });
     await vi.waitFor(() => expect(app.lastFrame()).toContain('[enter] details'), {timeout: 5000});
     await press(app, '\r');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'), {timeout: 5000});
@@ -433,8 +552,8 @@ describe('Registry UI writes', () => {
     await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, 'y');
     await press(app, '\r');
-    await vi.waitFor(() =>
-      expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toEqual([]),
+    await vi.waitFor(
+      () => expect(JSON.parse(readFileSync(globalConfig, 'utf8')).registries).toEqual([]),
       {timeout: 3000},
     );
     expect(existsSync(join(registry, 'skills-manifest.json'))).toBe(true);
@@ -449,9 +568,9 @@ describe('Registry UI writes', () => {
     const app = await mount(<App options={{...options, screen: 'registry'}} />);
     await settle();
     await press(app, '\r');
-    await settle();
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('1 local'));
     await press(app, 'a');
-    expect(app.lastFrame()).toContain('Always recommend');
+    expect(app.lastFrame(), app.lastFrame()).toContain('Always recommend');
     await press(app, ' ');
     await press(app, '/');
     await press(app, 'no-match');
@@ -557,8 +676,7 @@ describe('terminal presentation', () => {
         });
         expect(out).toContain(':^) nosey');
         expect(out).toContain('READ-ONLY');
-        for (const line of out.split('\n'))
-          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+        for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
         expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│]/);
       } finally {
         if (descriptor) Object.defineProperty(process.stdout, 'columns', descriptor);
@@ -566,6 +684,44 @@ describe('terminal presentation', () => {
       }
     });
   }
+  it('keeps primary screens and their footer within a 24-row terminal', () => {
+    const descriptors = ['columns', 'rows'].map((key) =>
+      Object.getOwnPropertyDescriptor(process.stdout, key),
+    );
+    try {
+      Object.defineProperty(process.stdout, 'rows', {value: 24, configurable: true});
+      for (const columns of [40, 60, 80, 96, 120]) {
+        Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+        for (const screen of ['home', 'registry', 'settings', 'help']) {
+          const out = renderToString(<App options={{...options, screen, static: true}} />, {
+            columns,
+          });
+          expect(
+            out.split('\n').length,
+            `${screen} at ${columns} columns\n${out}`,
+          ).toBeLessThanOrEqual(24);
+          for (const line of out.split('\n'))
+            expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+          expect(out).toContain(
+            screen === 'home'
+              ? '[enter] review'
+              : screen === 'help'
+                ? '[up/down] topic'
+                : screen === 'settings'
+                  ? '[s] save'
+                  : '[a] add',
+          );
+        }
+      }
+    } finally {
+      ['columns', 'rows'].forEach((key, index) => {
+        const descriptor = descriptors[index];
+        if (descriptor) Object.defineProperty(process.stdout, key, descriptor);
+        else Reflect.deleteProperty(process.stdout, key);
+      });
+    }
+  });
+
   it('labels partial scans, skipped inputs, and registry warnings explicitly', () => {
     const out = renderToString(
       <App
