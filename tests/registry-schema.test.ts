@@ -77,6 +77,20 @@ const inventoriedFields = [
   'technologies[].detect.configFileContent.allPatterns',
   'technologies[].detect.configFileContent.maskStrings',
   'technologies[].detect.configFileContent.stripComments',
+  'technologies[].detect.configFileContent[]',
+  'technologies[].detect.configFileContent[].patterns',
+  'technologies[].detect.configFileContent[].patterns[]',
+  'technologies[].detect.configFileContent[].patterns[].source',
+  'technologies[].detect.configFileContent[].patterns[].flags',
+  'technologies[].detect.configFileContent[].files',
+  'technologies[].detect.configFileContent[].files[]',
+  'technologies[].detect.configFileContent[].sourceExtensions',
+  'technologies[].detect.configFileContent[].sourceExtensions[]',
+  'technologies[].detect.configFileContent[].scanGradleLayout',
+  'technologies[].detect.configFileContent[].scanDotNetLayout',
+  'technologies[].detect.configFileContent[].allPatterns',
+  'technologies[].detect.configFileContent[].maskStrings',
+  'technologies[].detect.configFileContent[].stripComments',
   'technologies[].skills',
   'technologySkills[]',
   'technologySkills[].technologyId',
@@ -237,8 +251,39 @@ async function evaluateFixtures(): Promise<Result[]> {
   return results;
 }
 
+/** Collect the parser-only exceptions declared in a particular document's schema. */
+async function declaredParserOnlyRules(name: DocumentName): Promise<Set<string>> {
+  const rules = new Set<string>();
+
+  const visit = (node: JsonValue): void => {
+    if (Array.isArray(node)) {
+      for (const entry of node) visit(entry);
+
+      return;
+    }
+
+    if (!isRecord(node)) return;
+
+    const annotation = node['x-parserOnly'];
+
+    if (Array.isArray(annotation)) {
+      for (const rule of annotation) if (isString(rule)) rules.add(rule);
+    }
+
+    for (const value of Object.values(node)) visit(value);
+  };
+
+  visit(await schemaDocument(name));
+
+  return rules;
+}
+
 test('every registry schema fixture meets its declared expectations', async () => {
   const results = await evaluateFixtures();
+  const rulesByDocument = {
+    manifest: await declaredParserOnlyRules('manifest'),
+    map: await declaredParserOnlyRules('map'),
+  };
 
   expect(results.length).toBeGreaterThan(60);
 
@@ -252,11 +297,16 @@ test('every registry schema fixture meets its declared expectations', async () =
     if (fixture.expectation.reason !== undefined)
       expect(message, label + ' parser message').toContain(fixture.expectation.reason);
 
-    if (schemaValid && parseOutcome === 'throws')
+    if (schemaValid && parseOutcome === 'throws') {
       expect(
         fixture.expectation.parserOnlyRule,
         label + ' a schema-valid/parser-throws fixture must name a parser-only rule',
       ).toMatch(/^parser-only:/);
+      expect(
+        rulesByDocument[fixture.expectation.document].has(fixture.expectation.parserOnlyRule ?? ''),
+        label + ' a parser-only rule must be declared by this document schema',
+      ).toBe(true);
+    }
 
     if (!schemaValid)
       expect(parseOutcome, label + ' schema-invalid implies parser-throws').toBe('throws');
