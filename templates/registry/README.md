@@ -40,6 +40,46 @@ an authenticated `gh` CLI; visibility defaults to private, or can be set with
 Alternatively, copy this directory manually, including
 both workflows and `.agents/prompts/`, then update the identity as described below.
 
+## Upgrade an existing registry
+
+Registry initialization is intentionally create-only. To adopt template changes
+in an existing registry, use the separate, conservative upgrade command:
+
+```bash
+nosey registry upgrade ./my-registry --dry-run
+nosey registry upgrade ./my-registry
+nosey registry upgrade ./my-registry --json
+```
+
+The template records `templateVersion` and `templateFiles` (SHA-256 hashes of
+scaffolded, template-maintained files) in `registry.json`. These fields are
+separate from `schemaVersion`. On upgrade, Nosey compares the installed hashes
+with the recorded baseline and the template shipped with the current Nosey release.
+
+The command manages only the template's `scripts/`, `.github/workflows/`,
+`.agents/prompts/`, `schemas/`, and `.agnix.toml`. It adds newly shipped files and
+updates files that still match their original baseline. It **does not overwrite**
+locally modified files, restore intentionally deleted managed files, or delete
+obsolete files. It reports those paths for manual merging and returns a nonzero
+exit code for unresolved conflicts. A dry run does not write anything.
+
+For registries created before version tracking, matching files can be recorded
+as current and new files can be added, but preexisting files that differ from the
+current template are left untouched because their original contents are unknown.
+After conflicts are resolved, rerun the upgrade; only then is `templateVersion`
+advanced to the shipped version. If a registry has a newer version than the
+current Nosey template, the command refuses to downgrade it.
+
+Content files (`skills/`, `skills-map.json`), `registry.json` custom properties,
+`skills-manifest.json`, and README prose are preserved. Regenerate the manifest
+and README catalog yourself after an upgrade:
+
+```bash
+node scripts/generate-manifest.mjs
+node scripts/generate-readme.mjs
+nosey registry validate .
+```
+
 ## Customize
 
 1. If copied manually, set the same unique `registryId` in `registry.json` and
