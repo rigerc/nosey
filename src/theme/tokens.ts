@@ -1,7 +1,9 @@
 export const themeNames = ['dark', 'light', 'nosey', 'contrast', 'mono'] as const;
+
 export type ThemeName = (typeof themeNames)[number];
 
 export const tones = ['primary', 'accent', 'success', 'warn', 'danger', 'info', 'muted'] as const;
+
 export type Tone = (typeof tones)[number];
 
 export type BorderName = 'round' | 'single' | 'bold' | 'double' | 'classic';

@@ -7,6 +7,7 @@ export function useInterval(callback: () => void, ms: number | null) {
   useEffect(() => {
     if (ms === null) return;
     const id = setInterval(() => saved.current(), ms);
+
     return () => clearInterval(id);
   }, [ms]);
 }

@@ -23,6 +23,7 @@ export type RegistryManifest = {
 };
 
 export type TechnologySkills = {technologyId: string; skills: string[]};
+
 export type CombinationSkills = {combinationId: string; skills: string[]};
 
 export type RegistryMap = {
@@ -67,6 +68,7 @@ export type RegistryWarning = {source: string; message: string};
 
 /** JSON representations use {source, flags?} for regular expressions. */
 export type JsonRegex = {source: string; flags?: string};
+
 export type JsonDetectConfig = Omit<DetectConfig, 'packagePatterns' | 'configFileContent'> & {
   packagePatterns?: JsonRegex[];
   configFileContent?: unknown;

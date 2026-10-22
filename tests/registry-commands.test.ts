@@ -1,3 +1,4 @@
+import {jsonObjectSchema, type JsonObject} from '../src/lib/values';
 import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -22,6 +23,7 @@ const tsx = import.meta.resolve('tsx');
 const cli = fileURLToPath(new URL('../src/cli.tsx', import.meta.url));
 
 type CommandError = Error & {code: number; stdout: string; stderr: string};
+
 type CommandResult = {stdout: string; stderr: string};
 
 async function fixture<T>(
@@ -38,6 +40,7 @@ async function fixture<T>(
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-commands-'));
   const registry = path.join(root, 'team-skills');
   const configHome = path.join(root, 'config');
+
   const runProcess = async (...args: string[]): Promise<CommandResult> => {
     const {stdout, stderr} = await exec(process.execPath, ['--import', tsx, cli, ...args], {
       cwd: root,
@@ -50,10 +53,13 @@ async function fixture<T>(
         LOCALAPPDATA: path.join(root, 'cache'),
       },
     });
+
     return {stdout, stderr};
   };
+
   try {
     await scaffoldRegistry(registry, 'acme/skills');
+
     return await run({
       root,
       registry,
@@ -75,8 +81,8 @@ async function fixture<T>(
   }
 }
 
-async function jsonFile(filename: string): Promise<Record<string, unknown>> {
-  return JSON.parse(await fs.readFile(filename, 'utf8')) as Record<string, unknown>;
+async function jsonFile(filename: string): Promise<JsonObject> {
+  return jsonObjectSchema.parse(JSON.parse(await fs.readFile(filename, 'utf8')));
 }
 
 test('registry refresh with no Git sources reports empty results', async () => {
@@ -121,6 +127,7 @@ test('globally added registries are loaded when scanning a different project', a
     const other = path.join(root, 'different-project');
     await fs.mkdir(other);
     const result = await command('scan', other, '--json', '--no-frontend-bonus');
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const report = JSON.parse(result.stdout) as {skills: Array<{id: string}>};
     expect(report.skills.some((skill) => skill.id === id)).toBe(true);
     await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
@@ -134,7 +141,7 @@ test('concurrent configuration edits preserve every successful change', async ()
     const options = {root, scope: 'project' as const};
     await Promise.all(sources.map((source) => editRegistry('add', source, options)));
     const added = await jsonFile(projectConfig);
-    expect((added.registries as unknown[]).length).toBe(sources.length);
+    expect(added.registries).toHaveLength(sources.length);
     await Promise.all(sources.map((source) => editRegistry('remove', source, options)));
     expect((await jsonFile(projectConfig)).registries).toStrictEqual([]);
     expect(
@@ -152,9 +159,11 @@ test('configuration locks are released after errors and idempotent edits', async
     await expect(fs.stat(lock)).rejects.toMatchObject({code: 'ENOENT'});
     await fs.rm(projectConfig);
     await editRegistry('add', registry, options);
+
     const duplicates = await Promise.all(
       Array.from({length: 4}, () => editRegistry('add', registry, options)),
     );
+
     expect(duplicates.every((result) => !result.changed)).toBe(true);
     expect((await jsonFile(projectConfig)).registries).toHaveLength(1);
     await editRegistry('remove', registry, options);
@@ -176,7 +185,7 @@ test('separate CLI processes preserve simultaneous global configuration updates'
     await Promise.all(sources.map((source) => commandProcess('registry', 'add', source)));
     const document = await jsonFile(globalConfig);
     expect(document.keep).toBe(true);
-    expect((document.registries as Array<{path: string}>).length).toBe(sources.length);
+    expect(document.registries).toHaveLength(sources.length);
     await Promise.all(sources.map((source) => commandProcess('registry', 'remove', source)));
     expect((await jsonFile(globalConfig)).registries).toStrictEqual([]);
     await expect(fs.stat(projectConfig)).rejects.toMatchObject({code: 'ENOENT'});
@@ -205,6 +214,7 @@ test('list includes legacy project entries, --global lists only global entries',
       JSON.stringify({schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}]}),
     );
     const {stdout} = await command('registry', 'list', '--json');
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const {registries} = JSON.parse(stdout) as {registries: RegistryEntry[]};
     expect(registries).toStrictEqual([
       {
@@ -219,6 +229,7 @@ test('list includes legacy project entries, --global lists only global entries',
       },
     ]);
     const global = await command('registry', 'list', '--global', '--json');
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     expect((JSON.parse(global.stdout) as {registries: unknown[]}).registries.length).toBe(1);
     const human = await command('registry', 'list');
     expect(human.stdout).toMatch(/\[global].*#v1/);
@@ -239,7 +250,11 @@ test('remove defaults to global, --project removes legacy entries without deleti
   await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     await fs.writeFile(
       projectConfig,
-      JSON.stringify({schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}], keep: 'yes'}),
+      JSON.stringify({
+        schemaVersion: 1,
+        registries: [{type: 'local', path: 'team-skills'}],
+        keep: 'yes',
+      }),
     );
     await command('registry', 'add', registry);
     await command('registry', 'remove', './team-skills', '--project');
@@ -254,7 +269,9 @@ test('remove defaults to global, --project removes legacy entries without deleti
     await command('registry', 'remove', registry);
     expect((await jsonFile(globalConfig)).registries).toStrictEqual([]);
     const before = await fs.readFile(projectConfig, 'utf8');
-    await expect(command('registry', 'remove', registry, '--project')).rejects.toThrow(/not configured/);
+    await expect(command('registry', 'remove', registry, '--project')).rejects.toThrow(
+      /not configured/,
+    );
     expect(await fs.readFile(projectConfig, 'utf8')).toBe(before);
   });
 });
@@ -282,6 +299,7 @@ for (const original of [
       await fixture(async ({command, globalConfig, registry}) => {
         await fs.mkdir(path.dirname(globalConfig), {recursive: true});
         await fs.writeFile(globalConfig, original);
+
         for (const action of ['add', 'remove']) {
           await expect(command('registry', action, registry)).rejects.toThrow();
           expect(await fs.readFile(globalConfig, 'utf8')).toBe(original);
@@ -307,6 +325,7 @@ test('show reports registry metadata, skill descriptions, mappings and JSON rege
     ];
     await fs.writeFile(filename, JSON.stringify(map));
     const {stdout} = await command('registry', 'show', registry, '--json');
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const shown = JSON.parse(stdout) as LoadedRegistry;
     expect(shown.manifest.registryId).toBe('acme/skills');
     expect(shown.manifest.skills[0]?.id).toBe('acme/skills/example-testing');
@@ -331,9 +350,11 @@ test('validate succeeds for valid registries and defaults to the current directo
     });
     const human = await command('registry', 'validate', registry);
     expect(human.stdout).toMatch(/Valid registry acme\/skills/);
+
     const current = await exec(process.execPath, ['--import', tsx, cli, 'registry', 'validate'], {
       cwd: registry,
     });
+
     expect(current.stdout).toMatch(/Valid registry/);
   });
 });
@@ -353,30 +374,43 @@ for (const problem of [
       const mapPath = path.join(registry, 'skills-map.json');
       const manifest = await jsonFile(manifestPath);
       const map = await jsonFile(mapPath);
-      const skills = manifest['skills'] as Array<Record<string, unknown>>;
+      // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
+      const skills = manifest['skills'] as Array<{id: string; name: string; path: string}>;
+
       if (problem === 'schema') manifest['schemaVersion'] = 9;
+
       if (problem === 'settings ID')
         await fs.writeFile(
           path.join(registry, 'registry.json'),
           JSON.stringify({schemaVersion: 1, registryId: 'other/skills'}),
         );
+
       if (problem === 'map ID') map['registryId'] = 'other/skills';
-      if (problem === 'missing skill') await fs.rm(path.join(registry, String(skills[0]!['path'])));
+
+      if (problem === 'missing skill') await fs.rm(path.join(registry, skills[0]!['path']));
+
       if (problem === 'unsafe path') skills[0]!['path'] = '../outside/SKILL.md';
+
       if (problem === 'unknown skill') map['frontendBonusSkills'] = ['acme/skills/missing'];
+
       if (problem === 'unknown technology')
         map['technologySkills'] = [{technologyId: 'unknown', skills: []}];
       await fs.writeFile(manifestPath, JSON.stringify(manifest));
       await fs.writeFile(mapPath, JSON.stringify(map));
+
       const error = await command('registry', 'validate', registry, '--json').then(
         () => undefined,
         (reason: CommandError) => reason,
       );
+
       expect(error?.code).toBe(1);
+
+      // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
       const result = JSON.parse(error!.stdout) as {
         valid: boolean;
         errors: string[];
       };
+
       expect(result.valid).toBe(false);
       expect(result.errors.length > 0).toBe(true);
       await expect(command('registry', 'validate', registry)).rejects.toThrow();
@@ -460,9 +494,11 @@ test('show loads a pinned Git registry from the existing cache', async () => {
   await fixture(async ({command, registry, cacheDirectory}) => {
     const url = 'https://example.invalid/team/skills.git';
     const ref = 'v1';
+
     const key = createHash('sha256')
       .update(url + '\n' + ref)
       .digest('hex');
+
     const directory = path.join(cacheDirectory, key);
     await fs.mkdir(directory, {recursive: true});
     await fs.writeFile(
@@ -518,9 +554,11 @@ test('always recommended skills live in the registry map and reach every headles
       path.join(project, 'package.json'),
       JSON.stringify({dependencies: {react: '*'}}),
     );
+
     const matching = JSON.parse(
       (await command('scan', project, '--json', '--no-frontend-bonus')).stdout,
     );
+
     expect(matching.skills.filter((skill: {id: string}) => skill.id === id)).toHaveLength(1);
     expect(
       matching.skills
@@ -529,9 +567,11 @@ test('always recommended skills live in the registry map and reach every headles
     ).toEqual(['technology', 'always']);
     await setAlwaysRecommend(registry, []);
     expect((await jsonFile(mapPath)).alwaysRecommend).toEqual([]);
+
     const cleared = JSON.parse(
       (await command('scan', project, '--json', '--no-frontend-bonus')).stdout,
     );
+
     expect(
       cleared.skills.some((skill: {sources: {type: string}[]}) =>
         skill.sources.some((source) => source.type === 'always'),
@@ -584,13 +624,23 @@ test('always recommend accepts declared external skill IDs and preserves the map
     const mapPath = path.join(registry, 'skills-map.json');
     const original = await jsonFile(mapPath);
     const externalId = 'acme/upstream/react-helper';
-    await fs.writeFile(mapPath, JSON.stringify({...original, schemaVersion: 2,
-      externalSkills: [{id: externalId, name: 'React helper', source: 'acme/upstream', skill: 'react-helper'}],
-    }));
+    await fs.writeFile(
+      mapPath,
+      JSON.stringify({
+        ...original,
+        schemaVersion: 2,
+        externalSkills: [
+          {id: externalId, name: 'React helper', source: 'acme/upstream', skill: 'react-helper'},
+        ],
+      }),
+    );
     await setAlwaysRecommend(registry, [externalId, externalId]);
     expect(await jsonFile(mapPath)).toMatchObject({
-      schemaVersion: 2, alwaysRecommend: [externalId],
+      schemaVersion: 2,
+      alwaysRecommend: [externalId],
     });
-    await expect(setAlwaysRecommend(registry, ['unknown/skill/id'])).rejects.toThrow(/Unknown skill IDs/);
+    await expect(setAlwaysRecommend(registry, ['unknown/skill/id'])).rejects.toThrow(
+      /Unknown skill IDs/,
+    );
   });
 });

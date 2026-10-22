@@ -14,7 +14,9 @@ export interface ScanConfig {
   registry: string[];
   explain: boolean;
 }
+
 type ScanResult = Report & {updatedRegistries?: string[]; inspectedAgents?: string[]};
+
 export const defaultScan: ScanConfig = {
   root: '.',
   depth: 8,
@@ -23,34 +25,50 @@ export const defaultScan: ScanConfig = {
   registry: [],
   explain: false,
 };
+
 function useScanState(
-  config: ScanConfig, initialReport?: Report, enabled = true,
+  config: ScanConfig,
+  initialReport?: Report,
+  enabled = true,
   installSettings?: Config['skillsCli'],
   checkRegistryUpdatesOnStart = false,
 ) {
   // Startup checking is opt-in and only runs for the first interactive scan.
   const checkOnNextScan = useRef(checkRegistryUpdatesOnStart && enabled && !initialReport);
+
   const scan = useAsync<ScanResult, []>(async () => {
     const forceRefresh = checkOnNextScan.current;
     checkOnNextScan.current = false;
     const resolved = await resolveRegistries(config.root, config.registry, {forceRefresh});
+
     const report = await detectProject(config.root, {
       ...config,
       registry: resolved.registry,
       registryWarnings: resolved.warnings,
     });
+
     const agents = installSettings?.defaultAgents?.length
       ? installSettings.defaultAgents
       : await discoverProjectSkillAgents(config.root);
+
     const sourced = report.skills.map((skill) => ({
       ...skill,
       installSource: resolved.registry.skillInstallSources?.get(skill.id),
     }));
+
     const installed = await inspectInstalledSkills(config.root, sourced, agents);
-    return {...report, updatedRegistries: forceRefresh ? resolved.updatedSources : [], inspectedAgents: agents, skills: sourced.map((skill) => ({
-      ...skill, installation: installed.get(skill.id),
-    }))};
+
+    return {
+      ...report,
+      updatedRegistries: forceRefresh ? resolved.updatedSources : [],
+      inspectedAgents: agents,
+      skills: sourced.map((skill) => ({
+        ...skill,
+        installation: installed.get(skill.id),
+      })),
+    };
   }, initialReport);
+
   const registryKey = JSON.stringify(config.registry);
   useEffect(() => {
     if (enabled && !initialReport) void scan.run();
@@ -64,6 +82,7 @@ function useScanState(
     initialReport,
     scan.run,
   ]);
+
   return {
     config: {...config, root: resolve(config.root)},
     installSettings: installSettings ?? {enabled: false, defaultAgents: []},
@@ -72,10 +91,13 @@ function useScanState(
     static: !enabled,
   };
 }
+
 type Value = ReturnType<typeof useScanState> & {
   confirm: (ids: string[], commands?: string[]) => void;
 };
+
 const Context = createContext<Value | null>(null);
+
 export function ScanProvider({
   config = defaultScan,
   initialReport,
@@ -93,15 +115,31 @@ export function ScanProvider({
   checkRegistryUpdatesOnStart?: boolean;
   children: ReactNode;
 }) {
-  const value = useScanState(config, initialReport, enabled, installSettings, checkRegistryUpdatesOnStart);
+  const value = useScanState(
+    config,
+    initialReport,
+    enabled,
+    installSettings,
+    checkRegistryUpdatesOnStart,
+  );
+
   return (
-    <Context.Provider value={{...value, confirm: (ids, commands) => commands === undefined ? onConfirm?.(ids) : onConfirm?.(ids, commands)}}>
+    <Context.Provider
+      value={{
+        ...value,
+        confirm: (ids, commands) =>
+          commands === undefined ? onConfirm?.(ids) : onConfirm?.(ids, commands),
+      }}
+    >
       {children}
     </Context.Provider>
   );
 }
+
 export function useScan() {
   const value = useContext(Context);
+
   if (!value) throw new Error('useScan requires ScanProvider');
+
   return value;
 }

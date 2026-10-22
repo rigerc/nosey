@@ -15,6 +15,7 @@ function Content({path}: {path?: string}) {
   useEffect(() => {
     if (finished) exit();
   }, [finished, exit]);
+
   return (
     <InlineLayout
       title={<Heading>{pkg.name} / configuration setup</Heading>}

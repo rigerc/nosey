@@ -18,14 +18,17 @@ export interface ScreenStateProps {
 
 export function ScreenState({status, title, message, error, children}: ScreenStateProps) {
   if (status === 'loading') return <Spinner label={message ?? title ?? 'Loading'} />;
+
   if (status === 'empty')
     return (
       <EmptyState title={title ?? 'Nothing here yet'} hint={message}>
         {children}
       </EmptyState>
     );
+
   if (status === 'error')
     return <ErrorPanel error={error ?? new Error(message ?? title ?? 'Something went wrong')} />;
+
   return (
     <Box flexDirection="column">
       {(title || message) && <StatusMessage tone="success">{title ?? message}</StatusMessage>}

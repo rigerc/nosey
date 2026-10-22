@@ -24,6 +24,7 @@ import {useKeymap, useTerminalSize} from '../hooks';
 import {useTheme} from '../theme/context';
 
 type Mode = 'browse' | 'filter' | 'groups' | 'search' | 'detail' | 'review';
+
 export const scanHints = [
   {key: 'space', label: 'select'},
   {key: 'enter', label: 'review'},
@@ -51,11 +52,13 @@ export function HomeScreen() {
   const groups = useMemo(() => (report ? deriveSkillGroups(report) : []), [report]);
   const defaultAgents = installSettings.defaultAgents ?? [];
   const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
+
   const allItems = useMemo(
     () =>
       (report?.skills ?? []).map((skill) => {
         const label = installationLabel(skill.installation, statusAgents);
         const name = columns < 60 ? skill.id.split('/').at(-1)! : skill.id;
+
         return {
           value: skill.id,
           label: name + (label ? ' [' + label + ']' : ''),
@@ -64,27 +67,35 @@ export function HomeScreen() {
       }),
     [report, statusAgents.join(','), columns],
   );
+
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
+
   const installPlan = installSettings.enabled
     ? generateInstallCommands(chosen, report?.skills ?? [], defaultAgents, config.root)
     : undefined;
+
   const groupedItems = useMemo(() => {
     const matches = new Set(visible.map((skill) => skill.id));
     const assigned = new Set<string>();
     const byId = new Map(allItems.map((item) => [item.value, item]));
     const checked = new Set(selected);
+
     const items = groups.flatMap((group) => {
       const heading = {
         key: group.key,
         label: `${group.title}  ${selectedInGroup(group, checked)}/${group.skillIds.length}`,
       };
+
       return group.skillIds.flatMap((id) => {
         const item = byId.get(id);
+
         if (!item || !matches.has(id)) return [];
         assigned.add(id);
+
         return [{...item, group: heading}];
       });
     });
+
     return [
       ...items,
       ...allItems
@@ -95,12 +106,15 @@ export function HomeScreen() {
         })),
     ];
   }, [visible, groups, allItems, selected]);
+
   const detail = report?.skills.find((skill) => skill.id === detailId);
+
   const partial =
     report &&
     (report.truncated ||
       report.skippedFiles.length > 0 ||
       (report.registryWarnings?.length ?? 0) > 0);
+
   const pageSize = Math.max(3, Math.min(16, rows - 16));
   useEffect(() => {
     if (report) {
@@ -110,10 +124,12 @@ export function HomeScreen() {
       setMode('browse');
     }
   }, [report]);
+
   const beginFilter = () => {
     setPreviousFilter(filter);
     setMode('filter');
   };
+
   useUiAction('scan:filter', beginFilter);
   useUiAction('scan:review', () => setMode('review'));
   useUiAction('scan:refresh', () => {
@@ -325,13 +341,16 @@ export function HomeScreen() {
             }))}
             onSelect={(key) => {
               const group = groups.find((item) => item.key === key);
+
               if (!group) return;
               const next = new Set(selected);
               const remove = group.skillIds.every((id) => next.has(id));
+
               for (const id of group.skillIds) {
                 if (remove) next.delete(id);
                 else next.add(id);
               }
+
               setSelected(
                 report!.skills.filter((skill) => next.has(skill.id)).map((skill) => skill.id),
               );
@@ -369,6 +388,7 @@ export function HomeScreen() {
                       )
                       .flatMap((tech) => tech.evidence)
                   : [];
+
             return (
               <Stack key={source.type + source.id}>
                 <Text>
@@ -439,6 +459,7 @@ export function HomeScreen() {
       </Box>
     </Panel>
   );
+
   return (
     <ScreenLayout
       title="Scan"

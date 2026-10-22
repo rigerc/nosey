@@ -32,22 +32,27 @@ export function Select<T extends string>({
 }) {
   const t = useTheme();
   const primary = useTone('primary');
+
   const [position, setIndex] = useState(
     Math.max(
       0,
       items.findIndex((i) => i.value === initialValue),
     ),
   );
+
   const index = listIndex(position, items.length);
   const cursor = useRef(index);
   cursor.current = index;
+
   const jump = (next: number) => {
     cursor.current = listIndex(next, items.length);
     setIndex(cursor.current);
   };
+
   const move = (delta: number) => {
     if (items.length) jump((cursor.current + delta + items.length) % items.length);
   };
+
   const {start, end} = listWindow(index, items.length, maxVisible);
 
   useKeymap(
@@ -62,6 +67,7 @@ export function Select<T extends string>({
         key: 'enter',
         run: () => {
           const item = items[cursor.current];
+
           if (item) onSelect(item.value);
         },
       },
@@ -73,6 +79,7 @@ export function Select<T extends string>({
     <Box flexDirection="column">
       {items.slice(start, end).map((item, i) => {
         const active = start + i === index;
+
         return (
           <Box key={item.value} gap={1} flexShrink={1}>
             <Text {...primary}>{active ? t.symbols.pointer : ' '}</Text>

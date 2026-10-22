@@ -15,6 +15,7 @@ describe('MultiSelect', () => {
   it('toggles options and submits valid selections in item order', async () => {
     const change = vi.fn();
     const submit = vi.fn();
+
     const app = await mount(
       <MultiSelect
         items={items}
@@ -24,6 +25,7 @@ describe('MultiSelect', () => {
         maxVisible={2}
       />,
     );
+
     await press(app, ' ');
     expect(change).toHaveBeenLastCalledWith(['alpha', 'beta']);
     await press(app, '\u001b[B');
@@ -56,9 +58,11 @@ describe('MultiSelect', () => {
 
   it('handles empty and shrinking options without submitting removed values', async () => {
     const submit = vi.fn();
+
     const app = await mount(
       <MultiSelect items={items} defaultValue={['epsilon']} onSubmit={submit} />,
     );
+
     await press(app, '\u001b[F');
     app.rerender(<MultiSelect items={items.slice(0, 1)} onSubmit={submit} />);
     await settle();
@@ -77,6 +81,7 @@ describe('MultiSelect', () => {
 describe('SearchSelect', () => {
   it('filters labels/hints without case sensitivity and selects a matching item', async () => {
     const select = vi.fn();
+
     const app = await mount(
       <SearchSelect
         items={[...items, {value: 'extra', label: 'Extra', hint: 'Testing'}]}
@@ -84,6 +89,7 @@ describe('SearchSelect', () => {
         maxVisible={2}
       />,
     );
+
     await press(app, 'TEST');
     expect(app.lastFrame()).toContain('Extra');
     expect(app.lastFrame()).not.toContain('Alpha');
@@ -112,9 +118,11 @@ describe('SearchSelect', () => {
   it('honors a controlled query and resets navigation when it changes', async () => {
     const select = vi.fn();
     const change = vi.fn();
+
     const app = await mount(
       <SearchSelect items={items} query="" onQueryChange={change} onSelect={select} />,
     );
+
     await press(app, 'z');
     expect(change).toHaveBeenCalledWith('z');
     expect(app.lastFrame()).toContain('Alpha');
@@ -130,9 +138,11 @@ describe('SearchSelect', () => {
   it('does not consume keys while inactive', async () => {
     const select = vi.fn();
     const change = vi.fn();
+
     const app = await mount(
       <SearchSelect items={items} onSelect={select} onQueryChange={change} isActive={false} />,
     );
+
     await press(app, 'a');
     await press(app, '\r');
     expect(select).not.toHaveBeenCalled();
@@ -156,6 +166,7 @@ describe('Toggle', () => {
 
   it('supports controlled values, custom labels, and inactive previews', async () => {
     const change = vi.fn();
+
     const app = await mount(
       <Toggle
         label="Cache"
@@ -165,6 +176,7 @@ describe('Toggle', () => {
         offLabel="Disabled"
       />,
     );
+
     await press(app, ' ');
     expect(change).toHaveBeenCalledWith(true);
     expect(app.lastFrame()).toContain('Disabled');
@@ -182,6 +194,7 @@ describe('PaginatedList', () => {
 
   it('pages without wrapping and gives renderItem the absolute index', async () => {
     const change = vi.fn();
+
     const app = await mount(
       <PaginatedList
         items={items}
@@ -191,6 +204,7 @@ describe('PaginatedList', () => {
         onPageChange={change}
       />,
     );
+
     expect(app.lastFrame()).toContain('Page 1/3');
     await press(app, '\u001b[D');
     expect(change).not.toHaveBeenCalled();
@@ -209,6 +223,7 @@ describe('PaginatedList', () => {
 
   it('keeps controlled page changes external and disables inactive keys', async () => {
     const change = vi.fn();
+
     const app = await mount(
       <PaginatedList
         items={items}
@@ -219,6 +234,7 @@ describe('PaginatedList', () => {
         onPageChange={change}
       />,
     );
+
     await press(app, '\u001b[C');
     expect(change).toHaveBeenCalledWith(1);
     expect(app.lastFrame()).toContain('Page 1/3');
@@ -249,6 +265,7 @@ describe('PaginatedList', () => {
         renderItem={renderItem}
       />,
     );
+
     expect(app.lastFrame()).toContain('Page 3/3');
     app.rerender(
       <PaginatedList
@@ -264,10 +281,12 @@ describe('PaginatedList', () => {
     await settle();
     await press(app, '\u001b[C');
     expect(app.lastFrame()).toContain('No items.');
+
     for (const pageSize of [0, -5, NaN, Infinity]) {
       const out = renderToString(
         <PaginatedList items={items} pageSize={pageSize} getKey={getKey} renderItem={renderItem} />,
       );
+
       expect(out).toContain('Alpha');
       expect(out).not.toContain('NaN');
     }
@@ -279,6 +298,7 @@ describe('collection rendering', () => {
     ...[40, 120].map((columns) => ({columns, theme: 'nosey' as const})),
     ...themeNames.filter((theme) => theme !== 'nosey').map((theme) => ({columns: 60, theme})),
   ];
+
   for (const {theme, columns} of presentations) {
     it(`fits ${columns} columns with ${theme} theme`, () => {
       const components = [
@@ -293,6 +313,7 @@ describe('collection rendering', () => {
           isActive={false}
         />,
       ];
+
       for (const component of components) {
         const out = renderToString(
           <ThemeProvider name={theme} ascii>
@@ -300,8 +321,8 @@ describe('collection rendering', () => {
           </ThemeProvider>,
           {columns},
         );
-        for (const line of out.split('\n'))
-          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+
+        for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
         expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│○]/);
       }
     });

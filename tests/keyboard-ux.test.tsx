@@ -5,6 +5,7 @@ import {mount, settle} from './helpers/terminal';
 import type {ReactNode} from 'react';
 
 const items = ['one', 'two', 'three'].map((value) => ({value, label: value}));
+
 const view = (node: ReactNode) => (
   <InputCaptureProvider>
     <KeymapProvider>{node}</KeymapProvider>

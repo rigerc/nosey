@@ -6,6 +6,7 @@ export interface DoctorCheck {
   ok: boolean;
   detail: string;
 }
+
 export interface DoctorReport {
   ok: boolean;
   checks: DoctorCheck[];
@@ -16,6 +17,7 @@ export function inspectEnvironment(configFile?: string): DoctorReport {
   const path = configPath(configFile);
   const {error} = loadConfig(configFile);
   const nodeMajor = Number(process.versions.node.split('.')[0]);
+
   const checks: DoctorCheck[] = [
     {
       name: 'node',
@@ -32,5 +34,6 @@ export function inspectEnvironment(configFile?: string): DoctorReport {
           : `${path}: not created (defaults in use)`,
     },
   ];
+
   return {ok: checks.every((check) => check.ok), checks};
 }

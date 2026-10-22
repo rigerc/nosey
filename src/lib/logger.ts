@@ -1,3 +1,4 @@
+import {isString} from './values';
 import {appendFileSync, mkdirSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
@@ -15,9 +16,10 @@ export const logPath = (): string =>
 
 function write(level: string, args: unknown[]) {
   if (!enabled) return;
+
   try {
     mkdirSync(dirname(logPath()), {recursive: true});
-    const line = args.map((a) => (typeof a === 'string' ? a : inspect(a))).join(' ');
+    const line = args.map((a) => (isString(a) ? a : inspect(a))).join(' ');
     appendFileSync(logPath(), `${new Date().toISOString()} ${level} ${line}\n`);
   } catch {
     // Logging must never break the UI.

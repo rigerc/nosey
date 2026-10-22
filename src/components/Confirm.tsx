@@ -24,10 +24,12 @@ export function Confirm({
   const [value, updateValue] = useState(defaultValue);
   const current = useRef(value);
   current.current = value;
+
   const setValue = (next: boolean) => {
     current.current = next;
     updateValue(next);
   };
+
   const t = useTheme();
   useFooterHints(
     [
@@ -51,6 +53,7 @@ export function Confirm({
     ],
     {isActive, scope: 'control', allowWhenCaptured: true},
   );
+
   return (
     <Box flexDirection="column">
       <Text>{message}</Text>

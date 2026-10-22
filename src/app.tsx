@@ -1,7 +1,16 @@
 import {Box} from 'ink';
 import {useEffect, useState, type ReactNode} from 'react';
 import pkg from '../package.json';
-import {AppShell, Badge, CommandMenu, ErrorBoundary, Header, StatusBar, StatusMessage, Tabs} from './components';
+import {
+  AppShell,
+  Badge,
+  CommandMenu,
+  ErrorBoundary,
+  Header,
+  StatusBar,
+  StatusMessage,
+  Tabs,
+} from './components';
 import {ConfigRuntimeProvider} from './config/context';
 import type {Config} from './config';
 import {
@@ -43,6 +52,7 @@ export interface AppOptions {
   onConfirm?: (ids: string[], commands?: string[]) => void;
   static?: boolean;
 }
+
 export function AppProviders({options, children}: {options: AppOptions; children: ReactNode}) {
   return (
     <ConfigRuntimeProvider path={options.configFile} flags={options.configFlags}>
@@ -75,11 +85,13 @@ export function AppProviders({options, children}: {options: AppOptions; children
     </ConfigRuntimeProvider>
   );
 }
+
 const menuHints: KeyHint[] = [
   {key: 'up/down', label: 'move'},
   {key: 'enter', label: 'select'},
   {key: 'esc', label: 'close'},
 ];
+
 function Shell() {
   const router = useRouter();
   const exit = useExit();
@@ -95,12 +107,15 @@ function Shell() {
     setVisited((ids) => (ids.includes(router.current) ? ids : [...ids, router.current]));
   }, [router.current]);
   const tab = router.current === 'registry-setup' ? 'registry' : router.current;
+
   const index = Math.max(
     0,
     navScreens.findIndex((screen) => screen.id === tab),
   );
+
   const go = (position: number) =>
     router.replace(navScreens[(position + navScreens.length) % navScreens.length]!.id);
+
   useKeymap(
     getGlobalBindings(
       navScreens.length,
@@ -122,25 +137,30 @@ function Shell() {
   });
   const currentScreen = screens.find((screen) => screen.id === router.current) ?? screens[0]!;
   const contextual = hintsMap[router.current] ?? currentScreen.hints ?? [];
+
   const hints = commandOpen
     ? [...menuHints, {key: 'ctrl+k', label: 'close'}]
     : [
         ...controlHints,
         ...contextual.filter((hint) => !controlHints.some((control) => control.key === hint.key)),
       ];
+
   const menu = navScreens.map((screen) => ({
     id: screen.id,
     label: screen.label,
     hint: 'Go to screen',
   }));
+
   if (scan.status === 'success')
     menu.push(
       {id: 'scan:filter', label: 'Filter skills', hint: 'Scan'},
       {id: 'scan:review', label: 'Review selection', hint: 'Scan'},
     );
+
   if (scan.status !== 'loading')
     menu.push({id: 'scan:refresh', label: 'Rescan project', hint: 'Read-only scan'});
   menu.push({id: 'registry:add', label: 'Add registry', hint: 'Review before saving a reference'});
+
   return (
     <AppShell
       header={
@@ -176,6 +196,7 @@ function Shell() {
           onCancel={() => setCommandOpen(false)}
           onSelect={(id) => {
             setCommandOpen(false);
+
             if (id.includes(':')) {
               router.replace(id.startsWith('scan:') ? 'home' : 'registry');
               requestAction(id);
@@ -184,10 +205,12 @@ function Shell() {
         />
       )}
       {[...new Set([...visited, router.current])]
+        .values()
         .filter((id) => id !== 'registry-setup' || id === router.current)
         .map((id) => {
           const Screen = (screens.find((screen) => screen.id === id) ?? screens[0]!).Component;
           const active = !commandOpen && id === router.current;
+
           return (
             <Box key={id} display={active ? 'flex' : 'none'} flexDirection="column">
               <InputActivityProvider active={active}>
@@ -195,10 +218,12 @@ function Shell() {
               </InputActivityProvider>
             </Box>
           );
-        })}
+        })
+        .toArray()}
     </AppShell>
   );
 }
+
 export const App = ({options}: {options: AppOptions}) => (
   <AppProviders options={options}>
     {options.compactMode && canonicalScreen(options.screen) === 'home' ? (
@@ -210,10 +235,12 @@ export const App = ({options}: {options: AppOptions}) => (
     )}
   </AppProviders>
 );
+
 export function PlainView({options}: {options: AppOptions}) {
   const Screen = (
     screens.find((screen) => screen.id === canonicalScreen(options.screen)) ?? screens[0]!
   ).Component;
+
   return (
     <AppProviders options={{...options, static: true}}>
       <AppShell header={<Header title="nosey" version={pkg.version} />}>

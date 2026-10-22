@@ -8,6 +8,7 @@ import {Muted} from './typography';
 /** Friendly error; stack trace only in debug mode. */
 export function ErrorPanel({error, debug = false}: {error: unknown; debug?: boolean}) {
   const err = toAppError(error);
+
   return (
     <Alert tone="danger" title={err.message}>
       {err.hint && <Text>{err.hint}</Text>}
@@ -21,11 +22,15 @@ export function ErrorPanel({error, debug = false}: {error: unknown; debug?: bool
   );
 }
 
+interface BoundaryState {
+  error?: Error;
+}
+
 export class ErrorBoundary extends Component<
   {debug?: boolean; children: ReactNode},
-  {error?: Error}
+  BoundaryState
 > {
-  override state: {error?: Error} = {};
+  override state: BoundaryState = {};
 
   static getDerivedStateFromError(error: Error) {
     return {error};
@@ -38,6 +43,7 @@ export class ErrorBoundary extends Component<
   override render() {
     if (this.state.error)
       return <ErrorPanel error={this.state.error} debug={this.props.debug ?? false} />;
+
     return this.props.children;
   }
 }

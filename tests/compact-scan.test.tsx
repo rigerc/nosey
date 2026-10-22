@@ -26,11 +26,19 @@ const report: Report = {
   ],
   summary: {technologies: 1, combinations: 0, suggestedSkills: 2, technologiesWithoutSkills: 0},
 };
+
 const directories: string[] = [];
-function setup(): {options: AppOptions; path: string} {
+
+interface Setup {
+  options: AppOptions;
+  path: string;
+}
+
+function setup(): Setup {
   const dir = mkdtempSync(join(tmpdir(), 'nosey-compact-'));
   directories.push(dir);
   const path = join(dir, 'settings.json');
+
   return {
     path,
     options: {
@@ -46,6 +54,7 @@ function setup(): {options: AppOptions; path: string} {
     },
   };
 }
+
 afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, {recursive: true, force: true});
 });
@@ -60,7 +69,8 @@ describe('compact Scan setting', () => {
     expect(
       resolveConfig(appConfig.fields, loadConfig(path).config, {env: {}}).values.compactMode,
     ).toBe(true);
-    expect(() => saveConfig({compactMode: 'yes' as unknown as boolean}, path)).toThrow();
+    // @ts-expect-error Exercise runtime rejection of an invalid persisted boolean.
+    expect(() => saveConfig({compactMode: 'yes'}, path)).toThrow();
   });
 
   it('opens a minimal direct-launch view and confirms selected skills in report order', async () => {
@@ -89,6 +99,7 @@ describe('compact Scan setting', () => {
   it('marks installed skills and prints JSON commands only for missing agents', async () => {
     const {options} = setup();
     const onConfirm = vi.fn();
+
     const installationReport: Report = {
       ...report,
       inspectedAgents: ['codex', 'claude-code'],
@@ -101,6 +112,7 @@ describe('compact Scan setting', () => {
         {id: 'acme/skills/beta', sources: [{type: 'technology', id: 'react', name: 'React'}]},
       ],
     };
+
     const app = await mount(
       <App
         options={{
@@ -111,6 +123,7 @@ describe('compact Scan setting', () => {
         }}
       />,
     );
+
     expect(app.lastFrame()).toContain('Partial 1/2');
     await press(app, ' ');
     await press(app, '\r');
@@ -135,6 +148,7 @@ describe('compact Scan setting', () => {
   it('blocks command confirmation without configured agents and Escape returns to browse', async () => {
     const {options} = setup();
     const onConfirm = vi.fn();
+
     const app = await mount(
       <App
         options={{
@@ -153,6 +167,7 @@ describe('compact Scan setting', () => {
         }}
       />,
     );
+
     await press(app, ' ');
     await press(app, '\r');
     expect(app.lastFrame()).toContain('Choose default agents in Settings');
@@ -165,6 +180,7 @@ describe('compact Scan setting', () => {
   it('omits install commands for skills already installed for all configured agents', async () => {
     const {options} = setup();
     const onConfirm = vi.fn();
+
     const app = await mount(
       <App
         options={{
@@ -184,6 +200,7 @@ describe('compact Scan setting', () => {
         }}
       />,
     );
+
     expect(app.lastFrame()).toContain('[Installed]');
     await press(app, ' ');
     await press(app, '\r');
@@ -195,9 +212,11 @@ describe('compact Scan setting', () => {
 
   it('fits a populated compact list and long project path in 24-row terminals', () => {
     const {options} = setup();
+
     const descriptors = ['columns', 'rows'].map((key) =>
       Object.getOwnPropertyDescriptor(process.stdout, key),
     );
+
     const populated = {
       ...report,
       skills: Array.from({length: 30}, (_, index) => ({
@@ -205,10 +224,13 @@ describe('compact Scan setting', () => {
         sources: report.skills[0]!.sources,
       })),
     };
+
     try {
       Object.defineProperty(process.stdout, 'rows', {value: 24, configurable: true});
+
       for (const columns of [40, 60, 80, 96, 120]) {
         Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+
         const out = renderToString(
           <App
             options={{
@@ -219,10 +241,13 @@ describe('compact Scan setting', () => {
           />,
           {columns},
         );
+
         expect(out.split('\n').length, out).toBeLessThanOrEqual(24);
+
         for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
         expect(out).toContain('[q] quit');
         expect(out).toContain('[enter] review');
+
         if (columns === 40) expect(out).toContain('skill-1');
         expect(out).not.toContain('Registries');
         expect(out).not.toContain('Commands');
@@ -230,6 +255,7 @@ describe('compact Scan setting', () => {
     } finally {
       ['columns', 'rows'].forEach((key, index) => {
         const descriptor = descriptors[index];
+
         if (descriptor) Object.defineProperty(process.stdout, key, descriptor);
         else Reflect.deleteProperty(process.stdout, key);
       });
@@ -242,6 +268,7 @@ describe('compact Scan setting', () => {
     const {options} = setup();
     const id = 'very-long-team/shared-agent-skills/composition-patterns';
     const onConfirm = vi.fn();
+
     try {
       const app = await mount(
         <App
@@ -252,6 +279,7 @@ describe('compact Scan setting', () => {
           }}
         />,
       );
+
       expect(app.lastFrame()).toContain('composition-patterns');
       await press(app, ' ');
       await press(app, '\r');
@@ -279,11 +307,13 @@ describe('compact Scan setting', () => {
 
   it('surfaces partial-scan warnings without adding full-screen panels', async () => {
     const {options} = setup();
+
     const partial: Report = {
       ...report,
       truncated: true,
       skippedFiles: [{file: 'broken', reason: 'unreadable'}],
     };
+
     const app = await mount(<App options={{...options, report: partial}} />);
     expect(app.lastFrame()).toContain('Partial scan');
     expect(app.lastFrame()).toContain('Scan limit reached');

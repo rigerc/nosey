@@ -13,14 +13,18 @@ const generator = path.join(source, 'scripts/generate-manifest.mjs');
 
 test('template generator is deterministic and leaves the skill map untouched', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-template-'));
+
   try {
     await fs.cp(source, directory, {recursive: true});
     const originalMap = await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8');
     await run(process.execPath, [generator], {cwd: directory});
     await run(process.execPath, [generator, '--check'], {cwd: directory});
+
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const manifest = JSON.parse(
       await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'),
     ) as {skills: Array<{id: string}>};
+
     expect(manifest.skills[0]?.id).toBe('example/agent-skills/example-testing');
     expect(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).toBe(originalMap);
     await fs.mkdir(path.join(directory, 'skills/another'), {recursive: true});
@@ -46,17 +50,20 @@ test('template generator is deterministic and leaves the skill map untouched', a
 
 test('generator rejects dangling output symlinks and directories', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-manifest-output-'));
+
   try {
     await fs.cp(source, directory, {recursive: true});
     const manifest = path.join(directory, 'skills-manifest.json');
     const missing = path.join(directory, 'must-not-create.json');
     await fs.rm(manifest);
     await fs.symlink(missing, manifest);
+
     for (const flags of [[], ['--check']]) {
       await expect(run(process.execPath, [generator, ...flags], {cwd: directory})).rejects.toThrow(
         /regular file/,
       );
     }
+
     expect((await fs.lstat(manifest)).isSymbolicLink()).toBe(true);
     await expect(fs.stat(missing)).rejects.toMatchObject({code: 'ENOENT'});
     await fs.rm(manifest);
@@ -72,6 +79,7 @@ test('generator rejects dangling output symlinks and directories', async () => {
 
 test('generator replaces hard-linked manifests and creates missing manifests without leftover temporary files', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-manifest-output-'));
+
   try {
     await fs.cp(source, directory, {recursive: true});
     const manifest = path.join(directory, 'skills-manifest.json');
@@ -92,22 +100,29 @@ test('generator replaces hard-linked manifests and creates missing manifests wit
 
 test('generator supports registries containing only external skills', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-external-only-'));
+
   try {
     await fs.cp(source, directory, {recursive: true});
     await fs.rm(path.join(directory, 'skills'), {recursive: true});
     const mapPath = path.join(directory, 'skills-map.json');
     const map = JSON.parse(await fs.readFile(mapPath, 'utf8'));
-    map.externalSkills = [{
-      id: 'acme/tools/react-helper',
-      name: 'React helper',
-      source: 'acme/tools',
-      skill: 'react-helper',
-    }];
+    map.externalSkills = [
+      {
+        id: 'acme/tools/react-helper',
+        name: 'React helper',
+        source: 'acme/tools',
+        skill: 'react-helper',
+      },
+    ];
     map.technologySkills = [{technologyId: 'react', skills: ['acme/tools/react-helper']}];
     await fs.writeFile(mapPath, JSON.stringify(map));
     await run(process.execPath, [generator], {cwd: directory});
     await run(process.execPath, [generator, '--check'], {cwd: directory});
-    const manifest = JSON.parse(await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'));
+
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'),
+    );
+
     expect(manifest.skills).toEqual([]);
   } finally {
     await fs.rm(directory, {recursive: true, force: true});

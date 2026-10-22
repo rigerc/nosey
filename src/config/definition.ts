@@ -1,3 +1,5 @@
+import {jsonObjectSchema, type JsonValue, type JsonObject, isRecord} from '../lib/values';
+
 import type {z} from 'zod';
 
 /** Editor metadata is independent of persistence and can be extended by consuming apps. */
@@ -8,32 +10,34 @@ export interface ConfigField {
   kind: 'toggle' | 'select' | 'text' | 'number' | 'multi';
   description?: string;
   options?: readonly {value: string; label: string; hint?: string}[];
-  defaultValue?: unknown;
+  defaultValue?: JsonValue;
   env?: string;
-  visibleWhen?: (values: Record<string, unknown>) => boolean;
+  visibleWhen?: (values: JsonObject) => boolean;
 }
 
 export interface ConfigDefinition<T extends object> {
   schema: z.ZodType<T>;
   version: number;
   fields: readonly ConfigField[];
-  migrations?: Readonly<Record<number, (raw: Record<string, unknown>) => Record<string, unknown>>>;
+  migrations?: Readonly<Record<number, (raw: JsonObject) => JsonObject>>;
 }
 
 export function defineConfig<T extends object>(definition: ConfigDefinition<T>) {
   return definition;
 }
 
-export function getAtPath(values: object, path: string): unknown {
-  return path.split('.').reduce<unknown>((current, part) => {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    return (current as Record<string, unknown>)[part];
-  }, values);
+export function getAtPath<T extends object>(values: T, path: string): JsonValue {
+  return path.split('.').reduce<JsonValue>((current, part) => {
+    if (!current || !isRecord(current) || Array.isArray(current)) return undefined;
+
+    return current[part];
+  }, jsonObjectSchema.parse(values));
 }
 
 /** Immutable nested update. Paths refer to object keys, never array indices. */
-export function setAtPath<T extends object>(values: T, path: string, value: unknown): T {
+export function setAtPath<T extends object>(values: T, path: string, value: JsonValue): T {
   const segments = path.split('.');
+
   if (
     !segments.length ||
     segments.some(
@@ -43,18 +47,22 @@ export function setAtPath<T extends object>(values: T, path: string, value: unkn
   ) {
     throw new Error('Invalid configuration path');
   }
-  const root: Record<string, unknown> = {...(values as Record<string, unknown>)};
+
+  const root = {...jsonObjectSchema.parse(values)};
   let node = root;
+
   for (const segment of segments.slice(0, -1)) {
     const old = node[segment];
-    const next =
-      old && typeof old === 'object' && !Array.isArray(old)
-        ? {...(old as Record<string, unknown>)}
-        : {};
+
+    const next = old && isRecord(old) && !Array.isArray(old) ? {...old} : {};
+
     node[segment] = next;
     node = next;
   }
+
   node[segments[segments.length - 1]!] = value;
+
+  // SAFETY: untouched T fields are preserved; edited paths are drafts validated by the config store before persistence.
   return root as T;
 }
 

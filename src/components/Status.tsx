@@ -1,3 +1,4 @@
+import {isString} from '../lib/values';
 import {Box, Text} from 'ink';
 import type {ReactNode} from 'react';
 import type {ToastTone} from '../hooks/useToast';
@@ -28,6 +29,7 @@ export function Alert({
 }) {
   const t = useTheme();
   const color = t.color[tone];
+
   return (
     <Box flexDirection="column" borderStyle={t.border.base} borderColor={color} paddingX={1}>
       <Box gap={1}>
@@ -36,7 +38,7 @@ export function Alert({
           {title}
         </Text>
       </Box>
-      {typeof children === 'string' ? <Text>{children}</Text> : children}
+      {isString(children) ? <Text>{children}</Text> : children}
     </Box>
   );
 }

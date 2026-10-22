@@ -9,6 +9,7 @@ export function Spinner({label, tone = 'primary'}: {label?: string; tone?: Tone}
   const animated = isInteractive();
   const {frame} = useAnimation({interval: t.motion.intervalMs, isActive: animated});
   const glyph = animated ? t.motion.spinner[frame % t.motion.spinner.length] : t.symbols.ellipsis;
+
   return (
     <Box gap={1}>
       <Text {...useTone(tone)}>{glyph}</Text>

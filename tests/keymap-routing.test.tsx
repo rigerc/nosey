@@ -13,6 +13,7 @@ function RoutingFixture({calls, controlActive = true}: {calls: string[]; control
     scope: 'control',
     isActive: controlActive,
   });
+
   return <Text>Router active</Text>;
 }
 
@@ -21,6 +22,7 @@ function CaptureFixture({onShortcut}: {onShortcut: () => void}) {
   useKeymap([{key: '/', run: () => setSearching(true)}], {scope: 'screen'});
   useKeymap([{key: 'q', run: onShortcut}], {scope: 'global'});
   useKeymap([{key: 't', run: onShortcut}], {scope: 'control'});
+
   return (
     <SearchSelect
       items={[{value: 'one', label: 'One'}]}
@@ -33,6 +35,7 @@ function CaptureFixture({onShortcut}: {onShortcut: () => void}) {
 
 function CapturedSelect({onSelect}: {onSelect: (value: string) => void}) {
   useInputCapture(true);
+
   return (
     <Select
       items={[
@@ -54,6 +57,7 @@ const withProviders = (node: ReactNode) => (
 describe('shared keyboard routing', () => {
   it('does not interpret modified arrows as plain menu navigation', async () => {
     const chosen = vi.fn();
+
     const app = await mount(
       withProviders(
         <Select
@@ -65,6 +69,7 @@ describe('shared keyboard routing', () => {
         />,
       ),
     );
+
     await press(app, '\u001b[1;5B'); // Ctrl+Down
     await press(app, '\u001b[1;3B'); // Alt+Down
     await press(app, '\r');

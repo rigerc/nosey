@@ -37,15 +37,18 @@ export function CompactSkillPicker({
   const {rows, columns} = useTerminalSize();
   // Reserve the header, summary, selection total, and essential footer controls.
   const pageSize = Math.max(1, Math.min(16, rows - (columns < 80 ? 12 : 11)));
+
   const items = report.skills.map((skill) => {
     const status = installationLabel(skill.installation, statusAgents);
     const name = columns < 60 ? skill.id.split('/').at(-1)! : skill.id;
+
     return {
       value: skill.id,
       label: name + (status ? ' [' + status + ']' : ''),
       hint: columns < 60 ? skill.id : undefined,
     };
   });
+
   const chosen = orderedSelection(report, new Set(selected));
   useKeymap(
     [

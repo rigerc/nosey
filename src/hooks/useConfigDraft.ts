@@ -1,3 +1,4 @@
+import {type JsonValue} from '../lib/values';
 import {useState} from 'react';
 import {getAtPath, setAtPath} from '../config';
 import {configStore, type Config} from '../lib/config';
@@ -8,28 +9,34 @@ export function useConfigDraft(path?: string) {
   const [draft, setDraft] = useState<Config>(loaded.config);
   const [error, setError] = useState(loaded.error);
 
-  const update = (fieldPath: string, value: unknown) => {
+  const update = (fieldPath: string, value: JsonValue) => {
     setDraft((current) => setAtPath(current, fieldPath, value));
     setError(undefined);
   };
+
   const discard = () => {
     setDraft(loaded.config);
     setError(loaded.error);
   };
+
   const save = () => {
     if (loaded.error) throw new Error(loaded.error);
+
     try {
       const result = configStore.write(draft, path);
       setLoaded({config: result, path: configStore.pathFor(path)});
       setDraft(result);
       setError(undefined);
+
       return result;
     } catch (cause) {
-      setError((cause as Error).message);
+      setError(cause instanceof Error ? cause.message : String(cause));
       throw cause;
     }
   };
+
   const changed = JSON.stringify(draft) !== JSON.stringify(loaded.config);
+
   return {
     draft,
     update,

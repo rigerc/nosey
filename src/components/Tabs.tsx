@@ -4,6 +4,7 @@ import {useTone} from '../theme/context';
 export function Tabs({items, activeId}: {items: {id: string; label: string}[]; activeId: string}) {
   const primary = useTone('primary');
   const muted = useTone('muted');
+
   return (
     <Box columnGap={1} paddingX={1} flexWrap="wrap">
       {items.map((item, i) =>

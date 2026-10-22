@@ -9,11 +9,13 @@ const spec = {
   url: 'https://github.com/example/private-skills.git',
   ref: 'main',
 };
+
 const manifest = {
   schemaVersion: 1 as const,
   registryId: 'example/skills',
   skills: [{id: 'example/skills/demo', name: 'demo', path: 'skills/demo/SKILL.md'}],
 };
+
 const map = {
   schemaVersion: 1 as const,
   registryId: 'example/skills',
@@ -26,10 +28,12 @@ const map = {
   frontendPackages: [],
   webFrontendExtensions: [],
 };
+
 const commit = 'a'.repeat(40);
 
 async function cacheFixture<T>(callback: (directory: string) => Promise<T>): Promise<T> {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-git-cache-'));
+
   try {
     return await callback(directory);
   } finally {
@@ -40,14 +44,17 @@ async function cacheFixture<T>(callback: (directory: string) => Promise<T>): Pro
 test('Git cache avoids repeat fetches while TTL is fresh', async () => {
   await cacheFixture(async (cacheDirectory) => {
     let requests = 0;
+
     const options = {
       cacheDirectory,
       now: 100_000,
       async fetcher() {
         requests++;
+
         return {loaded: {manifest, map, source: 'fixture'}, commit};
       },
     };
+
     const first = await loadGitRegistry(spec, options);
     const second = await loadGitRegistry(spec, options);
     expect(requests).toBe(1);
@@ -77,6 +84,8 @@ test('cached regex detection rules retain their source and flags', async () => {
         },
       ],
     };
+
+    // SAFETY: this fixture adds valid RegExp detection entries; the cache round-trip below verifies them.
     await loadGitRegistry(spec, {
       cacheDirectory,
       now: 0,
@@ -85,6 +94,7 @@ test('cached regex detection rules retain their source and flags', async () => {
         commit,
       }),
     });
+
     const cached = await loadGitRegistry(spec, {
       cacheDirectory,
       now: 1,
@@ -92,12 +102,14 @@ test('cached regex detection rules retain their source and flags', async () => {
         throw new Error('must use cache');
       },
     });
+
     expect(
       cached.loaded.map.technologies[0]?.detect.packagePatterns?.[0]?.test('@SAMPLE/sdk'),
     ).toBe(true);
     expect(cached.loaded.map.technologies[0]?.detect.configFileContent).toStrictEqual([
       {files: ['example.config'], patterns: [/example/i, 'enabled']},
     ]);
+
     const stale = await loadGitRegistry(
       {...spec, refreshHours: 0},
       {
@@ -108,6 +120,7 @@ test('cached regex detection rules retain their source and flags', async () => {
         },
       },
     );
+
     expect(stale.loaded.map.technologies[0]?.detect.packagePatterns?.[0]?.test('@SAMPLE/sdk')).toBe(
       true,
     );
@@ -128,6 +141,7 @@ test('Git fetch errors reuse the last valid registry snapshot', async () => {
         commit,
       }),
     });
+
     const stale = await loadGitRegistry(spec, {
       cacheDirectory,
       now: 172_800_000,
@@ -135,6 +149,7 @@ test('Git fetch errors reuse the last valid registry snapshot', async () => {
         throw new Error('network unavailable');
       },
     });
+
     expect(stale.loaded.manifest.registryId).toBe('example/skills');
     expect(stale.warnings.length).toBe(1);
     expect(stale.warnings[0]!.message).toMatch(/using cached registry/);
@@ -178,28 +193,39 @@ test('reject dangerous Git URL schemes and revision option injection', async () 
 });
 
 test('Git snapshots round-trip v2 external skill declarations through the cache', async () => {
-  await cacheFixture(async cacheDirectory => {
+  await cacheFixture(async (cacheDirectory) => {
     const externalId = 'acme/upstream/react-helper';
+
     const externalMap = {
       ...map,
       schemaVersion: 2 as const,
-      externalSkills: [{
-        id: externalId, name: 'React helper', source: 'acme/upstream', skill: 'react-helper',
-      }],
+      externalSkills: [
+        {
+          id: externalId,
+          name: 'React helper',
+          source: 'acme/upstream',
+          skill: 'react-helper',
+        },
+      ],
       technologySkills: [{technologyId: 'react', skills: [externalId]}],
     };
+
     const first = await loadGitRegistry(spec, {
-      cacheDirectory, now: 500,
+      cacheDirectory,
+      now: 500,
       async fetcher() {
         return {loaded: {manifest, map: externalMap, source: 'fixture'}, commit};
       },
     });
+
     const cached = await loadGitRegistry(spec, {
-      cacheDirectory, now: 501,
+      cacheDirectory,
+      now: 501,
       async fetcher() {
         throw new Error('unexpected remote fetch');
       },
     });
+
     expect(first.warnings).toEqual([]);
     expect(cached.warnings).toEqual([]);
     expect(cached.loaded.map.externalSkills).toEqual(externalMap.externalSkills);
@@ -207,14 +233,15 @@ test('Git snapshots round-trip v2 external skill declarations through the cache'
   });
 });
 
-
 test('forced refresh bypasses a warm cache and detects new commits', async () => {
   await cacheFixture(async (cacheDirectory) => {
     let requests = 0;
+
     const fetcher = async () => ({
       loaded: {manifest, map, source: 'fixture'},
       commit: (++requests === 1 ? 'a' : 'b').repeat(40),
     });
+
     const initial = await loadGitRegistry(spec, {cacheDirectory, now: 100, fetcher});
     expect(initial.hadCache).toBe(false);
     expect(initial.updated).toBe(false);
@@ -226,8 +253,12 @@ test('forced refresh bypasses a warm cache and detects new commits', async () =>
     expect(requests).toBe(1);
 
     const changed = await loadGitRegistry(spec, {
-      cacheDirectory, now: 102, fetcher, forceRefresh: true,
+      cacheDirectory,
+      now: 102,
+      fetcher,
+      forceRefresh: true,
     });
+
     expect(changed.updated).toBe(true);
     expect(changed.refreshed).toBe(true);
     expect(changed.hadCache).toBe(true);
@@ -235,8 +266,12 @@ test('forced refresh bypasses a warm cache and detects new commits', async () =>
     expect(requests).toBe(2);
 
     const unchanged = await loadGitRegistry(spec, {
-      cacheDirectory, now: 103, fetcher, forceRefresh: true,
+      cacheDirectory,
+      now: 103,
+      fetcher,
+      forceRefresh: true,
     });
+
     expect(unchanged.updated).toBe(false);
     expect(unchanged.refreshed).toBe(true);
     expect(requests).toBe(3);
@@ -246,13 +281,20 @@ test('forced refresh bypasses a warm cache and detects new commits', async () =>
 test('failed forced refresh does not report an update or replace the cache', async () => {
   await cacheFixture(async (cacheDirectory) => {
     await loadGitRegistry(spec, {
-      cacheDirectory, now: 0,
+      cacheDirectory,
+      now: 0,
       fetcher: async () => ({loaded: {manifest, map, source: 'fixture'}, commit}),
     });
+
     const fallback = await loadGitRegistry(spec, {
-      cacheDirectory, now: 1, forceRefresh: true,
-      fetcher: async () => { throw new Error('offline'); },
+      cacheDirectory,
+      now: 1,
+      forceRefresh: true,
+      fetcher: async () => {
+        throw new Error('offline');
+      },
     });
+
     expect(fallback.updated).toBe(false);
     expect(fallback.refreshed).toBe(false);
     expect(fallback.hadCache).toBe(true);

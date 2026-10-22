@@ -25,6 +25,7 @@ export function HelpScreen() {
   );
   useScreenHints('help', [{key: 'up/down', label: 'topic'}]);
   const shortcuts = topic === 0 ? getGlobalKeys(navScreens.length) : scanHints;
+
   return (
     <ScreenLayout title="Help" description="Scanning and selecting never installs skills.">
       <Box flexDirection={columns >= 80 ? 'row' : 'column'} gap={1}>

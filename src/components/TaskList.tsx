@@ -6,6 +6,7 @@ import {Spinner} from './Spinner';
 import {Icon, Muted} from './typography';
 
 export type TaskStatus = 'pending' | 'running' | 'done' | 'failed';
+
 export interface Task {
   id: string;
   label: string;
@@ -19,6 +20,7 @@ function TaskRow({task}: {task: Task}) {
   const elapsed = useElapsed(task.startedAt, task.endedAt);
   const labelStyle = useTone('muted');
   const detailStyle = useTone(task.status === 'failed' ? 'danger' : 'muted');
+
   return (
     <Box flexDirection="column">
       <Box gap={1}>

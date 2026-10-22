@@ -1,12 +1,29 @@
+import {isString} from './values';
 import path from 'node:path';
-import type {ConfigFileContentBlock, DetectConfig, Technology} from '../data/skills-map.js';
-import {AGENT_FOLDER_MAP} from '../data/skills-map.js';
+import {
+  type ConfigFileContentBlock,
+  type DetectConfig,
+  type Technology,
+  AGENT_FOLDER_MAP,
+} from '../data/skills-map.js';
+
 import {builtInRegistry} from './registry/merge.js';
 import type {MergedRegistry, RegistryWarning, SkillInstallSource} from './registry/types.js';
-import {matchesPath, scanProject} from './scanner.js';
-import type {ProjectTree, ScanOptions, SkippedFile} from './scanner.js';
-import {manifestGroups, allPackages, findPackage, indexManifests} from './manifests.js';
-import type {ManifestIndex} from './manifests.js';
+import {
+  matchesPath,
+  scanProject,
+  type ProjectTree,
+  type ScanOptions,
+  type SkippedFile,
+} from './scanner.js';
+
+import {
+  manifestGroups,
+  allPackages,
+  findPackage,
+  indexManifests,
+  type ManifestIndex,
+} from './manifests.js';
 
 export type DetectOptions = ScanOptions & {
   /** Add frontend bonus skills when a frontend project is detected. */
@@ -71,8 +88,10 @@ export type Report = {
 function endOfString(text: string, start: number): number {
   const quote = text[start];
   let end = start + 1;
+
   while (end < text.length) {
     const char = text[end++];
+
     if (char === '\\' && end < text.length) end++;
     else if (char === quote) break;
   }
@@ -99,9 +118,11 @@ function contentWithoutComments(
   let i = 0;
   let start = 0;
   const mask = (value: string) => value.replaceAll(/[^\n]/g, ' ');
+
   while (i < text.length) {
     const char = text[i] ?? '';
     const next = text[i + 1];
+
     if (char === '"' || char === "'" || char === '`') {
       const beginning = i;
       i = endOfString(text, i);
@@ -136,11 +157,13 @@ function contentWithoutComments(
   }
 
   output.push(text.slice(start));
+
   return output.join('');
 }
 
 function isGradle(file: string): boolean {
   const name = file.split('/').at(-1) ?? '';
+
   return (
     /^(?:build|settings)\.gradle(?:\.kts)?$/.test(name) ||
     /^(?:gradle\.properties|libs\.versions\.toml)$/.test(name)
@@ -160,14 +183,19 @@ function matchesContentFile(file: string, block: ConfigFileContentBlock): boolea
   }
 
   if (block.scanGradleLayout && isGradle(file)) return true;
+
   if (block.scanDotNetLayout && isDotNet(file)) return true;
+
   if ((block.sourceExtensions ?? []).some((ext) => file.endsWith(ext))) return true;
+
   return false;
 }
 
 function contentBlocks(detect: DetectConfig): ConfigFileContentBlock[] {
   const config = detect.configFileContent;
+
   if (!config) return [];
+
   return Array.isArray(config) ? config : [config];
 }
 
@@ -181,6 +209,7 @@ type EvidenceCollector = {
 
 function createCollector(): EvidenceCollector {
   const reasons = new Set<string>();
+
   return {
     add(reason) {
       if (reasons.size < evidenceLimit) reasons.add(reason);
@@ -209,12 +238,16 @@ function manifestEvidence(
   }
 
   if (!detect.packagePatterns?.length) return;
+
   for (const pkg of allPackages(manifests, 'packages')) {
     const matched = detect.packagePatterns.some((pattern) => {
       pattern.lastIndex = 0;
+
       return pattern.test(pkg.name);
     });
+
     if (!matched) continue;
+
     for (const file of pkg.files) {
       collector.add(`packages: ${pkg.name} (${file})`);
     }
@@ -226,6 +259,7 @@ function pathEvidence(tree: ProjectTree, detect: DetectConfig, collector: Eviden
   for (const requested of detect.configFiles ?? []) {
     for (const file of [...tree.files, ...tree.directories]) {
       if (matchesPath(file, requested)) collector.add(`config: ${file}`);
+
       if (collector.count() >= evidenceLimit) break;
     }
   }
@@ -233,6 +267,7 @@ function pathEvidence(tree: ProjectTree, detect: DetectConfig, collector: Eviden
   for (const ext of detect.fileExtensions ?? []) {
     for (const file of tree.files) {
       if (file.endsWith(ext)) collector.add(`extension: ${file}`);
+
       if (collector.count() >= evidenceLimit) break;
     }
   }
@@ -241,11 +276,14 @@ function pathEvidence(tree: ProjectTree, detect: DetectConfig, collector: Eviden
 /** Runs every pattern of a block against one file, recording which matched. */
 function matchPatterns(contents: string, block: ConfigFileContentBlock, seen: boolean[]): boolean {
   let any = false;
+
   for (const [i, pattern] of block.patterns.entries()) {
     if (seen[i] && block.allPatterns) continue;
+
     if (pattern instanceof RegExp) pattern.lastIndex = 0;
-    const matched =
-      typeof pattern === 'string' ? contents.includes(pattern) : pattern.test(contents);
+
+    const matched = isString(pattern) ? contents.includes(pattern) : pattern.test(contents);
+
     if (matched) {
       seen[i] = true;
       any = true;
@@ -262,6 +300,7 @@ async function contentEvidence(
 ): Promise<void> {
   const states = detections.flatMap(({technology, collector}) =>
     contentBlocks(technology.detect)
+      .values()
       .filter((block) => block.patterns.length > 0)
       .map((block) => ({
         block,
@@ -269,28 +308,37 @@ async function contentEvidence(
         seen: block.patterns.map(() => false),
         matchingFiles: new Set<string>(),
         done: false,
-      })),
+      }))
+      .toArray(),
   );
+
   // Process a file once. Prepared variants live only until the next file.
   for (const file of tree.files) {
     const relevant = states.filter((state) => !state.done && matchesContentFile(file, state.block));
+
     if (relevant.length === 0) continue;
     // eslint-disable-next-line no-await-in-loop
     const original = await tree.read(file);
+
     if (original === undefined) continue;
     const prepared = new Map<string, string>();
+
     for (const state of relevant) {
       const {block, collector, seen, matchingFiles} = state;
       const key = `${block.stripComments ?? 'none'}:${block.maskStrings ? 'masked' : 'strings'}`;
       let contents = prepared.get(key);
+
       if (contents === undefined) {
         contents = contentWithoutComments(original, block.stripComments, block.maskStrings);
         prepared.set(key, contents);
       }
 
       const any = matchPatterns(contents, block, seen);
+
       if (any && matchingFiles.size < evidenceLimit) matchingFiles.add(file);
+
       if (!block.allPatterns && any) collector.add(`content: ${file}`);
+
       if (block.allPatterns && seen.every(Boolean)) {
         for (const match of matchingFiles) collector.add(`content: ${match}`);
         state.done = true;
@@ -307,8 +355,10 @@ function webFrontend(
   registry: MergedRegistry,
 ): boolean {
   const packageRoots = new Map<string, Set<string>>();
+
   for (const pkg of allPackages(manifests, 'packages')) {
     if (registry.frontendPackages.has(pkg.name)) return true;
+
     for (const file of pkg.files) {
       const root = path.posix.dirname(file);
       const names = packageRoots.get(root) ?? new Set<string>();
@@ -320,16 +370,21 @@ function webFrontend(
   // An empty nested manifest still establishes a separate workspace scope.
   for (const file of tree.files.filter((file) => matchesPath(file, 'package.json'))) {
     const root = path.posix.dirname(file);
+
     if (!packageRoots.has(root)) packageRoots.set(root, new Set());
   }
 
   const roots = [...packageRoots.keys()].sort((a, b) => b.length - a.length);
+
   return tree.files.some((file) => {
     if (/(?:^|\/)(?:docs?|tests?|__tests__|fixtures?|examples?)(?:\/|$)/i.test(file)) return false;
     const root = roots.find((root) => root === '.' || file.startsWith(`${root}/`));
     const packages = root ? packageRoots.get(root) : undefined;
+
     if (packages?.has('ink')) return false;
+
     if (packages?.has('react-native')) return false;
+
     return (
       /(?:^|\/)index\.html?$/.test(file) ||
       [...registry.webFrontendExtensions].some((ext) => file.endsWith(ext))
@@ -346,18 +401,22 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
   const registry = options.registry ?? builtInRegistry();
 
   const technologies: DetectedTechnology[] = [];
+
   const detections = registry.technologies.map((technology) => ({
     technology,
     collector: createCollector(),
   }));
+
   for (const {technology, collector} of detections) {
     manifestEvidence(manifests, technology.detect, collector);
     pathEvidence(tree, technology.detect, collector);
   }
 
   await contentEvidence(tree, detections);
+
   for (const {technology, collector} of detections) {
     const evidence = collector.values();
+
     if (evidence.length > 0) {
       technologies.push({
         id: technology.id,
@@ -370,19 +429,24 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
 
   technologies.sort((a, b) => a.name.localeCompare(b.name));
   const detectedIds = new Set(technologies.map((tech) => tech.id));
+
   const combinations: DetectedCombination[] = registry.combinations
+    .values()
     .filter((combo) => combo.requires.every((id) => detectedIds.has(id)))
     .map((combo) => ({
       id: combo.id,
       name: combo.name,
       requires: [...combo.requires],
       skills: [...combo.skills],
-    }));
+    }))
+    .toArray();
 
   const skillMap = new Map<string, SkillSource[]>();
+
   const addSkills = (skills: string[], source: SkillSource) => {
     for (const id of skills) {
       let origins = skillMap.get(id);
+
       if (!origins) {
         origins = [];
         skillMap.set(id, origins);
@@ -407,6 +471,7 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
   }
 
   const frontendDetected = webFrontend(tree, manifests, registry);
+
   if (options.frontendBonus !== false && frontendDetected) {
     addSkills(registry.frontendBonusSkills, {
       type: 'frontend',
@@ -427,18 +492,20 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
     id,
     sources,
   }));
+
   skills.sort((a, b) => a.id.localeCompare(b.id));
 
   const agents: DetectedAgentFolder[] = Object.entries(AGENT_FOLDER_MAP).flatMap(
     ([folder, agent]) =>
       tree.directories
+        .values()
         .filter((dir) => matchesPath(dir, folder))
-        .map((dir) => ({agent, folder: dir})),
+        .map((dir) => ({agent, folder: dir}))
+        .toArray(),
   );
 
-  return {
+  const report: Report = {
     project: path.resolve(root),
-    ...(options.registryWarnings?.length ? {registryWarnings: options.registryWarnings} : {}),
     scannedFiles: tree.files.length,
     truncated: tree.truncated,
     skippedFiles: tree.skippedFiles,
@@ -454,4 +521,8 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
       technologiesWithoutSkills: technologies.filter((tech) => tech.skills.length === 0).length,
     },
   };
+
+  if (options.registryWarnings?.length) report.registryWarnings = options.registryWarnings;
+
+  return report;
 }

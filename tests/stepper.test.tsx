@@ -2,23 +2,26 @@ import {setTimeout as tick} from 'node:timers/promises';
 import {renderToString, Text} from 'ink';
 import {describe, expect, it, vi} from 'vite-plus/test';
 import {Step, Stepper, type StepContext} from '../src/components';
-import {SetupWizard} from '../src/demos/SetupWizard';
 import {mount, output, press, settle} from './helpers/terminal';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
+
   const promise = new Promise<T>((done) => {
     resolve = done;
   });
+
   return {promise, resolve};
 }
 
 describe('Stepper', () => {
   it('renders first-step content synchronously, including fragments and conditional children', () => {
+    const showHidden = vi.fn(() => false);
+
     const out = renderToString(
       <Stepper onComplete={() => {}}>
         <>
-          {false && (
+          {showHidden() && (
             <Step name="Hidden">
               <Text>Hidden body</Text>
             </Step>
@@ -32,6 +35,7 @@ describe('Stepper', () => {
         </>
       </Stepper>,
     );
+
     expect(out).toContain('First body');
     expect(out).not.toContain('Second body');
     expect(out).not.toContain('Hidden');
@@ -41,16 +45,20 @@ describe('Stepper', () => {
     const cancel = vi.fn();
     const change = vi.fn();
     let current!: StepContext;
+
     const capture = (context: StepContext) => {
       current = context;
+
       return <Text>Body {context.currentStep}</Text>;
     };
+
     const app = await mount(
       <Stepper onComplete={() => {}} onCancel={cancel} onStepChange={change}>
         <Step name="One">{capture}</Step>
         <Step name="Two">{capture}</Step>
       </Stepper>,
     );
+
     await press(app, '\r');
     expect(current.currentStep).toBe(1);
     await press(app, '\u001b');
@@ -66,10 +74,13 @@ describe('Stepper', () => {
     let current!: StepContext;
     const onError = vi.fn();
     const complete = vi.fn();
+
     const content = (context: StepContext) => {
       current = context;
+
       return <Text>Input</Text>;
     };
+
     const app = await mount(
       <Stepper onComplete={complete}>
         <Step name="Input" canProceed={false}>
@@ -77,6 +88,7 @@ describe('Stepper', () => {
         </Step>
       </Stepper>,
     );
+
     await current.goNext();
     await settle();
     expect(complete).not.toHaveBeenCalled();
@@ -107,16 +119,19 @@ describe('Stepper', () => {
     const exit = vi.fn(() => pending.promise);
     const complete = vi.fn();
     const cancel = vi.fn();
-    const app = await mount(
+
+    await mount(
       <Stepper onComplete={complete} onCancel={cancel} onExitStep={exit}>
         <Step name="Only">
           {(context) => {
             current = context;
+
             return <Text>Only</Text>;
           }}
         </Step>
       </Stepper>,
     );
+
     const navigation = current.goNext();
     await settle();
     expect(current.isValidating).toBe(true);
@@ -135,16 +150,19 @@ describe('Stepper', () => {
   it('holds the same-event lock for synchronous guards too', async () => {
     let current!: StepContext;
     const complete = vi.fn();
-    const app = await mount(
+
+    await mount(
       <Stepper onComplete={complete}>
         <Step name="One">
           {(context) => {
             current = context;
+
             return <Text>One</Text>;
           }}
         </Step>
       </Stepper>,
     );
+
     await Promise.all([current.goNext(), current.goNext(), current.goNext()]);
     await settle();
     expect(complete).toHaveBeenCalledOnce();
@@ -154,10 +172,13 @@ describe('Stepper', () => {
     let current!: StepContext;
     const exit = vi.fn(() => false);
     const change = vi.fn();
+
     const capture = (context: StepContext) => {
       current = context;
+
       return <Text>Body</Text>;
     };
+
     const view = () => (
       <Stepper onComplete={() => {}} onExitStep={exit} onStepChange={change}>
         <Step name="One" canProceed={false}>
@@ -166,7 +187,8 @@ describe('Stepper', () => {
         <Step name="Two">{capture}</Step>
       </Stepper>
     );
-    const app = await mount(view());
+
+    await mount(view());
     await current.goTo(100);
     await settle();
     expect(current.currentStep).toBe(0);
@@ -183,16 +205,20 @@ describe('Stepper', () => {
   it('reports controlled navigation without changing the supplied index', async () => {
     let current!: StepContext;
     const change = vi.fn();
+
     const capture = (context: StepContext) => {
       current = context;
+
       return <Text>{context.currentStep}</Text>;
     };
+
     const view = (step: number) => (
       <Stepper step={step} initialStep={1} onComplete={() => {}} onStepChange={change}>
         <Step name="One">{capture}</Step>
         <Step name="Two">{capture}</Step>
       </Stepper>
     );
+
     const app = await mount(view(0));
     await current.goNext();
     await settle();
@@ -205,10 +231,13 @@ describe('Stepper', () => {
 
   it('keeps a keyed active step when earlier steps are inserted', async () => {
     let current!: StepContext;
+
     const capture = (context: StepContext) => {
       current = context;
+
       return <Text>Body</Text>;
     };
+
     const view = (extra: boolean) => (
       <Stepper initialStep={1} onComplete={() => {}}>
         {extra && (
@@ -224,6 +253,7 @@ describe('Stepper', () => {
         </Step>
       </Stepper>
     );
+
     const app = await mount(view(false));
     app.rerender(view(true));
     await settle();
@@ -234,10 +264,13 @@ describe('Stepper', () => {
     let current!: StepContext;
     const pending = deferred<boolean>();
     const change = vi.fn();
+
     const capture = (context: StepContext) => {
       current = context;
+
       return <Text>Body</Text>;
     };
+
     const view = (step: number) => (
       <Stepper step={step} onComplete={() => {}} onStepChange={change}>
         <Step name="One" canProceed={() => pending.promise}>
@@ -246,6 +279,7 @@ describe('Stepper', () => {
         <Step name="Two">{capture}</Step>
       </Stepper>
     );
+
     const app = await mount(view(0));
     const navigation = current.goNext();
     await settle();
@@ -260,6 +294,7 @@ describe('Stepper', () => {
 
   it('ignores keyboard input when disabled and does not complete an empty wizard', async () => {
     const complete = vi.fn();
+
     const app = await mount(
       <Stepper keyboardNav={false} onComplete={complete}>
         <Step name="Only">
@@ -267,6 +302,7 @@ describe('Stepper', () => {
         </Step>
       </Stepper>,
     );
+
     await press(app, '\r');
     expect(complete).not.toHaveBeenCalled();
     app.rerender(<Stepper onComplete={complete}>{null}</Stepper>);

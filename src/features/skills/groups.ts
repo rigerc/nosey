@@ -33,26 +33,36 @@ export function deriveSkillGroups(report: Report): SkillGroup[] {
     const skillIds = report.skills
       .filter((skill) => skill.sources.some((source) => source.type === kind && source.id === id))
       .map((skill) => skill.id);
+
     if (skillIds.length === 0) return undefined;
+
     return {key: `${kind}:${id}`, kind, title, evidence, skillIds};
   };
 
   const groups: SkillGroup[] = [];
+
   for (const technology of report.technologies) {
     const entry = group('technology', technology.id, technology.name, technology.evidence);
+
     if (entry) groups.push(entry);
   }
+
   for (const combination of report.combinations) {
     const evidence = report.technologies
       .filter((technology) => combination.requires.includes(technology.id))
       .flatMap((technology) =>
         technology.evidence.map((reason) => `${technology.name}: ${reason}`),
       );
+
     const entry = group('combination', combination.id, combination.name, evidence);
+
     if (entry) groups.push(entry);
   }
+
   const frontend = group('frontend', 'frontend-bonus', 'Frontend essentials', []);
+
   if (frontend) groups.push(frontend);
+
   const alwaysRegistryIds = [
     ...new Set(
       report.skills.flatMap((skill) =>
@@ -60,12 +70,15 @@ export function deriveSkillGroups(report: Report): SkillGroup[] {
       ),
     ),
   ];
+
   for (const registryId of alwaysRegistryIds) {
     const entry = group('always', registryId, 'Always recommended · ' + registryId, [
       'Listed in alwaysRecommend in the ' + registryId + ' registry',
     ]);
+
     if (entry) groups.push(entry);
   }
+
   return groups;
 }
 
@@ -76,10 +89,13 @@ export function groupRows(
   collapsed: ReadonlySet<string>,
 ): PickerRow[] {
   const rows: PickerRow[] = [];
+
   for (const group of groups) {
     const matchingIds = group.skillIds.filter((id) => matching.has(id));
+
     if (matchingIds.length === 0) continue;
     rows.push({key: group.key, kind: 'group', group, matchingIds});
+
     if (!collapsed.has(group.key)) {
       for (const skillId of matchingIds) {
         rows.push({
@@ -91,6 +107,7 @@ export function groupRows(
       }
     }
   }
+
   return rows;
 }
 

@@ -12,6 +12,7 @@ const render = (
   ascii: boolean,
 ) => {
   const {Component} = screens.find((s) => s.id === id)!;
+
   return renderToString(
     <AppProviders options={{theme, ascii, debug: false, screen: id}}>
       <Component />
@@ -32,8 +33,8 @@ describe('every screen × theme × width', () => {
       it(`${id} at ${columns} columns fits the terminal`, () => {
         const out = render(id, 'nosey', columns, false);
         expect(out.length).toBeGreaterThan(0);
-        for (const line of out.split('\n'))
-          expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+
+        for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
       });
     }
   }
@@ -42,8 +43,8 @@ describe('every screen × theme × width', () => {
     it(`home in ${theme} theme fits the terminal`, () => {
       const out = render('home', theme, 80, false);
       expect(out.length).toBeGreaterThan(0);
-      for (const line of out.split('\n'))
-        expect(stringWidth(line)).toBeLessThanOrEqual(80);
+
+      for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(80);
     });
   }
 

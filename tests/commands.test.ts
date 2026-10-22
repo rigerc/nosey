@@ -9,12 +9,14 @@ describe('headless commands', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     process.exitCode = 0;
+
     for (const dir of dirs.splice(0)) rmSync(dir, {recursive: true, force: true});
   });
 
   function fixture(name: string) {
     const dir = mkdtempSync(join(tmpdir(), 'ink-commands-'));
     dirs.push(dir);
+
     return join(dir, name);
   }
 

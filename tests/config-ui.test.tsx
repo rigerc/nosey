@@ -9,11 +9,14 @@ import {ThemeProvider} from '../src/theme/context';
 import {mount, output, press, settle} from './helpers/terminal';
 
 const dirs: string[] = [];
+
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'ink-kit-wizard-'));
   dirs.push(dir);
+
   return join(dir, 'config.json');
 }
+
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, {recursive: true, force: true});
 });
@@ -79,11 +82,13 @@ describe('configuration wizard', () => {
 describe('settings screen', () => {
   it('keeps a draft until explicit save, then persists through --config path', async () => {
     const path = fixture();
+
     const app = await mount(
       <App
         options={{theme: 'mono', ascii: true, debug: false, screen: 'settings', configFile: path}}
       />,
     );
+
     await press(app, '\r'); // edit Appearance
     await press(app, '\u001b[B'); // ASCII
     await press(app, '\r'); // toggle

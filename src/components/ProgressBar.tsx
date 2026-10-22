@@ -14,6 +14,7 @@ export function ProgressBar({
   const t = useTheme();
   const v = Math.max(0, Math.min(1, value));
   const filled = Math.round(v * width);
+
   return (
     <Text>
       <Text {...useTone(tone)}>{t.symbols.barFull.repeat(filled)}</Text>

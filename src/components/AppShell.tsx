@@ -16,6 +16,7 @@ export function Header({
   right?: ReactNode;
 }) {
   const t = useTheme();
+
   return (
     <Box justifyContent="space-between" paddingX={1}>
       <Box gap={1}>
@@ -42,10 +43,13 @@ export function StatusBar({
   const {columns} = useWindowSize();
   // Keep control actions separate from app navigation; editors only receive their own hints.
   const limit = columns < 60 ? 3 : columns < 90 ? 5 : 9;
+
   const unique = (items: typeof hints) =>
     items.filter((hint, i) => items.findIndex((item) => item.key === hint.key) === i);
+
   const visible = unique(hints.length ? hints : (globalHints ?? [])).slice(0, limit);
   const quit = hints.find((hint) => hint.key === 'q');
+
   if (!globalHints && quit && !visible.some((hint) => hint.key === 'q') && visible.length === limit)
     visible[visible.length - 1] = quit;
   const appHints = columns >= 60 && hints.length ? unique(globalHints ?? []) : [];
@@ -80,7 +84,9 @@ export function StatusBar({
 
 export function ToastHost() {
   const {toasts} = useToast();
+
   if (toasts.length === 0) return null;
+
   return (
     <Box flexDirection="column" paddingX={1}>
       {toasts.map((toast) => (

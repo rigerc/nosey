@@ -1,18 +1,22 @@
+import {z} from 'zod';
+import {isString} from '../lib/values';
 import {themeNames, type ThemeName} from './tokens';
 import defaults from './defaults.json';
 
 export const isThemeName = (value: unknown): value is ThemeName =>
-  typeof value === 'string' && (themeNames as readonly string[]).includes(value);
+  isString(value) && themeNames.some((name) => name === value);
 
 /** Project-level default; 'auto' retains the original terminal detection behavior. */
 if (defaults.defaultTheme !== 'auto' && !isThemeName(defaults.defaultTheme)) {
   throw new Error('Invalid theme default in src/theme/defaults.json');
 }
-export const defaultTheme = defaults.defaultTheme as ThemeName | 'auto';
+
+export const defaultTheme = z.enum(['auto', ...themeNames]).parse(defaults.defaultTheme);
 
 /** Best-effort light/dark detection. COLORFGBG is "fg;bg" in many terminals. */
 function detectScheme(): ThemeName {
   const bg = process.env.COLORFGBG?.split(';').pop();
+
   return bg === '7' || bg === '15' ? 'light' : 'nosey';
 }
 
@@ -24,9 +28,12 @@ export function resolveThemeName(input: {
   noColor: boolean;
 }): ThemeName {
   if (input.noColor) return 'mono';
+
   for (const candidate of [input.flag, input.env, input.config]) {
     if (candidate === 'auto') return detectScheme();
+
     if (isThemeName(candidate)) return candidate;
   }
+
   return defaultTheme === 'auto' ? detectScheme() : defaultTheme;
 }

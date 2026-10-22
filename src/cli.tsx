@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {isThemeName, resolveThemeName} from './theme/resolve';
 import {render, renderToString} from 'ink';
 import meow from 'meow';
 import {App, PlainView, type AppOptions} from './app';
@@ -11,7 +12,6 @@ import {AppError, toAppError} from './lib/errors';
 import {logger} from './lib/logger';
 import {isInteractive, noColor, supportsUnicode} from './lib/terminal';
 import {isScreenId, screenIds} from './screens';
-import {resolveThemeName} from './theme/resolve';
 
 const cli = meow(
   `
@@ -87,14 +87,19 @@ const cli = meow(
 function presentation(screen: string, root: string): AppOptions {
   const {flags} = cli;
   const {config, error} = loadConfig(flags.config);
+
   if (error) logger.error('config:', error);
+
   if (flags.setup && error)
     throw new AppError('Cannot edit invalid configuration', {hint: error, exitCode: 2});
+
   const configFlags: Partial<Config> = {
-    theme: flags.theme as Config['theme'],
+    theme: flags.theme === 'auto' || isThemeName(flags.theme) ? flags.theme : undefined,
     ascii: flags.ascii ? true : undefined,
   };
+
   const resolved = resolveConfig(appConfig.fields, config, {flags: configFlags});
+
   return {
     theme: resolveThemeName({
       flag: flags.theme,
@@ -120,6 +125,7 @@ function presentation(screen: string, root: string): AppOptions {
     },
   };
 }
+
 async function showApp(options: AppOptions) {
   let confirmed: string[] | undefined;
   let generatedCommands: string[] | undefined;
@@ -134,17 +140,25 @@ async function showApp(options: AppOptions) {
       }}
     />,
   ).waitUntilExit();
+
   if (confirmed) {
     if (generatedCommands !== undefined)
-      process.stdout.write(generatedCommands.length
-        ? generatedCommands.join('\n') + '\n'
-        : 'No installation commands necessary.\n');
-    else process.stdout.write(confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n');
+      process.stdout.write(
+        generatedCommands.length
+          ? generatedCommands.join('\n') + '\n'
+          : 'No installation commands necessary.\n',
+      );
+    else
+      process.stdout.write(
+        confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n',
+      );
   }
 }
+
 async function main() {
   const {flags, input} = cli;
   logger.setDebug(Boolean(flags.debug));
+
   const allowed = new Set([
     'theme',
     'screen',
@@ -170,26 +184,33 @@ async function main() {
     'github',
     'visibility',
   ]);
+
   for (const key of Object.keys(flags))
     if (!allowed.has(key))
       throw new AppError(
         'Unknown option: --' + key.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase()),
         {exitCode: 2},
       );
+
   if (flags.theme && !appConfig.fields[0]?.options?.some((option) => option.value === flags.theme))
     throw new AppError('--theme requires a supported theme', {exitCode: 2});
+
   if (flags.json && flags.skillsOnly)
     throw new AppError('--json and --skills-only are mutually exclusive', {exitCode: 2});
+
   if (!Number.isSafeInteger(flags.depth ?? 8) || (flags.depth ?? 8) < 0)
     throw new AppError('--depth requires a non-negative integer', {exitCode: 2});
+
   if (!Number.isSafeInteger(flags.maxFiles ?? 20_000) || (flags.maxFiles ?? 20_000) < 1)
     throw new AppError('--max-files requires a positive integer', {exitCode: 2});
+
   const interactive =
     isInteractive() &&
     flags.interactive !== false &&
     !flags.plain &&
     !flags.json &&
     !flags.skillsOnly;
+
   if (input[0] === 'doctor') {
     if (
       flags.setup ||
@@ -203,15 +224,19 @@ async function main() {
     )
       throw new AppError('Invalid doctor arguments', {exitCode: 2});
     await runCommand('doctor', input.slice(1), {...flags, configFile: flags.config});
+
     return;
   }
+
   if (input[0] === 'registry') {
     if (flags.setup || flags.skillsOnly || flags.explain)
       throw new AppError('Scan and setup flags cannot be used with registry subcommands', {
         exitCode: 2,
       });
+
     if (input[1] === 'init') {
       validateRegistryInit(input.slice(1), flags);
+
       if (interactive && !flags.yes) {
         const options = presentation('registry-setup', '.');
         options.registryInit = {
@@ -219,32 +244,47 @@ async function main() {
           registryId: flags.registryId,
           git: flags.git,
           github: flags.github,
-          visibility: flags.visibility as 'private' | 'public' | undefined,
+          visibility:
+            flags.visibility === 'public' || flags.visibility === 'private'
+              ? flags.visibility
+              : undefined,
         };
         await showApp(options);
+
         return;
       }
     }
+
     if (input.length === 1 && interactive) {
       await showApp(presentation('registry', '.'));
+
       return;
     }
+
     await runCommand('registry', input.slice(1), flags);
+
     return;
   }
+
   if (registryInitOptions.some((key) => flags[key] !== undefined))
     throw new AppError('Registry initialization options require: nosey registry init', {
       exitCode: 2,
     });
+
   if (flags.global !== undefined || flags.project !== undefined || flags.ref !== undefined)
-    throw new AppError('--global, --project and --ref require a registry subcommand', {exitCode: 2});
+    throw new AppError('--global, --project and --ref require a registry subcommand', {
+      exitCode: 2,
+    });
   const explicitScan = input[0] === 'scan';
   const paths = explicitScan ? input.slice(1) : input;
+
   if (paths.length > 1) throw new AppError('Expected at most one project path', {exitCode: 2});
+
   if (!isScreenId(flags.screen))
     throw new AppError('Unknown screen ' + flags.screen, {exitCode: 2});
   const root = paths[0] ?? '.';
   const options = presentation(flags.screen, root);
+
   if (flags.setup) {
     if (input.length || !interactive)
       throw new AppError(
@@ -252,10 +292,13 @@ async function main() {
         {exitCode: 2},
       );
     await render(<ConfigSetup options={options} />).waitUntilExit();
+
     return;
   }
+
   if (explicitScan && flags.screen !== 'home')
     throw new AppError('Headless scan cannot be combined with --screen', {exitCode: 2});
+
   if (
     !['home', 'skills'].includes(flags.screen) &&
     !flags.json &&
@@ -271,15 +314,20 @@ async function main() {
       renderToString(<PlainView options={options} />, {columns: process.stdout.columns || 80}) +
         '\n',
     );
+
     return;
   }
+
   if (explicitScan || !interactive) {
     await runCommand('scan', paths, flags);
+
     return;
   }
+
   await showApp(options);
 }
-main().catch((error: unknown) => {
+
+main().catch((error) => {
   const err = toAppError(error);
   process.stderr.write(err.message + (err.hint ? '\n' + err.hint : '') + '\n');
   process.exitCode = err.exitCode;

@@ -7,11 +7,14 @@ import {StatusMessage} from '../Status';
 /** Condensed scan evidence; warnings remain visible rather than being hidden by compact mode. */
 export function CompactScanSummary({report}: {report: Report}) {
   const theme = useTheme();
+
   const partial =
     report.truncated ||
     report.skippedFiles.length > 0 ||
     (report.registryWarnings?.length ?? 0) > 0;
+
   const names = report.technologies.map((technology) => technology.name);
+
   return (
     <Box flexDirection="column">
       <Text bold color={partial ? theme.color.warn : theme.color.success}>
@@ -21,10 +24,15 @@ export function CompactScanSummary({report}: {report: Report}) {
         {report.scannedFiles} files / {names.length} technologies / {report.skills.length} skills
       </Muted>
       <Text wrap="truncate-end">
-        {names.length ? names.slice(0, 5).join(', ') + (names.length > 5 ? ', +' + (names.length - 5) + ' more' : '') : 'No technologies detected'}
+        {names.length
+          ? names.slice(0, 5).join(', ') +
+            (names.length > 5 ? ', +' + (names.length - 5) + ' more' : '')
+          : 'No technologies detected'}
       </Text>
       {report.truncated && (
-        <StatusMessage tone="warn">Scan limit reached; increase --depth or --max-files.</StatusMessage>
+        <StatusMessage tone="warn">
+          Scan limit reached; increase --depth or --max-files.
+        </StatusMessage>
       )}
       {report.skippedFiles.length > 0 && (
         <StatusMessage tone="warn">

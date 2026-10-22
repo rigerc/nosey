@@ -26,11 +26,14 @@ export function Toggle({
   const t = useTheme();
   const [internal, setInternal] = useState(defaultValue);
   const enabled = value ?? internal;
+
   const change = (next: boolean) => {
     if (next === enabled) return;
+
     if (value === undefined) setInternal(next);
     onChange?.(next);
   };
+
   useKeymap(
     [
       {key: 'space', run: () => change(!enabled)},
@@ -40,6 +43,7 @@ export function Toggle({
     ],
     {isActive},
   );
+
   return (
     <Text color={isActive ? t.color.primary : t.color.text} bold={isActive} wrap="truncate-end">
       {isActive ? t.symbols.pointer : ' '} [{enabled ? 'x' : ' '}] {label}:{' '}

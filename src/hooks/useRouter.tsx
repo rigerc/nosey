@@ -16,15 +16,19 @@ export function RouterProvider({initial, children}: {initial: string; children: 
   const push = useCallback((id: string) => setStack((s) => [...s, id]), []);
   const pop = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
   const replace = useCallback((id: string) => setStack((s) => [...s.slice(0, -1), id]), []);
+
   const value = useMemo<Router>(
     () => ({current: stack.at(-1)!, push, pop, replace, canGoBack: stack.length > 1}),
     [stack, push, pop, replace],
   );
+
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
 
 export function useRouter(): Router {
   const router = useContext(RouterContext);
+
   if (!router) throw new Error('useRouter must be used inside <RouterProvider>');
+
   return router;
 }

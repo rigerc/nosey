@@ -20,9 +20,11 @@ export function CompactScanScreen() {
   const defaultAgents = installSettings.defaultAgents ?? [];
   const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
+
   const installPlan = installSettings.enabled
     ? generateInstallCommands(chosen, report?.skills ?? [], defaultAgents, config.root)
     : undefined;
+
   const cannotConfirm = reviewing && Boolean(installPlan?.errors.length);
 
   // A rescan invalidates previous selections and any open confirmation.
@@ -43,6 +45,7 @@ export function CompactScanScreen() {
     ],
     {scope: 'screen', isActive: !reviewing},
   );
+
   const hints = reviewing
     ? cannotConfirm
       ? [{key: 'esc', label: 'back'}]

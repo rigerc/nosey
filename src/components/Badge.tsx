@@ -16,6 +16,7 @@ export function Badge({
 }) {
   const t = useTheme();
   const color = t.color[tone];
+
   if (variant === 'solid') {
     return t.mono ? (
       <Text inverse bold>
@@ -29,6 +30,7 @@ export function Badge({
       </Text>
     );
   }
+
   if (variant === 'outline') {
     return (
       <Text color={color} dimColor={t.mono && tone === 'muted'}>
@@ -36,6 +38,7 @@ export function Badge({
       </Text>
     );
   }
+
   return (
     <Text color={color} dimColor={t.mono && tone === 'muted'}>
       {t.symbols.bullet} {children}

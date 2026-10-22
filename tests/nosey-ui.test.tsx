@@ -51,8 +51,10 @@ const report: Report = {
   ],
   summary: {technologies: 2, combinations: 0, suggestedSkills: 3, technologiesWithoutSkills: 0},
 };
+
 let root: string;
 let options: AppOptions;
+
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'nosey-ui-'));
   vi.stubEnv('XDG_CONFIG_HOME', join(root, 'config'));
@@ -66,6 +68,7 @@ beforeEach(() => {
     configFile: join(root, 'appearance.json'),
   };
 });
+
 afterEach(() => {
   rmSync(root, {recursive: true, force: true});
   vi.unstubAllEnvs();
@@ -74,6 +77,7 @@ afterEach(() => {
 describe('Nosey scan interaction', () => {
   it('suggests Skills CLI updates only when Git registries changed and Skills CLI is enabled', async () => {
     const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
+
     const enabled = await mount(
       <App
         options={{
@@ -83,6 +87,7 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     expect(enabled.lastFrame()).toContain('Updated Git registries');
     expect(enabled.lastFrame()).toContain('npx skills update');
 
@@ -95,6 +100,7 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     expect(disabled.lastFrame()).toContain('Updated Git registries');
     expect(disabled.lastFrame()).not.toContain('npx skills update');
 
@@ -106,11 +112,13 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     expect(noChanges.lastFrame()).not.toContain('npx skills update');
   });
 
   it('shows registry update suggestion in compact Scan', async () => {
     const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
+
     const compact = await mount(
       <App
         options={{
@@ -121,11 +129,13 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     expect(compact.lastFrame()).toContain('npx skills update');
   });
 
   it('shows installed status and prints only missing project agent commands', async () => {
     const confirmed = vi.fn();
+
     const app = await mount(
       <App
         options={{
@@ -146,6 +156,7 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     expect(app.lastFrame()).toContain('Partial 1/2');
     await press(app, ' '); // alpha
     await press(app, '\r'); // review
@@ -165,6 +176,7 @@ describe('Nosey scan interaction', () => {
 
   it('does not allow printing commands before default agents are configured', async () => {
     const confirmed = vi.fn();
+
     const app = await mount(
       <App
         options={{
@@ -174,6 +186,7 @@ describe('Nosey scan interaction', () => {
         }}
       />,
     );
+
     await press(app, ' ');
     await press(app, '\r');
     expect(app.lastFrame()).toContain('Choose default agents in Settings');
@@ -350,11 +363,14 @@ describe('Nosey scan interaction', () => {
   it('shows distinct narrow skill names while confirming their canonical IDs', async () => {
     const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
     Object.defineProperty(process.stdout, 'columns', {value: 40, configurable: true});
+
     const ids = [
       'very-long-team/shared-agent-skills/composition-patterns',
       'very-long-team/shared-agent-skills/react-best-practices',
     ];
+
     const confirmed = vi.fn();
+
     try {
       const app = await mount(
         <App
@@ -373,6 +389,7 @@ describe('Nosey scan interaction', () => {
           }}
         />,
       );
+
       expect(app.lastFrame()).toContain('composition-patterns');
       expect(app.lastFrame()).toContain('react-best-practices');
       await press(app, '/');
@@ -444,6 +461,7 @@ describe('Nosey scan interaction', () => {
 describe('Registry UI writes', () => {
   it('shows publication failures without truncation and returns without recreating local files', async () => {
     const destination = join(root, 'partial-registry');
+
     const init = vi.spyOn(registryInit, 'runRegistryInit').mockImplementation(async () => {
       await scaffoldRegistry(destination, 'acme/partial');
       throw new registryInit.RegistryInitError(
@@ -457,6 +475,7 @@ describe('Registry UI writes', () => {
         new Error('hook rejected'),
       );
     });
+
     try {
       const app = await mount(
         <App
@@ -472,6 +491,7 @@ describe('Registry UI writes', () => {
           }}
         />,
       );
+
       await press(app, '\r'); // destination
       await press(app, '\r'); // identity
       await press(app, '\r'); // Git
@@ -497,6 +517,7 @@ describe('Registry UI writes', () => {
     const app = await mount(
       <App options={{...options, screen: 'registry-setup', registryInit: {directory: root}}} />,
     );
+
     await press(app, '\r');
     await settle();
     expect(app.lastFrame()).toContain('Destination already exists');
@@ -610,6 +631,7 @@ describe('Registry UI writes', () => {
   });
   it('initialization writes nothing until the final confirmation and cancels from review', async () => {
     const destination = join(root, 'new-registry');
+
     const app = await mount(
       <App
         options={{
@@ -619,6 +641,7 @@ describe('Registry UI writes', () => {
         }}
       />,
     );
+
     await press(app, '\r');
     await press(app, '\r'); // destination, ID
     await press(app, 'n');
@@ -631,6 +654,7 @@ describe('Registry UI writes', () => {
   });
   it('creates the reviewed registry once, with Git and GitHub disabled when declined', async () => {
     const destination = join(root, 'created-registry');
+
     const app = await mount(
       <App
         options={{
@@ -640,6 +664,7 @@ describe('Registry UI writes', () => {
         }}
       />,
     );
+
     await press(app, '\r');
     await press(app, '\r');
     await press(app, 'n');
@@ -666,16 +691,20 @@ describe('terminal presentation', () => {
     ...[40, 60, 80, 96, 120].map((columns) => ({columns, theme: 'nosey' as const})),
     ...themeNames.filter((theme) => theme !== 'nosey').map((theme) => ({columns: 80, theme})),
   ];
+
   for (const {columns, theme} of presentations) {
     it(`fits the successful scan at ${columns} columns in ${theme}`, () => {
       const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
       Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+
       try {
         const out = renderToString(<App options={{...options, theme, static: true}} />, {
           columns,
         });
+
         expect(out).toContain(':^) nosey');
         expect(out).toContain('READ-ONLY');
+
         for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
         expect(out).not.toMatch(/[✔✖⚠ℹ❯█░─╭╮╰╯│]/);
       } finally {
@@ -684,22 +713,28 @@ describe('terminal presentation', () => {
       }
     });
   }
+
   it('keeps primary screens and their footer within a 24-row terminal', () => {
     const descriptors = ['columns', 'rows'].map((key) =>
       Object.getOwnPropertyDescriptor(process.stdout, key),
     );
+
     try {
       Object.defineProperty(process.stdout, 'rows', {value: 24, configurable: true});
+
       for (const columns of [40, 60, 80, 96, 120]) {
         Object.defineProperty(process.stdout, 'columns', {value: columns, configurable: true});
+
         for (const screen of ['home', 'registry', 'settings', 'help']) {
           const out = renderToString(<App options={{...options, screen, static: true}} />, {
             columns,
           });
+
           expect(
             out.split('\n').length,
             `${screen} at ${columns} columns\n${out}`,
           ).toBeLessThanOrEqual(24);
+
           for (const line of out.split('\n'))
             expect(stringWidth(line)).toBeLessThanOrEqual(columns);
           expect(out).toContain(
@@ -716,6 +751,7 @@ describe('terminal presentation', () => {
     } finally {
       ['columns', 'rows'].forEach((key, index) => {
         const descriptor = descriptors[index];
+
         if (descriptor) Object.defineProperty(process.stdout, key, descriptor);
         else Reflect.deleteProperty(process.stdout, key);
       });
@@ -738,6 +774,7 @@ describe('terminal presentation', () => {
       />,
       {columns: 80},
     );
+
     expect(out).toContain('Partial scan');
     expect(out).toContain('skipped inputs');
     expect(out).toContain('offline');

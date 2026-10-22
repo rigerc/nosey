@@ -16,11 +16,14 @@ import {
 import {loadConfig, saveConfig} from '../src/lib/config';
 
 const dirs: string[] = [];
+
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), 'ink-kit-config-'));
   dirs.push(directory);
+
   return join(directory, 'config.json');
 }
+
 afterEach(() => {
   for (const directory of dirs.splice(0)) rmSync(directory, {recursive: true, force: true});
 });
@@ -48,6 +51,7 @@ describe('configuration persistence', () => {
 
   it('refuses to overwrite malformed or schema-invalid files', () => {
     const path = fixture();
+
     for (const invalid of ['{bad json', '{"theme":"not-a-theme"}', '[]']) {
       writeFileSync(path, invalid);
       expect(loadConfig(path).error).toBeTruthy();
@@ -58,6 +62,7 @@ describe('configuration persistence', () => {
 
   it('blocks unsupported future versions and supports migrations', () => {
     const path = fixture();
+
     const store = createConfigStore(
       defineConfig({
         version: 2,
@@ -72,6 +77,7 @@ describe('configuration persistence', () => {
         },
       }),
     );
+
     writeFileSync(path, JSON.stringify({oldName: 'legacy'}));
     expect(store.read(path).config.name).toBe('legacy');
     store.write({name: 'updated'}, path);
@@ -84,7 +90,8 @@ describe('configuration persistence', () => {
   it('validates full documents before any write', () => {
     const path = fixture();
     const store = createConfigStore(appConfig);
-    expect(() => store.write({ascii: 'maybe' as unknown as boolean}, path)).toThrow('ascii');
+    // @ts-expect-error Exercise runtime rejection of an invalid persisted boolean.
+    expect(() => store.write({ascii: 'maybe'}, path)).toThrow('ascii');
     expect(loadConfig(path).config).toEqual({});
   });
 });
@@ -109,6 +116,7 @@ describe('configuration fields and precedence', () => {
         defaultValue: 1,
       },
     ];
+
     const file = {nested: {level: 2}};
     expect(resolveConfig(fields, file, {env: {APP_LEVEL: '3'}})).toEqual({
       values: {nested: {level: 3}},

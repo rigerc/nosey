@@ -57,10 +57,12 @@ export function ConfigWizard({
   const draft = useConfigDraft(path);
   const [result, setResult] = useState<ConfigWizardResult>();
   const sections = configSections(appConfig.fields);
+
   const finish = (value: ConfigWizardResult) => {
     setResult(value);
     onFinish?.(value);
   };
+
   useKeymap([{key: 'esc', run: () => finish('cancelled')}], {
     scope: 'screen',
     allowWhenCaptured: true,
@@ -106,6 +108,7 @@ export function ConfigWizard({
         name="Review"
         canProceed={() => {
           draft.save();
+
           return true;
         }}
       >

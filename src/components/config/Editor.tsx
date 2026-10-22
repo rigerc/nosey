@@ -1,8 +1,10 @@
+import {isString, jsonObjectSchema, type JsonValue, type JsonObject} from '../../lib/values';
+
 import {useKeyboardInput} from '../../hooks/useKeymap';
 import {Box, Text} from 'ink';
 import {useState} from 'react';
-import type {ConfigField} from '../../config';
-import {getAtPath} from '../../config';
+import {type ConfigField, getAtPath} from '../../config';
+
 import {useInputCapture} from '../../hooks/useInputCapture';
 import {useInputActivity} from '../../hooks/useInputActivity';
 import {useFooterHints} from '../../hooks/useFooterHints';
@@ -13,6 +15,7 @@ import {Select} from '../Select';
 import {Muted} from '../typography';
 
 const segments = new Intl.Segmenter(undefined, {granularity: 'grapheme'});
+
 function trimLast(text: string) {
   return [...segments.segment(text)]
     .slice(0, -1)
@@ -26,7 +29,7 @@ function EditText({
   onSubmit,
   onCancel,
 }: {
-  value: unknown;
+  value: JsonValue;
   isNumber: boolean;
   onSubmit: (value: string | number) => void;
   onCancel: () => void;
@@ -46,29 +49,40 @@ function EditText({
     (input, key) => {
       if (key.escape) {
         onCancel();
+
         return;
       }
+
       if (key.return) {
         const parsed = isNumber ? Number(text) : text;
+
         if (isNumber && (!text.trim() || !Number.isFinite(Number(text)))) {
           setError('Enter a valid number');
         } else onSubmit(parsed);
+
         return;
       }
+
       if (key.ctrl && input === 'u') {
         setText('');
         setError('');
+
         return;
       }
+
       if (key.ctrl || key.meta) return;
+
       if (key.backspace || key.delete) {
         setText((current) => trimLast(current));
         setError('');
+
         return;
       }
+
       // Strip control characters Ink delivers for special keys.
       // oxlint-disable-next-line no-control-regex
       const printable = input.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+
       if (printable) {
         setText((current) => current + printable);
         setError('');
@@ -76,6 +90,7 @@ function EditText({
     },
     {isActive: active},
   );
+
   return (
     <Box flexDirection="column">
       <Text>Edit value: {text || '(empty)'}_</Text>
@@ -86,8 +101,8 @@ function EditText({
 
 export interface ConfigSectionEditorProps {
   fields: readonly ConfigField[];
-  values: object;
-  onChange: (path: string, value: unknown) => void;
+  values: JsonObject;
+  onChange: (path: string, value: JsonValue) => void;
   onBack: () => void;
   onDone?: () => void;
   sources?: Record<string, string>;
@@ -106,9 +121,11 @@ export function ConfigSectionEditor({
 }: ConfigSectionEditorProps) {
   active = useInputActivity() && active;
   const theme = useTheme();
+
   const visible = fields.filter(
-    (field) => !field.visibleWhen || field.visibleWhen(values as Record<string, unknown>),
+    (field) => !field.visibleWhen || field.visibleWhen(jsonObjectSchema.parse(values)),
   );
+
   const [index, setIndex] = useState(0);
   const [mode, setMode] = useState<'list' | 'select' | 'text' | 'multi'>('list');
   const field = visible[Math.min(index, visible.length - 1)];
@@ -133,25 +150,36 @@ export function ConfigSectionEditor({
     (input, key) => {
       if (mode !== 'list') {
         if (key.escape) setMode('list');
+
         return;
       }
+
       if (key.escape) {
         onBack();
+
         return;
       }
+
       if (key.upArrow) {
         setIndex((i) => Math.max(0, i - 1));
+
         return;
       }
+
       if (key.downArrow) {
         setIndex((i) => Math.min(visible.length - 1, i + 1));
+
         return;
       }
+
       if (input === 'n' && onDone) {
         onDone();
+
         return;
       }
+
       if (!key.return || !field) return;
+
       if (field.kind === 'toggle') onChange(field.path, !value);
       else if (field.kind === 'select') setMode('select');
       else if (field.kind === 'multi') setMode('multi');
@@ -167,6 +195,7 @@ export function ConfigSectionEditor({
         const current = getAtPath(values, item.path) ?? item.defaultValue;
         const display = formatValue(current) || '(unset)';
         const source = sources?.[item.path];
+
         return (
           <Box key={item.path} flexDirection="column">
             <Text
@@ -201,7 +230,7 @@ export function ConfigSectionEditor({
           allowWhenCaptured
           key={field.path}
           items={[...(field.options ?? [])]}
-          defaultValue={Array.isArray(value) ? (value as string[]) : []}
+          defaultValue={Array.isArray(value) ? value.filter(isString) : []}
           onSubmit={(selected) => {
             onChange(field.path, selected);
             setMode('list');

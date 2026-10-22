@@ -10,6 +10,7 @@ import {useTheme} from '../theme/context';
  */
 export function BrandMark({bold = false}: {bold?: boolean}) {
   const {color} = useTheme();
+
   return (
     <Text bold={bold} wrap="truncate-end">
       <Text color={color.text}>:</Text>

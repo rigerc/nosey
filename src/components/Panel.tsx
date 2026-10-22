@@ -1,3 +1,4 @@
+import {isString} from '../lib/values';
 import {Box, Text} from 'ink';
 import type {ReactNode} from 'react';
 import {useTheme, useTone} from '../theme/context';
@@ -28,6 +29,7 @@ export function Panel({
 }: PanelProps) {
   const t = useTheme();
   const titleStyle = useTone(tone);
+
   return (
     <Box
       flexDirection="column"
@@ -44,9 +46,7 @@ export function Panel({
         </Box>
       )}
       {children}
-      {footer && (
-        <Box marginTop={1}>{typeof footer === 'string' ? <Muted>{footer}</Muted> : footer}</Box>
-      )}
+      {footer && <Box marginTop={1}>{isString(footer) ? <Muted>{footer}</Muted> : footer}</Box>}
     </Box>
   );
 }
@@ -54,6 +54,7 @@ export function Panel({
 /** Lightweight alternative to Panel: a colored accent bar on the left. */
 export function Card({tone = 'primary', children}: {tone?: Tone; children: ReactNode}) {
   const t = useTheme();
+
   return (
     <Box
       flexDirection="column"

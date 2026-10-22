@@ -35,20 +35,20 @@
 
 Requires **Node.js 24+**. Run Nosey from this repository; a published package installation is not assumed.
 
-~~~bash
+```bash
 git clone https://github.com/rigerc/nosey.git
 cd nosey
 npm ci
 npm run dev -- ../your-project
-~~~
+```
 
 In an interactive terminal, Nosey opens **Scan** for the supplied directory. Omit the path to scan the current directory.
 
 To get a text report instead of opening the interface:
 
-~~~bash
+```bash
 npm run dev -- scan ../your-project --explain
-~~~
+```
 
 Nosey reads manifests and configuration signals without executing the scanned project's code. It reports detected technologies, matching agent skills, and supporting evidence. It does not install recommended skills.
 
@@ -56,27 +56,27 @@ Nosey reads manifests and configuration signals without executing the scanned pr
 
 Navigate four tabs in one terminal session:
 
-| Tab | What you can do |
-| --- | --- |
-| **Scan** | See detected technologies and grouped suggestions, filter results, inspect details, and select skill IDs. |
-| **Registries** | Manage local and Git-based skill registry references, inspect their contents, and initialize a registry. |
-| **Settings** | Preview themes and adjust appearance or configuration with save/discard controls. |
-| **Help** | Look up shortcuts and available actions. |
+| Tab            | What you can do                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| **Scan**       | See detected technologies and grouped suggestions, filter results, inspect details, and select skill IDs. |
+| **Registries** | Manage local and Git-based skill registry references, inspect their contents, and initialize a registry.  |
+| **Settings**   | Preview themes and adjust appearance or configuration with save/discard controls.                         |
+| **Help**       | Look up shortcuts and available actions.                                                                  |
 
 ### Essential keys
 
-| Keys | Action |
-| --- | --- |
-| `Tab` / `Shift+Tab` or `1`–`4` | Switch tabs |
-| `Ctrl+K` | Open the command menu |
-| `↑` / `↓` or `j` / `k` | Move through Scan suggestions |
-| `/` or `f` | Filter Scan suggestions |
-| `c` | Clear the Scan filter |
-| `Space` | Select or deselect a skill |
-| `d` | View skill details in Scan |
-| `Enter` | Review selected skill IDs |
-| `?` | Open Help |
-| `q` | Quit without confirming a selection |
+| Keys                           | Action                              |
+| ------------------------------ | ----------------------------------- |
+| `Tab` / `Shift+Tab` or `1`–`4` | Switch tabs                         |
+| `Ctrl+K`                       | Open the command menu               |
+| `↑` / `↓` or `j` / `k`         | Move through Scan suggestions       |
+| `/` or `f`                     | Filter Scan suggestions             |
+| `c`                            | Clear the Scan filter               |
+| `Space`                        | Select or deselect a skill          |
+| `d`                            | View skill details in Scan          |
+| `Enter`                        | Review selected skill IDs           |
+| `?`                            | Open Help                           |
+| `q`                            | Quit without confirming a selection |
 
 Selections stay intact when you filter results or switch tabs. Confirming the selection prints distinct skill IDs after the terminal UI exits. Confirmation defaults to **No**.
 
@@ -84,9 +84,9 @@ Selections stay intact when you filter results or switch tabs. Confirming the se
 
 Open **Settings → Skills CLI** to enable installation command generation and select one or more default agents. This feature is **off by default**. After selecting skills, Scan previews copy-pasteable project-local commands instead of installing anything. Confirming prints the commands only after the terminal UI exits.
 
-~~~bash
+```bash
 cd /path/to/your-project && npx skills add vercel-labs/agent-skills --skill react-best-practices --agent claude-code --agent codex --yes --json
-~~~
+```
 
 The generated commands always use the scanned project directory, include `--yes --json`, and never use `--global`. **Running a generated command yourself installs skills; printing it in Nosey does not.** Multiple repositories or differing agent requirements yield multiple commands.
 
@@ -123,7 +123,7 @@ These tracked captures use the Nosey terminal theme. Scan shows a demo React, Ty
 
 The same detection engine works without the interactive interface, including in pipes and CI.
 
-~~~bash
+```bash
 # Human-readable report with detection evidence
 npm run dev -- scan ../your-project --explain
 
@@ -138,7 +138,7 @@ npm run dev -- scan ../your-project --depth 6 --max-files 5000
 
 # Diagnostics
 npm run dev -- doctor --json
-~~~
+```
 
 The explicit `scan` subcommand is always headless. A project path alone opens the UI in a TTY; `--json`, `--skills-only`, `--plain`, `--no-interactive`, and non-TTY environments use noninteractive output.
 
@@ -148,28 +148,28 @@ Use `npm run dev -- --help` for the complete command and option reference.
 
 Add local folders or Git repositories as sources of recommendations:
 
-~~~bash
+```bash
 npm run dev -- registry add ./team-skills
 npm run dev -- registry add https://github.com/org/skills.git --ref v1
 npm run dev -- registry list --json
 npm run dev -- registry validate ./team-skills --json
-~~~
+```
 
 ### Refreshing Git registries
 
 Normally Git registries use a cached snapshot for up to 24 hours. To **force a network
 refresh** of all configured Git registries without waiting for the cache TTL:
 
-~~~bash
+```bash
 npm run dev -- registry refresh
 npm run dev -- registry refresh --json
-~~~
+```
 
 Refresh a specific Git URL and revision (even when it isn't configured):
 
-~~~bash
+```bash
 npm run dev -- registry refresh https://github.com/org/skills.git --ref main
-~~~
+```
 
 The command reports `initialized` (first fetch), `updated` (cached revision
 changed), `unchanged`, `cached` (network failure with a previous snapshot), or
@@ -186,9 +186,9 @@ headless scans continue to use the configured registry TTL.
 
 To create a registry in a **new** directory:
 
-~~~bash
+```bash
 npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
-~~~
+```
 
 Registries may declare external skills in `skills-map.json` version 2 and map them to detected technologies without storing their `SKILL.md` files. The upstream source is retained for opt-in install command generation. Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
@@ -196,11 +196,11 @@ Registries may declare external skills in `skills-map.json` version 2 and map th
 
 Five themes are available: `nosey`, `dark`, `light`, `contrast`, and `mono`. The terminal can also use ASCII symbols and borders.
 
-~~~bash
+```bash
 npm run dev -- ../your-project --theme nosey
 npm run dev -- ../your-project --theme contrast --ascii
 npm run dev -- --setup
-~~~
+```
 
 Settings are saved only when you choose to save them. Theme previews do not change saved preferences.
 
@@ -210,21 +210,21 @@ Settings are saved only when you choose to save them. Theme previews do not chan
 
 Build the CLI, then run it without the development runner:
 
-~~~bash
+```bash
 npm run typecheck
 npm test
 npm run build
 npm run start -- ../your-project
-~~~
+```
 
 You can also run `npm link` after building to use the `nosey` executable locally.
 
 ### Linting
 
-~~~bash
+```bash
 npm run lint   # Vite+ / Oxlint, including anti-slop rules
 npm run check  # Full Vite+ format, lint, and type checks
-~~~
+```
 
 Anti-slop's generic rules are enabled at error severity in `vite.config.ts`.
 The plugin is vendored in `tools/oxlint/anti-slop/`; its `UPSTREAM.md` records the
@@ -232,9 +232,7 @@ exact source revision and update requirements. Keep `@oxlint/plugins` pinned to
 the Oxlint version used by Vite+ when upgrading. The optional Effect rules are
 not enabled because this project does not depend on Effect.
 
-The initial installation leaves existing source violations for a separate cleanup,
-so lint and check can report failures until those findings are addressed. The
-pre-commit hook also runs `vp check --fix` on staged files; review its diagnostics
+CI runs both checks and rejects lint warnings. The pre-commit hook also runs `vp check --fix` on staged files; review its diagnostics
 when changing source. Installed agent tooling and the vendored plugin are excluded
 from linting and formatting.
 
@@ -242,7 +240,7 @@ from linting and formatting.
 
 The repository includes a [VHS-based recording workflow](docs/recording.md) and an editable [interaction tape](scripts/tapes/workflow.tape).
 
-~~~bash
+```bash
 # Static screenshots in the default capture matrix
 npm run screenshot
 
@@ -251,7 +249,7 @@ npm run record
 
 # Use the tracked Nosey theme and 96-column layout
 npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
-~~~
+```
 
 Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. The demo GIF, MP4, and still frame above are checked into [`assets/recordings/`](assets/recordings/). New captures normally go to the ignored `screenshots/` directory; they are not automatically published or committed. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
 

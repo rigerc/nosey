@@ -1,3 +1,4 @@
+import {isNumber, isFunction} from '../lib/values';
 import {Box, Text} from 'ink';
 import {useKeymap} from '../hooks/useKeymap';
 import {
@@ -49,7 +50,7 @@ export interface StepperProps {
   onStepChange?: (index: number) => void;
   onExitStep?: (index: number) => void | boolean | Promise<void | boolean>;
   onEnterStep?: (index: number) => void;
-  onError?: (error: unknown) => void;
+  onError?: (cause: unknown) => void;
   step?: number;
   initialStep?: number;
   keyboardNav?: boolean;
@@ -71,6 +72,7 @@ export function StepperProgress({
   orientation = 'horizontal',
 }: StepperProgressProps) {
   const t = useTheme();
+
   return (
     <Box
       flexDirection={orientation === 'vertical' ? 'column' : 'row'}
@@ -80,6 +82,7 @@ export function StepperProgress({
       {steps.map((item, index) => {
         const complete = index < currentStep;
         const current = index === currentStep;
+
         return (
           <Text
             key={item.id}
@@ -100,14 +103,18 @@ const Context = createContext<StepContext | null>(null);
 
 export function useStepper(): StepContext {
   const context = useContext(Context);
+
   if (!context) throw new Error('useStepper must be used inside Stepper');
+
   return context;
 }
 
 /** Optional hints; disable keyboardNav when a child input owns Enter/Escape. */
 export function StepperNavigation() {
   const {isFirst, isLast, isValidating} = useStepper();
+
   if (isValidating) return <Muted>Validating...</Muted>;
+
   return (
     <Box columnGap={2} flexWrap="wrap">
       <Text>
@@ -128,9 +135,15 @@ function collectSteps(
     if (!isValidElement(child))
       throw new Error('Stepper children must be Step elements or fragments');
     const id = `${prefix}/${child.key ?? index}`;
-    if (child.type === Fragment)
+
+    if (child.type === Fragment) {
+      // SAFETY: React Fragment elements own a children prop and have just passed isValidElement.
       return collectSteps((child.props as {children: ReactNode}).children, id);
+    }
+
     if (child.type !== Step) throw new Error('Stepper children must be Step elements or fragments');
+
+    // SAFETY: the component identity check above limits this element to Step and its StepProps.
     return [{id, element: child as ReactElement<StepProps>}];
   });
 }
@@ -154,12 +167,19 @@ export function Stepper({
   renderProgress,
 }: StepperProps) {
   const steps = collectSteps(children);
-  const [position, setPosition] = useState({index: initialStep, id: null as string | null});
+
+  const [position, setPosition] = useState<{index: number; id: string | null}>({
+    index: initialStep,
+    id: null,
+  });
+
   const identityIndex = position.id === null ? -1 : steps.findIndex((s) => s.id === position.id);
+
   const currentStep = clamp(
     step ?? (identityIndex < 0 ? position.index : identityIndex),
     steps.length,
   );
+
   const active = steps[currentStep];
   const [isValidating, setValidating] = useState(false);
   const [error, setError] = useState<string>();
@@ -167,15 +187,18 @@ export function Stepper({
   const locked = useRef(false);
   const ended = useRef(false);
   const mounted = useRef(true);
+
   // Invalidate an in-flight transition if its source step changes or disappears.
   const source = useRef({
     id: active?.id,
     index: currentStep,
     steps: steps.map((s) => s.id).join('|'),
   });
+
   source.current = {id: active?.id, index: currentStep, steps: steps.map((s) => s.id).join('|')};
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
     };
@@ -196,34 +219,44 @@ export function Stepper({
 
   const navigate = async (direction: 'next' | 'back' | number) => {
     if (locked.current || ended.current || !active) return;
-    const target =
-      typeof direction === 'number'
-        ? clamp(direction, steps.length)
-        : direction === 'next'
-          ? currentStep + 1
-          : currentStep - 1;
+
+    const target = isNumber(direction)
+      ? clamp(direction, steps.length)
+      : direction === 'next'
+        ? currentStep + 1
+        : currentStep - 1;
+
     if (target === currentStep) return;
     locked.current = true;
     setValidating(true);
     setError(undefined);
     const origin = source.current;
+
     const stillCurrent = () =>
       mounted.current &&
       source.current.id === origin.id &&
       source.current.index === origin.index &&
       source.current.steps === origin.steps;
+
     try {
       // Yield once so repeated calls in the same event share the synchronous lock.
       await Promise.resolve();
+
       if (!stillCurrent()) return;
       const guard = active.element.props.canProceed ?? true;
-      if (direction === 'next' && !(typeof guard === 'function' ? await guard() : guard)) return;
+
+      if (direction === 'next' && !(isFunction(guard) ? await guard() : guard)) return;
+
       if (!stillCurrent()) return;
+
       if (onExitStep && (await onExitStep(currentStep)) === false) return;
+
       if (!stillCurrent()) return;
+
       if (target < 0 || target >= steps.length) {
         ended.current = true;
         setFinished(true);
+
         if (target < 0) onCancel?.();
         else onComplete();
       } else {
@@ -253,6 +286,7 @@ export function Stepper({
     goTo: (i) => navigate(i),
     cancel,
   };
+
   useKeymap(
     [
       {
@@ -274,13 +308,14 @@ export function Stepper({
   if (!active) return null;
   const progress = {steps: steps.map((s) => ({id: s.id, name: s.element.props.name})), currentStep};
   const content = active.element.props.children;
+
   return (
     <Context.Provider value={context}>
       <Box flexDirection="column" gap={1}>
         {showProgress &&
           (renderProgress ? renderProgress(progress) : <StepperProgress {...progress} />)}
         <Box key={active.id} flexDirection="column">
-          {typeof content === 'function' ? content(context) : content}
+          {isFunction(content) ? content(context) : content}
         </Box>
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
       </Box>

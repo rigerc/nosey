@@ -20,6 +20,7 @@ export interface Binding {
 }
 
 export type KeymapScope = 'global' | 'screen' | 'control';
+
 export interface KeymapOptions {
   isActive?: boolean;
   /** When bindings overlap, controls win over screens, then global shortcuts. */
@@ -32,7 +33,12 @@ function matches(spec: string, input: string, key: Key): boolean {
   const parts = spec.split('+');
   const name = parts.pop()!;
   const mods = new Set(parts.map((p) => p.toLowerCase()));
-  const named: Record<string, boolean> = {
+
+  interface NamedKeys {
+    [key: string]: boolean;
+  }
+
+  const named: NamedKeys = {
     tab: key.tab,
     esc: key.escape,
     escape: key.escape,
@@ -50,11 +56,15 @@ function matches(spec: string, input: string, key: Key): boolean {
     delete: key.delete,
     space: input === ' ',
   };
+
   const lower = name.toLowerCase();
+
   if (lower in named) {
     if (mods.has('shift') !== Boolean(key.shift)) return false;
+
     return mods.has('ctrl') === Boolean(key.ctrl) && !key.meta && Boolean(named[lower]);
   }
+
   return mods.has('ctrl') === Boolean(key.ctrl) && !key.meta && input === name;
 }
 
@@ -64,7 +74,9 @@ interface Listener {
   getOptions: () => KeymapOptions;
   getInput?: () => (input: string, key: Key) => void;
 }
+
 type Register = (listener: Omit<Listener, 'id'>) => () => void;
+
 const KeymapContext = createContext<Register | null>(null);
 const priority: Record<KeymapScope, number> = {global: 0, screen: 1, control: 2};
 
@@ -92,6 +104,7 @@ export function KeymapProvider({children}: {children: ReactNode}) {
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
       pending.current = [];
@@ -102,6 +115,7 @@ export function KeymapProvider({children}: {children: ReactNode}) {
   const register = useCallback<Register>((listener) => {
     const id = ++nextId.current;
     listeners.current.set(id, {...listener, id});
+
     return () => {
       listeners.current.delete(id);
     };
@@ -111,18 +125,24 @@ export function KeymapProvider({children}: {children: ReactNode}) {
     const ordered = [...listeners.current.values()].sort((a, b) => {
       const scopeA = priority[a.getOptions().scope ?? 'control'];
       const scopeB = priority[b.getOptions().scope ?? 'control'];
+
       return scopeB - scopeA || b.id - a.id;
     });
+
     for (const listener of ordered) {
       if (listener.getOptions().isActive === false) continue;
+
       if (latestCapture.current && !listener.getOptions().allowWhenCaptured) continue;
+
       for (const binding of listener.getBindings()) {
         if (matches(binding.key, input, key)) {
           binding.run();
+
           return;
         }
       }
     }
+
     // Text editors receive unmatched keys through the same ordered dispatcher.
     // A key must never reach both a binding and an editor.
     const editor = ordered.find(
@@ -131,10 +151,13 @@ export function KeymapProvider({children}: {children: ReactNode}) {
         listener.getOptions().isActive !== false &&
         (!latestCapture.current || listener.getOptions().allowWhenCaptured),
     );
+
     editor?.getInput?.()(input, key);
   };
+
   useInput((input, key) => {
     pending.current.push({input, key});
+
     if (processing.current) return;
     processing.current = true;
     void (async () => {
@@ -173,6 +196,7 @@ export function useKeymap(bindings: Binding[], options: KeymapOptions = {}) {
 
   useLayoutEffect(() => {
     if (!register) return;
+
     return register({
       getBindings: () => latest.current.bindings,
       getOptions: () => latest.current.options,
@@ -183,9 +207,11 @@ export function useKeymap(bindings: Binding[], options: KeymapOptions = {}) {
     (input, key) => {
       if (register || (captured && !options.allowWhenCaptured) || options.isActive === false)
         return;
+
       for (const binding of bindings) {
         if (matches(binding.key, input, key)) {
           binding.run();
+
           return;
         }
       }
@@ -210,6 +236,7 @@ export function useKeyboardInput(
   latest.current = {handler, active};
   useLayoutEffect(() => {
     if (!register) return;
+
     return register({
       getBindings: () => [],
       getOptions: () => ({isActive: latest.current.active, allowWhenCaptured: true}),

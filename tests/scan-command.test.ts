@@ -17,6 +17,7 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'nosey-scan-'));
   await writeFile(join(root, 'package.json'), manifest);
 });
+
 afterEach(async () => {
   await rm(root, {recursive: true, force: true});
 });
@@ -35,6 +36,7 @@ test('explicit scan, path alias, and JSON-only invocation share the same engine'
   expect(explicit.stderr).toBe('');
   expect(alias.stdout).toBe(explicit.stdout);
   expect(implicit.stdout).toBe(explicit.stdout);
+  // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
   const report = JSON.parse(explicit.stdout) as Report;
   expect(report.technologies.map((technology) => technology.id)).toEqual(
     expect.arrayContaining(['react', 'nextjs']),
@@ -45,6 +47,7 @@ test('explicit scan, path alias, and JSON-only invocation share the same engine'
 });
 
 test('scan reports evidence and supports plain, skills-only, and no-interactive modes', async () => {
+  // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
   const report = JSON.parse((await command('scan', '--json')).stdout) as Report;
   const skills = await command('scan', '--skills-only');
   expect(skills.stdout.trim().split('\n')).toEqual(report.skills.map((skill) => skill.id));
@@ -70,5 +73,17 @@ test('invalid scan inputs fail before creating registry files', async () => {
   ]) {
     await expect(command(...args)).rejects.toMatchObject({code: 2});
   }
+
   expect(await readdir(root)).toEqual(['package.json']);
+});
+
+test('ASCII plain reports use ASCII decorations and retain detection evidence', async () => {
+  const normal = await command('scan', '--plain', '--explain');
+  const ascii = await command('--plain', '--ascii', '--explain');
+  expect(ascii.stderr).toBe('');
+  expect(ascii.stdout).toBe(
+    normal.stdout.replaceAll('•', '-').replaceAll('↳', '->').replaceAll('—', '-'),
+  );
+  expect(ascii.stdout).toContain('  - React');
+  expect(ascii.stdout).toContain('      -> packages: react (package.json)');
 });

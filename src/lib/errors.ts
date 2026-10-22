@@ -10,12 +10,16 @@ export class AppError extends Error {
   }
 }
 
-export function toAppError(error: unknown): AppError {
-  if (error instanceof AppError) return error;
-  if (error instanceof Error) {
-    const wrapped = new AppError(error.message, {cause: error});
-    if (error.stack) wrapped.stack = error.stack;
+export function toAppError(cause: unknown): AppError {
+  if (cause instanceof AppError) return cause;
+
+  if (cause instanceof Error) {
+    const wrapped = new AppError(cause.message, {cause: cause});
+
+    if (cause.stack) wrapped.stack = cause.stack;
+
     return wrapped;
   }
-  return new AppError(String(error));
+
+  return new AppError(String(cause));
 }

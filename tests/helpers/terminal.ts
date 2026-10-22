@@ -23,6 +23,7 @@ export async function mount(node: ReactElement) {
   const app = render(node);
   instances.push(app);
   await settle();
+
   return app;
 }
 

@@ -12,6 +12,7 @@ export function useAsync<T, A extends unknown[]>(fn: (...args: A) => Promise<T>,
   const [state, setState] = useState<State<T>>(() =>
     initialData === undefined ? {status: 'idle'} : {status: 'success', data: initialData},
   );
+
   const alive = useRef(true);
   const runId = useRef(0);
   const fnRef = useRef(fn);
@@ -19,6 +20,7 @@ export function useAsync<T, A extends unknown[]>(fn: (...args: A) => Promise<T>,
 
   useEffect(() => {
     alive.current = true;
+
     return () => {
       alive.current = false;
     };
@@ -28,12 +30,16 @@ export function useAsync<T, A extends unknown[]>(fn: (...args: A) => Promise<T>,
     const id = ++runId.current;
     const current = () => alive.current && id === runId.current;
     setState({status: 'loading'});
+
     try {
       const data = await fnRef.current(...args);
+
       if (current()) setState({status: 'success', data});
+
       return data;
     } catch (error) {
       if (current()) setState({status: 'error', error: toAppError(error)});
+
       return undefined;
     }
   }, []);

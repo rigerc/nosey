@@ -1,3 +1,7 @@
+import {z} from 'zod';
+import {parseManifest, parseMap} from './validate.js';
+import {errorCode} from '../values.js';
+
 import {execFile} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
@@ -7,12 +11,12 @@ import {createInterface} from 'node:readline/promises';
 import {fileURLToPath} from 'node:url';
 import {promisify, stripVTControlCharacters} from 'node:util';
 import {loadLocalRegistry} from './load.js';
-import type {RegistryManifest, RegistryMap} from './types.js';
 
 const execFileAsync = promisify(execFile);
 const sourceTemplate = fileURLToPath(new URL('../../../templates/registry/', import.meta.url));
 const bundledTemplate = fileURLToPath(new URL('../templates/registry/', import.meta.url));
 const templateRoot = existsSync(sourceTemplate) ? sourceTemplate : bundledTemplate;
+
 // Repository-local variables exported by Git must not redirect initialization,
 // staging, commits, or the Git commands gh runs into the caller's repository.
 const repositoryEnvironmentVariables = new Set([
@@ -62,15 +66,17 @@ export class RegistryInitError extends Error {
   }
 }
 
-function commandFailureDetail(error: unknown): string {
-  const output =
-    error && typeof error === 'object'
-      ? [(error as {stderr?: unknown}).stderr, (error as {stdout?: unknown}).stdout]
-          .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
-          .join('\n')
-      : '';
+function commandFailureDetail(cause: unknown): string {
+  const parsed = z
+    .object({stderr: z.string().optional(), stdout: z.string().optional()})
+    .safeParse(cause);
+
+  const output = parsed.success
+    ? [parsed.data.stderr, parsed.data.stdout].filter((value) => value?.trim()).join('\n')
+    : '';
+
   return stripVTControlCharacters(
-    output || (error instanceof Error ? error.message : String(error)),
+    output || (cause instanceof Error ? cause.message : String(cause)),
   ).trim();
 }
 
@@ -92,6 +98,7 @@ export type RegistryInitDependencies = {
 /** Shared by the CLI service and the interactive wizards before a directory is written. */
 export function validateRegistryId(id: string): void {
   const parts = id.split('/');
+
   if (
     parts.length !== 2 ||
     !/^[a-z\d][\w.-]*$/i.test(parts[0] ?? '') ||
@@ -104,8 +111,11 @@ export function validateRegistryId(id: string): void {
 
 function yesNo(value: string, fallback: boolean): boolean {
   const normalized = value.trim().toLowerCase();
+
   if (normalized === '') return fallback;
+
   if (normalized === 'yes' || normalized === 'y') return true;
+
   if (normalized === 'no' || normalized === 'n') return false;
   throw new Error('Answer y or n');
 }
@@ -135,19 +145,21 @@ async function rewriteRegistryIdentity(directory: string, registryId: string): P
   const settingsPath = path.join(directory, 'registry.json');
   const manifestPath = path.join(directory, 'skills-manifest.json');
   const mapPath = path.join(directory, 'skills-map.json');
+
   const [settingsText, manifestText, mapText] = await Promise.all([
     fs.readFile(settingsPath, 'utf8'),
     fs.readFile(manifestPath, 'utf8'),
     fs.readFile(mapPath, 'utf8'),
   ]);
 
-  const settings = JSON.parse(settingsText) as {
-    schemaVersion: number;
-    registryId: string;
-  };
-  const manifest = JSON.parse(manifestText) as RegistryManifest;
-  const mapping = JSON.parse(mapText) as RegistryMap;
+  const settings = z
+    .object({schemaVersion: z.literal(1), registryId: z.string()})
+    .parse(JSON.parse(settingsText));
+
+  const manifest = parseManifest(JSON.parse(manifestText));
+  const mapping = parseMap(JSON.parse(mapText));
   const formerId = settings.registryId;
+
   if (manifest.registryId !== formerId || mapping.registryId !== formerId) {
     throw new Error('Template registry IDs do not match');
   }
@@ -155,6 +167,7 @@ async function rewriteRegistryIdentity(directory: string, registryId: string): P
   settings.registryId = registryId;
   manifest.registryId = registryId;
   mapping.registryId = registryId;
+
   for (const skill of manifest.skills) {
     skill.id = remapId(skill.id, formerId, registryId);
   }
@@ -182,7 +195,15 @@ async function rewriteRegistryIdentity(directory: string, registryId: string): P
   await Promise.all([
     fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n'),
     fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n'),
-    fs.writeFile(mapPath, JSON.stringify(mapping, null, 2) + '\n'),
+    fs.writeFile(
+      mapPath,
+      JSON.stringify(
+        mapping,
+        (_key, value) =>
+          value instanceof RegExp ? {source: value.source, flags: value.flags} : value,
+        2,
+      ) + '\n',
+    ),
   ]);
 }
 
@@ -198,12 +219,14 @@ function destinationExistsError(destination: string): Error {
 /** Read-only preflight for the wizard; exclusive creation still guards against races. */
 export async function validateRegistryDestination(directory: string): Promise<void> {
   const destination = path.resolve(directory);
+
   try {
     await fs.lstat(destination);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    if (errorCode(error) === 'ENOENT') return;
     throw error;
   }
+
   throw destinationExistsError(destination);
 }
 
@@ -216,14 +239,15 @@ export async function scaffoldRegistry(
   validateRegistryId(registryId);
   const destination = path.resolve(directory);
   await fs.mkdir(path.dirname(destination), {recursive: true});
+
   // Atomic exclusive creation prevents replacing even an existing empty directory.
   try {
     await fs.mkdir(destination);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST')
-      throw destinationExistsError(destination);
+    if (errorCode(error) === 'EEXIST') throw destinationExistsError(destination);
     throw error;
   }
+
   try {
     // Copy entries into the reserved root, preserving exclusive creation for
     // each entry without treating the root itself as a collision.
@@ -254,10 +278,12 @@ export async function runRegistryInit(
   const interactive =
     !options.yes &&
     (dependencies.interactive ?? Boolean(process.stdin.isTTY && process.stderr.isTTY));
+
   const reader =
     interactive && !dependencies.ask
       ? createInterface({input: process.stdin, output: process.stderr})
       : undefined;
+
   const ask = dependencies.ask ?? (async (question: string) => reader?.question(question) ?? '');
   const runner = dependencies.run ?? defaultRun;
 
@@ -266,9 +292,11 @@ export async function runRegistryInit(
       interactive && options.directory === undefined
         ? await ask('Destination directory [./my-skills-registry]: ')
         : '';
+
     const directoryInput =
       options.directory ??
       (interactive ? defaultDirectory.trim() || './my-skills-registry' : undefined);
+
     if (!directoryInput) {
       throw new Error(
         'Specify a destination directory: nosey registry init <directory> --registry-id owner/repo',
@@ -276,16 +304,19 @@ export async function runRegistryInit(
     }
 
     let {registryId} = options;
+
     if (!registryId && interactive) {
       while (!registryId) {
         // eslint-disable-next-line no-await-in-loop
         const response = await ask('Registry ID (owner/repository): ');
         const answer = response.trim();
+
         try {
           validateRegistryId(answer);
           registryId = answer;
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);
+
           if (dependencies.onValidationError) dependencies.onValidationError(message);
           else process.stderr.write(message + '\n');
         }
@@ -296,6 +327,7 @@ export async function runRegistryInit(
     validateRegistryId(registryId);
 
     let initializeGit = options.git;
+
     if (initializeGit === undefined) {
       initializeGit = interactive
         ? yesNo(await ask('Initialize local Git repository? [Y/n]: '), true)
@@ -303,6 +335,7 @@ export async function runRegistryInit(
     }
 
     let createGitHub = options.github;
+
     if (createGitHub === undefined) {
       createGitHub =
         interactive && initializeGit
@@ -315,6 +348,7 @@ export async function runRegistryInit(
     }
 
     let {visibility} = options;
+
     if (visibility !== undefined && visibility !== 'private' && visibility !== 'public') {
       throw new Error('GitHub visibility must be private or public');
     }
@@ -327,7 +361,9 @@ export async function runRegistryInit(
       const response = interactive
         ? await ask('GitHub visibility [private/public] (default private): ')
         : '';
+
       const answer = response.trim().toLowerCase();
+
       if (answer && answer !== 'private' && answer !== 'public') {
         throw new Error('GitHub visibility must be private or public');
       }
@@ -340,6 +376,7 @@ export async function runRegistryInit(
       registryId,
       dependencies.templateDirectory,
     );
+
     const result: RegistryInitResult = {
       directory: destination,
       registryId,
@@ -360,6 +397,7 @@ export async function runRegistryInit(
           error,
         );
       }
+
       result.gitInitialized = true;
     }
 
@@ -380,6 +418,7 @@ export async function runRegistryInit(
           error,
         );
       }
+
       try {
         await runner('gh', [
           'repo',
@@ -399,6 +438,7 @@ export async function runRegistryInit(
           error,
         );
       }
+
       result.githubCreated = true;
     }
 

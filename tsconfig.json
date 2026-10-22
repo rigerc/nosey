@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["node"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2023", "ESNext.Iterator"]
   },
   "include": ["src", "tests", "scripts"]
 }

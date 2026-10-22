@@ -32,10 +32,12 @@ function SettingsEditor({
   const resolved = resolveConfig(appConfig.fields, draft.draft, {flags});
   const sources = resolved.sources;
   const fields = appConfig.fields.filter((field) => field.section === section);
+
   const visibleFields = fields.filter(
     (field) =>
       !('visibleWhen' in field) || !field.visibleWhen || field.visibleWhen(resolved.values),
   );
+
   useScreenHints(
     'settings',
     confirmWizard
@@ -66,6 +68,7 @@ function SettingsEditor({
       toast.push(`Could not save: ${toAppError(error).message}`, 'warn');
     }
   };
+
   useKeymap(
     [
       {key: 'up', run: () => setSectionIndex((i) => Math.max(i - 1, 0))},
@@ -124,6 +127,7 @@ function SettingsEditor({
           message="Discard this draft and open guided setup?"
           onConfirm={(yes) => {
             setConfirmWizard(false);
+
             if (yes) onWizard();
           }}
         />
@@ -144,6 +148,7 @@ export function SettingsScreen() {
   const [wizard, setWizard] = useState(false);
   const [revision, setRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
+
   return (
     <ScreenLayout
       title="Settings"

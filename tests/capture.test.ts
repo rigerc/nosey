@@ -31,6 +31,7 @@ describe('VHS capture workflow', () => {
       outputs: ['out.gif', 'out.webm'],
       workflow: 'Ctrl+K\nSleep 1s',
     });
+
     expect(tape).toContain('Set Columns 80\nSet Rows 60');
     expect(tape).toContain('"background":"#F5E6C8"');
     expect(tape.indexOf('Wait+Screen')).toBeLessThan(tape.indexOf('Screenshot'));
@@ -40,6 +41,7 @@ describe('VHS capture workflow', () => {
 
   it('generates static fixtures and video tapes without needing VHS', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'capture test '));
+
     try {
       const common = [
         '--screen',
@@ -53,6 +55,7 @@ describe('VHS capture workflow', () => {
         '--output-dir',
         dir,
       ];
+
       const image = run(...common);
       expect(image.status, image.stderr).toBe(0);
       expect(readFileSync(path.join(dir, 'tapes/home-mono-80-ascii.ansi'), 'utf8')).toContain(
@@ -75,10 +78,12 @@ describe('VHS capture workflow', () => {
       writeFileSync(customTape, 'Type "?"\nWait+Screen@10s /Help/\n');
       const custom = run(...common, '--video', '--tape', customTape, '--format', 'mp4');
       expect(custom.status, custom.stderr).toBe(0);
+
       const customOutput = readFileSync(
         path.join(dir, 'tapes/home-mono-80-ascii-video.tape'),
         'utf8',
       );
+
       expect(customOutput).toContain('Wait+Screen@10s /Help/');
       expect(customOutput).not.toContain('Ctrl+K');
       expect(readdirSync(dir)).toEqual(['custom.tape', 'tapes']);
@@ -107,6 +112,7 @@ describe('VHS capture workflow', () => {
       path.join(project, 'package.json'),
       JSON.stringify({name: 'real-project', dependencies: {react: '^19'}}),
     );
+
     try {
       const result = run(
         '--screen',
@@ -121,6 +127,7 @@ describe('VHS capture workflow', () => {
         output,
         '--dry-run',
       );
+
       expect(result.status, result.stderr).toBe(0);
       const ansi = readFileSync(path.join(output, 'tapes/skills-nosey-80.ansi'), 'utf8');
       expect(ansi).toContain(project);

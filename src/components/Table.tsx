@@ -1,3 +1,4 @@
+import {isRecord} from '../lib/values';
 import {Box, Text} from 'ink';
 import type {ReactNode} from 'react';
 import stringWidth from 'string-width';
@@ -6,6 +7,7 @@ import type {Tone} from '../theme/tokens';
 import {Divider} from './typography';
 
 export type Cell = string | number | {text: string; tone?: Tone};
+
 export interface Column {
   key: string;
   header: string;
@@ -14,12 +16,13 @@ export interface Column {
 }
 
 const textOf = (cell: Cell | undefined) =>
-  cell === undefined ? '' : typeof cell === 'object' ? cell.text : String(cell);
+  cell === undefined ? '' : isRecord(cell) ? cell.text : String(cell);
 
 function CellText({cell}: {cell: Cell | undefined}) {
-  const style = useTone(typeof cell === 'object' ? (cell.tone ?? 'primary') : 'primary');
+  const style = useTone(isRecord(cell) ? (cell.tone ?? 'primary') : 'primary');
+
   return (
-    <Text wrap="truncate-end" {...(typeof cell === 'object' ? style : {})}>
+    <Text wrap="truncate-end" {...(isRecord(cell) ? style : {})}>
       {textOf(cell)}
     </Text>
   );
@@ -48,6 +51,7 @@ export function Table({
       Math.max(stringWidth(c.header), ...rows.map((r) => stringWidth(textOf(r[c.key])))),
     ),
   );
+
   const shrinkable = widths.indexOf(Math.max(...widths));
 
   const renderRow = (key: string, cells: (c: Column) => ReactNode, isSelected = false) => (

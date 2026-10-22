@@ -58,11 +58,14 @@ export function MultiSelect<T extends string>({
   const [internalCursor, setInternalCursor] = useState(0);
   const cursor = controlledCursor ?? internalCursor;
   const currentCursor = useRef(cursor);
+
   const setCursor = (next: number) => {
     currentCursor.current = listIndex(next, items.length);
+
     if (controlledCursor === undefined) setInternalCursor(currentCursor.current);
     onCursorChange?.(currentCursor.current);
   };
+
   const index = listIndex(cursor, items.length);
   currentCursor.current = index;
   const selected = new Set(value ?? internal);
@@ -70,20 +73,26 @@ export function MultiSelect<T extends string>({
   currentSelection.current = selected;
   const canonicalValues = [...new Set(allItems.map((item) => item.value))];
   const values = () => canonicalValues.filter((value) => currentSelection.current.has(value));
+
   const move = (delta: number) => {
     if (items.length) setCursor((currentCursor.current + delta + items.length) % items.length);
   };
+
   const toggle = () => {
     const item = items[currentCursor.current];
+
     if (!item) return;
     const next = new Set(currentSelection.current);
+
     if (next.has(item.value)) next.delete(item.value);
     else next.add(item.value);
     currentSelection.current = next;
     const result = canonicalValues.filter((value) => next.has(value));
+
     if (value === undefined) setInternal(result);
     onChange?.(result);
   };
+
   useKeymap(
     [
       {key: 'up', run: () => move(-1)},
@@ -112,27 +121,35 @@ export function MultiSelect<T extends string>({
     {isActive, allowWhenCaptured},
   );
   let {start, end} = listWindow(index, items.length, listSize(maxVisible, 6));
+
   const rowBudget =
     maxVisibleRows === undefined ? Infinity : Math.max(4, listSize(maxVisibleRows, 12));
+
   const rowCount = () => {
     let count = end - start;
+
     for (let offset = start; offset < end; offset++) {
       const item = items[offset]!;
+
       if (item.group && (offset === start || item.group.key !== items[offset - 1]?.group?.key))
         count += compact ? (offset === start ? 1 : 2) : 3;
     }
+
     return count;
   };
+
   // Keep the focused option visible; headings never become keyboard stops.
   while (end - start > 1 && rowCount() > rowBudget) {
     if (index - start > end - index - 1) start++;
     else end--;
   }
+
   return (
     <Box flexDirection="column" marginTop={compact ? 0 : 1}>
       {items.length === 0 && <Muted>{emptyMessage}</Muted>}
       {items.slice(start, end).map((item, offset) => {
         const focused = isActive && start + offset === index;
+
         return (
           <Box
             key={`${item.group?.key ?? ''}/${item.value}/${start + offset}`}

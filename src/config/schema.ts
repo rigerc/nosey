@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {jsonValueSchema} from '../lib/values';
 import pkg from '../../package.json';
 import {themeNames} from '../theme/tokens';
 import {defaultTheme} from '../theme/resolve';
@@ -6,19 +7,28 @@ import {defineConfig} from './definition';
 import {SKILLS_CLI_AGENTS, validAgents} from '../features/skills/install';
 
 /** Loose parsing retains application-specific extension keys during edits. */
-export const configSchema = z.looseObject({
-  version: z.number().int().positive().optional(),
-  registries: z.object({
-    checkOnStart: z.boolean().optional(),
-  }).optional(),
-  skillsCli: z.object({
-    enabled: z.boolean().optional(),
-    defaultAgents: z.array(z.string()).refine(validAgents, 'Unsupported or duplicate agent').optional(),
-  }).optional(),
-  theme: z.enum(['auto', ...themeNames]).optional(),
-  ascii: z.boolean().optional(),
-  compactMode: z.boolean().optional(),
-});
+export const configSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    registries: z
+      .object({
+        checkOnStart: z.boolean().optional(),
+      })
+      .optional(),
+    skillsCli: z
+      .object({
+        enabled: z.boolean().optional(),
+        defaultAgents: z
+          .array(z.string())
+          .refine(validAgents, 'Unsupported or duplicate agent')
+          .optional(),
+      })
+      .optional(),
+    theme: z.enum(['auto', ...themeNames]).optional(),
+    ascii: z.boolean().optional(),
+    compactMode: z.boolean().optional(),
+  })
+  .catchall(jsonValueSchema);
 
 export type Config = z.infer<typeof configSchema>;
 

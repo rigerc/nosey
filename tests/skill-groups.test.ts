@@ -56,11 +56,13 @@ test('Nosey grouping deduplicates shared skill IDs in the selected output', () =
 test('Nosey group rows honor collapsed groups and skill filtering', () => {
   const filtered = filterSkills(report.skills, 'next');
   expect(filtered.map((skill) => skill.id)).toEqual(['shared', 'combo']);
+
   const rows = groupRows(
     deriveSkillGroups(report),
     new Set(['shared']),
     new Set(['technology:react']),
   );
+
   expect(rows.map((row) => row.key)).toEqual([
     'technology:react',
     'technology:next',
@@ -80,10 +82,12 @@ test('always recommended skills have their own group and share selection identit
     id: 'acme/skills',
     name: 'Always recommended (acme/skills)',
   };
+
   const augmented = {
     ...report,
     skills: report.skills.map((skill) => ({...skill, sources: [...skill.sources, source]})),
   };
+
   const groups = deriveSkillGroups(augmented);
   expect(groups.at(-1)?.title).toBe('Always recommended · acme/skills');
   expect(groups.at(-1)?.skillIds).toEqual(['shared', 'react-only', 'combo']);

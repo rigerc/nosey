@@ -31,15 +31,19 @@ export function RegistrySetupScreen() {
   const original = useRegistryInitOptions();
   const {config} = useScan();
   const router = useRouter();
+
   const [directory, setDirectory] = useState(
     original.directory ? resolve(original.directory) : resolve(config.root, 'my-skills-registry'),
   );
+
   const [registryId, setRegistryId] = useState(original.registryId ?? '');
   const [git, setGit] = useState(original.git ?? true);
   const [github, setGithub] = useState(original.github ?? false);
+
   const [visibility, setVisibility] = useState<'private' | 'public'>(
     original.visibility ?? 'private',
   );
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{message: string; warning?: string}>();
@@ -61,8 +65,10 @@ export function RegistrySetupScreen() {
             {key: 'ctrl+x', label: 'cancel'},
           ],
   );
-  const failed = (reason: unknown) =>
-    setError(reason instanceof Error ? reason.message : String(reason));
+
+  const failed = (cause: unknown) =>
+    setError(cause instanceof Error ? cause.message : String(cause));
+
   return (
     <ScreenLayout
       title="Initialize registry"
@@ -112,9 +118,12 @@ export function RegistrySetupScreen() {
                   onSubmit={async (value) => {
                     if (!value) {
                       setError('Directory is required.');
+
                       return;
                     }
+
                     setBusy(true);
+
                     try {
                       const destination = resolve(config.root, value);
                       await validateRegistryDestination(destination);
@@ -159,6 +168,7 @@ export function RegistrySetupScreen() {
                   step={step}
                   change={(answer) => {
                     setGit(answer);
+
                     if (!answer) setGithub(false);
                   }}
                 />
@@ -195,6 +205,7 @@ export function RegistrySetupScreen() {
               canProceed={async () => {
                 setBusy(true);
                 setError('');
+
                 try {
                   const result = await runRegistryInit(
                     {
@@ -207,9 +218,11 @@ export function RegistrySetupScreen() {
                     },
                     {interactive: false},
                   );
+
                   setCreated({
                     message: `Created ${result.registryId} at ${result.directory}. Git: ${result.gitInitialized ? 'initialized' : 'not requested'}. GitHub: ${result.githubCreated ? 'created' : 'not requested'}.`,
                   });
+
                   return true;
                 } catch (reason) {
                   if (reason instanceof RegistryInitError) {
@@ -218,9 +231,12 @@ export function RegistrySetupScreen() {
                         'Your local registry files have been preserved. Add the registry from Registries to use it.',
                       warning: reason.message,
                     });
+
                     return true;
                   }
+
                   failed(reason);
+
                   return false;
                 } finally {
                   setBusy(false);
@@ -255,6 +271,7 @@ export function RegistrySetupScreen() {
     </ScreenLayout>
   );
 }
+
 function WizardChoice({
   message,
   value,
@@ -274,6 +291,7 @@ function WizardChoice({
       void step.goNext();
     }
   }, [advance, step]);
+
   return (
     <Confirm
       message={message}
@@ -287,6 +305,7 @@ function WizardChoice({
     />
   );
 }
+
 function Visibility({
   current,
   back,
@@ -297,6 +316,7 @@ function Visibility({
   choose: (value: 'private' | 'public') => void;
 }) {
   useKeymap([{key: 'esc', run: back}], {scope: 'screen', allowWhenCaptured: true});
+
   return (
     <Select
       allowWhenCaptured

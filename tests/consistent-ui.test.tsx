@@ -46,6 +46,7 @@ describe('consistent terminal UI', () => {
         </ThemeProvider>,
         {columns: 60},
       );
+
       expect(out).toContain('Packages');
       expect(out).toContain('Test state');
     }
@@ -57,6 +58,7 @@ describe('consistent terminal UI', () => {
       {key: 'x', label: 'simulate failure'},
       ...getGlobalKeys(5),
     ];
+
     for (const columns of [40, 60, 80, 120]) {
       const out = renderToString(
         <ThemeProvider name="mono" ascii>
@@ -64,6 +66,7 @@ describe('consistent terminal UI', () => {
         </ThemeProvider>,
         {columns},
       );
+
       for (const line of out.split('\n')) expect(stringWidth(line)).toBeLessThanOrEqual(columns);
       expect(out).toContain('[r]');
       expect(out).toContain('[q]');

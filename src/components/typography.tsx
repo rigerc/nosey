@@ -37,6 +37,7 @@ export function Kbd({children}: {children: ReactNode}) {
 }
 
 type IconName = 'success' | 'error' | 'warn' | 'info' | 'pointer' | 'bullet' | 'pending';
+
 const iconTone: Record<IconName, Tone> = {
   success: 'success',
   error: 'danger',
@@ -50,12 +51,14 @@ const iconTone: Record<IconName, Tone> = {
 /** Resolves a glyph from the theme, so ASCII mode just works. */
 export function Icon({name, tone}: {name: IconName; tone?: Tone}) {
   const t = useTheme();
+
   return <Text {...useTone(tone ?? iconTone[name])}>{t.symbols[name]}</Text>;
 }
 
 /** Full-width rule, optionally with a leading label. */
 export function Divider({label}: {label?: string}) {
   const t = useTheme();
+
   const line = (
     <Box
       flexGrow={1}
@@ -68,7 +71,9 @@ export function Divider({label}: {label?: string}) {
       borderRight={false}
     />
   );
+
   if (!label) return line;
+
   return (
     <Box gap={1}>
       <Muted>{label}</Muted>

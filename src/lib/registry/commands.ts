@@ -1,3 +1,13 @@
+import {
+  jsonValueSchema,
+  errorCode,
+  jsonObjectSchema,
+  type JsonObject,
+  type JsonValue,
+  isRecord,
+} from '../values.js';
+import {z} from 'zod';
+
 import {randomUUID} from 'node:crypto';
 import {existsSync} from 'node:fs';
 import {execFile} from 'node:child_process';
@@ -22,16 +32,21 @@ import {parseManifest} from './validate.js';
 import type {LoadedRegistry} from './types.js';
 
 const run = promisify(execFile);
+
 const sourceGenerator = fileURLToPath(
   new URL('../../../templates/registry/scripts/generate-manifest.mjs', import.meta.url),
 );
+
 const bundledGenerator = fileURLToPath(
   new URL('../templates/registry/scripts/generate-manifest.mjs', import.meta.url),
 );
+
 const generator = existsSync(sourceGenerator) ? sourceGenerator : bundledGenerator;
 
-type ConfigDocument = Record<string, unknown> & {registries: unknown[]};
+type ConfigDocument = JsonObject & {registries: JsonValue[]};
+
 export type RegistryScope = 'project' | 'global';
+
 export type RegistryEntry = {
   scope: RegistryScope;
   configPath: string;
@@ -44,26 +59,32 @@ function configPath(scope: RegistryScope, root: string): string {
 
 async function readConfig(filename: string): Promise<ConfigDocument> {
   let text: string;
+
   try {
     text = await fs.readFile(filename, 'utf8');
   } catch (error: unknown) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (errorCode(error) === 'ENOENT') {
       return {schemaVersion: 1, registries: []};
     }
 
     throw error;
   }
 
-  const document = JSON.parse(text) as unknown;
+  const document = jsonObjectSchema.parse(JSON.parse(text));
   // Strict parsing prevents a mutation from silently dropping invalid entries.
   parseConfig(document, filename);
-  return document as ConfigDocument;
+
+  return z
+    .object({registries: z.array(jsonValueSchema)})
+    .catchall(jsonValueSchema)
+    .parse(document);
 }
 
 /** Write JSON atomically so a crash never leaves a partial file. */
-async function writeJsonFile(filename: string, document: Record<string, unknown>): Promise<void> {
+async function writeJsonFile(filename: string, document: JsonObject): Promise<void> {
   await fs.mkdir(path.dirname(filename), {recursive: true});
   const temporary = filename + '.' + randomUUID() + '.tmp';
+
   try {
     await fs.writeFile(temporary, JSON.stringify(document, null, 2) + '\n', {
       flag: 'wx',
@@ -82,20 +103,24 @@ async function withConfigLock<T>(filename: string, update: () => Promise<T>): Pr
   const parent = await fs.realpath(path.dirname(filename));
   const lockDirectory = path.join(parent, path.basename(filename) + '.lock');
   const deadline = Date.now() + 10_000;
+
   while (true) {
     try {
       await fs.mkdir(lockDirectory);
       break;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (errorCode(error) !== 'EEXIST') throw error;
+
       if (Date.now() >= deadline) {
         throw new Error(
           `Timed out waiting for registry configuration lock: ${lockDirectory}. If no registry edit is running, remove this lock directory and retry.`,
         );
       }
+
       await delay(25);
     }
   }
+
   try {
     return await update();
   } finally {
@@ -105,6 +130,7 @@ async function withConfigLock<T>(filename: string, update: () => Promise<T>): Pr
 
 export function commandSource(source: string, ref?: string): RegistrySpec {
   const spec = parseRegistrySource(source);
+
   if (spec.type === 'git') {
     if (ref !== undefined) spec.ref = ref;
     validateSource(spec);
@@ -118,6 +144,7 @@ export function commandSource(source: string, ref?: string): RegistrySpec {
 export async function listRegistries(root: string, globalOnly = false): Promise<RegistryEntry[]> {
   const scopes: RegistryScope[] = globalOnly ? ['global'] : ['global', 'project'];
   const entries: RegistryEntry[] = [];
+
   for (const scope of scopes) {
     const filename = configPath(scope, root);
     // eslint-disable-next-line no-await-in-loop
@@ -141,11 +168,13 @@ export async function editRegistry(
 ): Promise<{changed: boolean; configPath: string}> {
   const spec = commandSource(source, options.ref);
   const filename = configPath(options.scope, options.root);
+
   return withConfigLock(filename, async () => {
     const document = await readConfig(filename);
     const entries = parseConfig(document, filename);
     const key = registryIdentity(spec);
     const matches = entries.map((entry) => registryIdentity(entry.spec) === key);
+
     if (action === 'add' && matches.includes(true)) {
       return {changed: false, configPath: filename};
     }
@@ -161,10 +190,12 @@ export async function editRegistry(
               path: path.relative(path.dirname(filename), spec.path) || '.',
             }
           : spec;
+
       document.registries.push(stored);
     }
 
     await writeJsonFile(filename, document);
+
     return {changed: true, configPath: filename};
   });
 }
@@ -182,17 +213,20 @@ export async function setAlwaysRecommend(
   await withConfigLock(filename, async () => {
     // Loading first validates both registry files before anything is written.
     const loaded = await loadLocalRegistry(root);
+
     const available = new Set([
       ...loaded.manifest.skills.map((skill) => skill.id),
       ...(loaded.map.externalSkills ?? []).map((skill) => skill.id),
     ]);
+
     const requested = [...new Set(skills)];
     const unknown = requested.filter((id) => !available.has(id));
+
     if (unknown.length > 0) {
       throw new Error('Unknown skill IDs in this registry: ' + unknown.join(', '));
     }
 
-    const document = JSON.parse(await fs.readFile(filename, 'utf8')) as Record<string, unknown>;
+    const document = jsonObjectSchema.parse(JSON.parse(await fs.readFile(filename, 'utf8')));
     document.alwaysRecommend = requested;
     await writeJsonFile(filename, document);
   });
@@ -200,8 +234,10 @@ export async function setAlwaysRecommend(
 
 export async function showRegistry(source: string, ref?: string): Promise<LoadedRegistry> {
   const spec = commandSource(source, ref);
+
   if (spec.type === 'local') return loadLocalRegistry(spec.path);
   const result = await loadGitRegistry(spec);
+
   for (const warning of result.warnings) {
     process.stderr.write('nosey: ' + warning.message + '\n');
   }
@@ -213,26 +249,31 @@ export async function validateRegistry(directory: string): Promise<LoadedRegistr
   const loaded = await loadLocalRegistry(directory);
   // The registry.json file is optional for existing hand-authored registries.
   const settingsPath = path.join(directory, 'registry.json');
+
   try {
     const info = await fs.lstat(settingsPath);
+
     if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) {
       throw new Error('Invalid registry file: registry.json');
     }
 
-    const settings = JSON.parse(await fs.readFile(settingsPath, 'utf8')) as unknown;
-    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    const settings = jsonObjectSchema.parse(JSON.parse(await fs.readFile(settingsPath, 'utf8')));
+
+    if (!settings || !isRecord(settings) || Array.isArray(settings)) {
       throw new Error('registry.json must be an object');
     }
 
     const header = parseManifest({...settings, skills: []});
+
     if (header.registryId !== loaded.manifest.registryId) {
       throw new Error('registry.json and manifest registryId do not match');
     }
   } catch (error: unknown) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if (errorCode(error) !== 'ENOENT') throw error;
   }
 
   const merged = mergeRegistries([loaded]);
+
   if (merged.warnings.length > 0) {
     throw new Error(merged.warnings.map((warning) => warning.message).join('\n'));
   }
@@ -247,14 +288,15 @@ export async function buildRegistry(directory: string): Promise<string> {
     timeout: 60_000,
     maxBuffer: 1024 * 1024,
   });
+
   return stdout;
 }
 
-export function registryJson(value: unknown): string {
+export function registryJson<T>(value: T): string {
   return (
     JSON.stringify(
       value,
-      (_key: string, item: unknown) =>
+      (_key: string, item) =>
         item instanceof RegExp ? {source: item.source, flags: item.flags} : item,
       2,
     ) + '\n'

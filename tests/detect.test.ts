@@ -1,3 +1,5 @@
+import {type JsonObject, isString} from '../src/lib/values';
+
 import os from 'node:os';
 import process from 'node:process';
 import path from 'node:path';
@@ -5,13 +7,13 @@ import fs from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {test, expect} from 'vite-plus/test';
-import {detectProject} from '../src/lib/detect.js';
+import {detectProject, type Report} from '../src/lib/detect.js';
 import {scanProject} from '../src/lib/scanner.js';
 import {allPackages, indexManifests} from '../src/lib/manifests.js';
-import type {Report} from '../src/lib/detect.js';
+
 import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.js';
 
-type Files = Record<string, string | Record<string, unknown> | undefined>;
+type Files = Record<string, string | JsonObject | undefined>;
 
 async function fixture<T>(
   files: Files,
@@ -19,13 +21,15 @@ async function fixture<T>(
   options = {},
 ): Promise<T> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-test-'));
+
   try {
     for (const [name, content] of Object.entries(files)) {
       const dest = path.join(root, name);
       await fs.mkdir(path.dirname(dest), {recursive: true});
+
       if (content === null) await fs.mkdir(dest, {recursive: true});
       else {
-        await fs.writeFile(dest, typeof content === 'string' ? content : JSON.stringify(content));
+        await fs.writeFile(dest, isString(content) ? content : JSON.stringify(content));
       }
     }
 
@@ -251,6 +255,7 @@ test('CLI rejects conflicting, invalid and unknown flags', async () => {
 
 test('CLI JSON and skills-only modes produce parseable results', async () => {
   await fixture({'package.json': {dependencies: {react: '*'}}}, (_, root) => {
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const result = JSON.parse(runCli(root, '--json')) as Report;
     expect(result.technologies.some((tech) => tech.id === 'react')).toBe(true);
     expect(result.skills.every((candidate) => Array.isArray(candidate.sources))).toBe(true);
@@ -382,9 +387,12 @@ test('oversized reads are reported in JSON and plain text', async () => {
     },
     (report, root) => {
       expect(has(report, 'laravel')).toBe(false);
+
+      // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
       const result = JSON.parse(runCli(root, '--json')) as Report & {
         skippedFiles: Array<{file: string; reason: string}>;
       };
+
       expect(
         result.skippedFiles.some(
           (item) => item.file === 'composer.lock' && item.reason === 'too-large',
@@ -411,8 +419,10 @@ test('content evidence keeps late signals, distinct masking modes, and file limi
       expect(has(report, 'aspnetcore')).toBe(true);
       expect(has(report, 'aspnet-minimal-api')).toBe(true);
       expect(has(report, 'swiftui')).toBe(false);
+
       const evidence =
         report.technologies.find((tech) => tech.id === 'aspnet-minimal-api')?.evidence ?? [];
+
       expect(evidence.some((value) => value.includes('Program.cs'))).toBe(true);
       expect(evidence.some((value) => value.includes('Routes.cs'))).toBe(true);
     },

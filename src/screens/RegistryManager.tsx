@@ -45,13 +45,17 @@ type Mode =
   | 'recommend'
   | 'recommend-filter'
   | 'confirm-recommend';
+
 const sourceOf = (entry: RegistryEntry) =>
   entry.spec.type === 'local' ? entry.spec.path : entry.spec.url;
-const messageOf = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
+
+const messageOf = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 async function readRegistry(source: string, ref?: string) {
   const spec = commandSource(source, ref);
+
   if (spec.type === 'local') return {loaded: await loadLocalRegistry(spec.path), warnings: []};
+
   return loadGitRegistry(spec);
 }
 
@@ -74,6 +78,7 @@ export function RegistryManagerScreen() {
   const [message, setMessage] = useState('');
   const [recommended, setRecommended] = useState<string[]>([]);
   const [skillFilter, setSkillFilter] = useState('');
+
   const skillItems = [
     ...(detail?.manifest.skills ?? []).map((skill) => ({
       value: skill.id,
@@ -86,21 +91,29 @@ export function RegistryManagerScreen() {
       hint: skill.name + ' (external: ' + skill.source + ')',
     })),
   ];
+
   const savedRecommendations = detail?.map.alwaysRecommend ?? [];
+
   const knownRecommendations = savedRecommendations.filter((id) =>
     skillItems.some((skill) => skill.value === id),
   );
+
   const staleRecommendations = savedRecommendations.filter(
     (id) => !skillItems.some((skill) => skill.value === id),
   );
+
   const filterText = skillFilter.toLowerCase();
+
   const visibleSkills = skillItems.filter((skill) =>
     (skill.label + ' ' + skill.hint).toLowerCase().includes(filterText),
   );
+
   const lock = useRef(false);
   const target = globalConfigPath();
+
   const reload = useCallback(async () => {
     setLoading(true);
+
     try {
       setEntries(await listRegistries(root));
       setError('');
@@ -110,6 +123,7 @@ export function RegistryManagerScreen() {
       setLoading(false);
     }
   }, [root]);
+
   useEffect(() => {
     if (active && !preview) void reload();
   }, [reload, active, preview]);
@@ -119,12 +133,14 @@ export function RegistryManagerScreen() {
     setSource('');
     setRef('');
   });
+
   const execute = async (operation: () => Promise<void>) => {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
     setError('');
     setMessage('');
+
     try {
       await operation();
     } catch (reason) {
@@ -134,6 +150,7 @@ export function RegistryManagerScreen() {
       setBusy(false);
     }
   };
+
   const inspect = (entry: RegistryEntry) => {
     setSelected(entry);
     setDetail(undefined);
@@ -145,10 +162,12 @@ export function RegistryManagerScreen() {
         sourceOf(entry),
         entry.spec.type === 'git' ? entry.spec.ref : undefined,
       );
+
       setDetail(result.loaded);
       setMessage(result.warnings.map((warning) => warning.message).join('\n'));
     });
   };
+
   const prepareAdd = (revision = '') => {
     setRef(revision);
     void execute(async () => {
@@ -158,6 +177,7 @@ export function RegistryManagerScreen() {
       setMode('confirm-add');
     });
   };
+
   useKeymap(
     [
       {
@@ -317,6 +337,7 @@ export function RegistryManagerScreen() {
                   }))}
                   onSelect={(key) => {
                     const entry = entries[Number(key)];
+
                     if (entry) inspect(entry);
                   }}
                 />
@@ -332,13 +353,17 @@ export function RegistryManagerScreen() {
                 onSubmit={(value) => {
                   if (!value) {
                     setError('A path or Git URL is required.');
+
                     return;
                   }
+
                   const next = /^(https?:\/\/|ssh:\/\/|git@)/.test(value)
                     ? value
                     : resolve(root, value);
+
                   setSource(next);
                   setError('');
+
                   if (/^(https?:\/\/|ssh:\/\/|git@)/.test(value)) setMode('add-ref');
                   else
                     void execute(async () => {
@@ -373,14 +398,17 @@ export function RegistryManagerScreen() {
                   onConfirm={(yes) => {
                     if (!yes) {
                       setMode('list');
+
                       return;
                     }
+
                     void execute(async () => {
                       const result = await editRegistry('add', source, {
                         root,
                         scope: 'global',
                         ref: ref || undefined,
                       });
+
                       await reload();
                       setMode('list');
                       setMessage(
@@ -497,16 +525,20 @@ export function RegistryManagerScreen() {
                   onConfirm={(yes) => {
                     if (!yes) {
                       setMode('recommend');
+
                       return;
                     }
+
                     void execute(async () => {
                       if (selected.spec.type !== 'local') return;
                       // Manifest order keeps the shared map stable across sessions.
                       await setAlwaysRecommend(
                         selected.spec.path,
                         skillItems
+                          .values()
                           .filter((item) => recommended.includes(item.value))
-                          .map((item) => item.value),
+                          .map((item) => item.value)
+                          .toArray(),
                       );
                       setDetail(await loadLocalRegistry(selected.spec.path));
                       setSkillFilter('');
@@ -530,8 +562,10 @@ export function RegistryManagerScreen() {
                   onConfirm={(yes) => {
                     if (!yes) {
                       setMode('detail');
+
                       return;
                     }
+
                     void execute(async () => {
                       await editRegistry('remove', sourceOf(selected), {
                         root,
@@ -554,8 +588,10 @@ export function RegistryManagerScreen() {
                 onConfirm={(yes) => {
                   if (!yes) {
                     setMode('detail');
+
                     return;
                   }
+
                   const directory = selected.spec.type === 'local' ? selected.spec.path : '';
                   void execute(async () => {
                     const result = await buildRegistry(directory);

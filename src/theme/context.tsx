@@ -26,14 +26,18 @@ export function ThemeProvider({
 }) {
   const [current, setCurrent] = useState<ThemeName>(name);
   const locked = process.env.NO_COLOR !== undefined;
+
   const theme = useMemo(
     () => applyGlyphs(themes[locked ? 'mono' : current], ascii),
     [current, ascii, locked],
   );
+
   const cycleTheme = useCallback(() => {
     if (!locked) setCurrent((c) => themeNames[(themeNames.indexOf(c) + 1) % themeNames.length]!);
   }, [locked]);
+
   const value = useMemo(() => ({theme, setTheme: setCurrent, cycleTheme}), [theme, cycleTheme]);
+
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -41,7 +45,8 @@ export const useTheme = (): Theme => useContext(ThemeContext).theme;
 export const useThemeControls = () => useContext(ThemeContext);
 
 /** Text props for a tone. Muted falls back to dim in mono mode. */
-export function useTone(tone: Tone): {color: string | undefined; dimColor: boolean} {
+export function useTone(tone: Tone) {
   const t = useTheme();
+
   return {color: t.color[tone], dimColor: t.mono && tone === 'muted'};
 }

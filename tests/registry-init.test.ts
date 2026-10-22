@@ -18,6 +18,7 @@ const cli = fileURLToPath(new URL('../src/cli.tsx', import.meta.url));
 
 async function temporary<T>(run: (parent: string) => Promise<T>): Promise<T> {
   const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-init-'));
+
   try {
     return await run(parent);
   } finally {
@@ -38,9 +39,12 @@ test('scaffold rewrites all template IDs and retains the manifest workflow', asy
     expect(registry.map.technologySkills[0]?.skills).toStrictEqual([
       'acme/team-skills/example-testing',
     ]);
+
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const settings = JSON.parse(
       await fs.readFile(path.join(destination, 'registry.json'), 'utf8'),
     ) as {registryId: string};
+
     expect(settings.registryId).toBe('acme/team-skills');
     const workflow = await fs.stat(path.join(destination, '.github/workflows/update-manifest.yml'));
     expect(workflow.isFile()).toBe(true);
@@ -96,12 +100,14 @@ test('destination preflight rejects files and dangling symlinks without changing
     const link = path.join(parent, 'link');
     await fs.writeFile(file, 'unchanged');
     await fs.symlink(path.join(parent, 'missing'), link);
+
     for (const destination of [file, link]) {
       await expect(validateRegistryDestination(destination)).rejects.toMatchObject({
         code: 'EEXIST',
         message: expect.stringContaining('Choose a new directory'),
       });
     }
+
     expect(await fs.readFile(file, 'utf8')).toBe('unchanged');
     expect((await fs.lstat(link)).isSymbolicLink()).toBe(true);
   });
@@ -140,6 +146,7 @@ test('invalid registry identifiers never create a destination', async () => {
     await expect(scaffoldRegistry(destination, 'only-one-part')).rejects.toMatchObject({
       message: expect.stringMatching(/Registry ID/),
     });
+
     for (const registryId of [
       'acme/.',
       'acme/..',
@@ -162,6 +169,7 @@ test('interactive wizard creates a local Git repository without publishing', asy
   await temporary(async (parent) => {
     const answers = [path.join(parent, 'my-registry'), 'team/my-registry', '', ''];
     const commands: Array<{command: string; args: string[]}> = [];
+
     const result = await runRegistryInit(
       {},
       {
@@ -172,6 +180,7 @@ test('interactive wizard creates a local Git repository without publishing', asy
         },
       },
     );
+
     expect(result.registryId).toBe('team/my-registry');
     expect(result.gitInitialized).toBe(true);
     expect(result.githubCreated).toBe(false);
@@ -187,6 +196,7 @@ test('interactive wizard creates a local Git repository without publishing', asy
 test('interactive wizard preserves supplied destination and explicit opt-outs', async () => {
   await temporary(async (parent) => {
     const questions: string[] = [];
+
     const result = await runRegistryInit(
       {
         directory: path.join(parent, 'registry'),
@@ -197,6 +207,7 @@ test('interactive wizard preserves supplied destination and explicit opt-outs', 
         interactive: true,
         async ask(question) {
           questions.push(question);
+
           return 'n';
         },
         async run() {
@@ -204,6 +215,7 @@ test('interactive wizard preserves supplied destination and explicit opt-outs', 
         },
       },
     );
+
     expect(questions).toStrictEqual(['Initialize local Git repository? [Y/n]: ']);
     expect(result.gitInitialized).toBe(false);
     expect(result.githubCreated).toBe(false);
@@ -213,6 +225,7 @@ test('interactive wizard preserves supplied destination and explicit opt-outs', 
 test('GitHub publication is explicitly selected and defaults to private', async () => {
   await temporary(async (parent) => {
     const commands: Array<{command: string; args: string[]}> = [];
+
     const result = await runRegistryInit(
       {
         directory: path.join(parent, 'project'),
@@ -227,6 +240,7 @@ test('GitHub publication is explicitly selected and defaults to private', async 
         },
       },
     );
+
     expect(result.githubCreated).toBe(true);
     expect(commands.map((item) => item.command)).toStrictEqual(['git', 'git', 'git', 'gh']);
     expect(commands[2]?.args).toStrictEqual([
@@ -253,6 +267,7 @@ test('GitHub publication is explicitly selected and defaults to private', async 
 test('visibility is validated before any filesystem writes', async () => {
   await temporary(async (parent) => {
     const directory = path.join(parent, 'registry');
+    // SAFETY: this deliberately invalid visibility exercises rejection before any filesystem writes.
     await expect(
       runRegistryInit({
         directory,
@@ -287,6 +302,7 @@ test('noninteractive mode supports --no-git and requires explicit ID', async () 
         github: true,
       }),
     ).rejects.toMatchObject({message: expect.stringMatching(/requires Git/)});
+
     const result = await runRegistryInit(
       {
         directory,
@@ -300,6 +316,7 @@ test('noninteractive mode supports --no-git and requires explicit ID', async () 
         },
       },
     );
+
     expect(result.gitInitialized).toBe(false);
     expect(result.githubCreated).toBe(false);
   });
@@ -334,11 +351,13 @@ test('commit hook errors are identified before contacting GitHub and preserve th
   await temporary(async (parent) => {
     const directory = path.join(parent, 'registry');
     const commands: string[] = [];
+
     const error = await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
       {
         async run(command, args) {
           commands.push(command);
+
           if (args.includes('commit')) {
             throw Object.assign(new Error('Command failed: git commit'), {
               stdout:
@@ -349,6 +368,7 @@ test('commit hook errors are identified before contacting GitHub and preserve th
         },
       },
     ).catch((reason) => reason);
+
     expect(error).toMatchObject({
       name: 'RegistryInitError',
       result: {directory, registryId: 'acme/skills', gitInitialized: true, githubCreated: false},
@@ -382,6 +402,7 @@ test('the initial commit passes a conventional commit hook before GitHub publica
       {mode: 0o755},
     );
     await fs.writeFile(gitConfig, '[core]\n\thooksPath = ' + JSON.stringify(hooks) + '\n');
+
     const env = {
       ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))),
       GIT_CONFIG_GLOBAL: gitConfig,
@@ -391,6 +412,7 @@ test('the initial commit passes a conventional commit hook before GitHub publica
       GIT_COMMITTER_NAME: 'Registry Test',
       GIT_COMMITTER_EMAIL: 'test@example.invalid',
     };
+
     let published = false;
     await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
@@ -402,9 +424,11 @@ test('the initial commit passes a conventional commit hook before GitHub publica
       },
     );
     expect(published).toBe(true);
+
     const {stdout} = await execFileAsync('git', ['-C', directory, 'log', '-1', '--format=%s'], {
       env,
     });
+
     expect(stdout.trim()).toBe('chore(registry): initialize Nosey registry');
   });
 });
@@ -412,6 +436,7 @@ test('the initial commit passes a conventional commit hook before GitHub publica
 test('GitHub errors include gh diagnostics and preserve the created local registry', async () => {
   await temporary(async (parent) => {
     const directory = path.join(parent, 'registry');
+
     const error = await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
       {
@@ -423,6 +448,7 @@ test('GitHub errors include gh diagnostics and preserve the created local regist
         },
       },
     ).catch((reason) => reason);
+
     expect(error).toMatchObject({
       name: 'RegistryInitError',
       result: {directory, registryId: 'acme/skills', gitInitialized: true, githubCreated: false},
@@ -438,6 +464,7 @@ test('GitHub errors include gh diagnostics and preserve the created local regist
 test('CLI init command works without TTY and does not scan a project', async () => {
   await temporary(async (parent) => {
     const directory = path.join(parent, 'registry');
+
     const {stdout} = await execFileAsync(process.execPath, [
       '--import=tsx',
       cli,
@@ -449,6 +476,7 @@ test('CLI init command works without TTY and does not scan a project', async () 
       '--yes',
       '--no-git',
     ]);
+
     expect(stdout).toMatch(/Created registry acme\/skills/);
     const registry = await loadLocalRegistry(directory);
     expect(registry.manifest.registryId).toBe('acme/skills');
@@ -475,6 +503,7 @@ for (const {flags, git} of [
         '--yes',
         ...flags,
       ]);
+
       if (git) {
         const gitDirectory = await fs.stat(path.join(directory, '.git'));
         expect(gitDirectory.isDirectory()).toBe(true);
@@ -503,6 +532,7 @@ test('Git and GitHub commands isolate repository environment overrides', async (
     const directory = path.join(parent, 'registry');
     const ghEnvironment = path.join(parent, 'gh-env.json');
     const preload = path.join(parent, 'mock-gh.mjs');
+
     const env = {
       ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))),
       GIT_CONFIG_GLOBAL: os.devNull,
@@ -513,6 +543,7 @@ test('Git and GitHub commands isolate repository environment overrides', async (
       GIT_COMMITTER_NAME: 'Registry Init Test',
       GIT_COMMITTER_EMAIL: 'test@example.invalid',
     };
+
     await execFileAsync('git', ['init', '--initial-branch=main', other], {env});
     await fs.writeFile(path.join(other, 'baseline.txt'), 'original repository');
     await execFileAsync('git', ['-C', other, 'add', '--all'], {env});
@@ -536,6 +567,7 @@ test('Git and GitHub commands isolate repository environment overrides', async (
         'syncBuiltinESMExports();',
       ].join('\n'),
     );
+
     const overrides = {
       GIT_DIR: path.join(other, '.git'),
       GIT_WORK_TREE: other,
@@ -548,6 +580,7 @@ test('Git and GitHub commands isolate repository environment overrides', async (
       GIT_CONFIG_KEY_0: 'core.worktree',
       GIT_CONFIG_VALUE_0: other,
     };
+
     await execFileAsync(
       process.execPath,
       [
@@ -565,11 +598,13 @@ test('Git and GitHub commands isolate repository environment overrides', async (
       ],
       {env: {...env, ...overrides, SKILLSENSE_TEST_GH_ENV: ghEnvironment}},
     );
+
     const {stdout: files} = await execFileAsync(
       'git',
       ['-C', directory, 'ls-tree', '-r', '--name-only', 'HEAD'],
       {env},
     );
+
     expect(files.includes('skills-manifest.json')).toBe(true);
     expect(files.includes('.github/workflows/update-manifest.yml')).toBe(true);
     expect(files.includes('private.txt')).toBe(false);
@@ -577,10 +612,13 @@ test('Git and GitHub commands isolate repository environment overrides', async (
     const currentHead = await execFileAsync('git', ['-C', other, 'rev-parse', 'HEAD'], {env});
     expect(currentHead.stdout).toBe(originalHead.stdout);
     expect(await fs.readFile(path.join(other, '.git', 'index'))).toStrictEqual(originalIndex);
+
+    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const publishedEnv = JSON.parse(await fs.readFile(ghEnvironment, 'utf8')) as Record<
       string,
       string
     >;
+
     for (const name of Object.keys(overrides)) expect(publishedEnv[name]).toBe(undefined);
     expect(publishedEnv['GIT_AUTHOR_NAME']).toBe(env.GIT_AUTHOR_NAME);
     expect(publishedEnv['GIT_TERMINAL_PROMPT']).toBe('0');
