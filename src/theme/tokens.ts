@@ -24,6 +24,8 @@ export interface Symbols {
   warn: string;
   info: string;
   pointer: string;
+  checkboxChecked: string;
+  checkboxUnchecked: string;
   bullet: string;
   pending: string;
   ellipsis: string;
@@ -48,6 +50,8 @@ export const unicodeSymbols: Symbols = {
   warn: '⚠',
   info: 'ℹ',
   pointer: '❯',
+  checkboxChecked: '◼',
+  checkboxUnchecked: '◻',
   bullet: '•',
   pending: '○',
   ellipsis: '…',
@@ -62,6 +66,8 @@ export const asciiSymbols: Symbols = {
   warn: '!',
   info: 'i',
   pointer: '>',
+  checkboxChecked: '[x]',
+  checkboxUnchecked: '[ ]',
   bullet: '*',
   pending: 'o',
   ellipsis: '...',

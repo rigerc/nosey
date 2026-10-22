@@ -101,21 +101,21 @@ These tracked captures use the Nosey terminal theme. Scan shows a demo React, Ty
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/home-nosey-96.png" alt="Nosey Scan with detected technologies and grouped agent skill suggestions">
+      <img src="assets/screenshots/home-nosey-96.png" alt="Nosey Scan with detected technologies and grouped agent skill suggestions">
       <p><sub><strong>Scan</strong> · Technology groups and selectable skill suggestions</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/registry-nosey-96.png" alt="Nosey Registries screen with project scope and registry references">
+      <img src="assets/screenshots/registry-nosey-96.png" alt="Nosey Registries screen with project scope and registry references">
       <p><sub><strong>Registries</strong> · Project scope and reference management</sub></p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/settings-nosey-96.png" alt="Nosey Settings screen with appearance preferences">
+      <img src="assets/screenshots/settings-nosey-96.png" alt="Nosey Settings screen with appearance preferences">
       <p><sub><strong>Settings</strong> · Appearance preferences and save/discard actions</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/help-nosey-96.png" alt="Nosey Help screen with navigation and action shortcuts">
+      <img src="assets/screenshots/help-nosey-96.png" alt="Nosey Help screen with navigation and action shortcuts">
       <p><sub><strong>Help</strong> · Keyboard shortcuts in the app</sub></p>
     </td>
   </tr>
@@ -249,10 +249,10 @@ npm run screenshot
 npm run record
 
 # Use the tracked Nosey theme and 96-column layout
-npm run screenshot -- --theme nosey --columns 96 --output-dir docs/screenshots
+npm run screenshot -- --theme nosey --columns 96
 ```
 
-Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. The demo GIF, MP4, and still frame above are checked into [`assets/recordings/`](assets/recordings/). New captures normally go to the ignored `screenshots/` directory; they are not automatically published or committed. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
+Capture tooling requires VHS, ttyd, FFmpeg, and Chromium. The demo GIF, MP4, and still frame above are checked into [`assets/recordings/`](assets/recordings/). Static captures go to [`assets/screenshots/`](assets/screenshots/); recordings go to `assets/recordings/`. Replay tapes and fixtures are ignored. Review and commit refreshed media to update the README. The [capture workflow](.github/workflows/screenshots.yml) uploads media as CI artifacts.
 
 For internals and extensions, see [Architecture](docs/architecture.md), [UI framework](docs/ui-framework.md), and [Add a feature](docs/adding-a-feature.md). The catalog and skill-mapping utilities are documented in [scripts/README.md](scripts/README.md).
 

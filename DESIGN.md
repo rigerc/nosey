@@ -92,7 +92,7 @@ All runtime text inherits the user's terminal monospace font and cell metrics. T
 - Header brand, screen titles, panel titles and labels use Ink `bold`.
 - Body values and unfocused options use regular terminal text.
 - Metadata, group labels, descriptions and supplementary evidence use semantic muted text; group labels also use bold.
-- Focused list options use bold plus primary color and a pointer. Selection uses literal `[x]` / `[ ]`, independent of focus.
+- Focused list options use bold plus primary color and a pointer. Selection uses `◼` / `◻` in Unicode and `[x]` / `[ ]` in ASCII, independent of focus or color.
 - `Kbd` renders bold bracketed keys such as `[enter]`, followed by muted descriptions.
 
 Use existing typography components rather than simulating larger display type or importing a web font. Long menu labels truncate at the end; screen descriptions and evidence can wrap within their allotted width.

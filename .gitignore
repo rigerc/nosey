@@ -9,6 +9,8 @@ build
 tttt/
 .serena/
 .pi/
+.agents/
+skills-lock.json
 
 # Catalog snapshots, mapping proposals, and HTTP caches
 out/

@@ -31,7 +31,9 @@ export function OptionRow({
       {marker && (
         <Text {...styles.selection}>
           {marker === 'checkbox'
-            ? `[${selected ? 'x' : ' '}]`
+            ? selected
+              ? theme.symbols.checkboxChecked
+              : theme.symbols.checkboxUnchecked
             : selected
               ? theme.symbols.success
               : ' '}{' '}

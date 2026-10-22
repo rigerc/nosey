@@ -52,7 +52,7 @@ describe('MultiSelect', () => {
     );
     await settle();
     await press(app, ' ');
-    expect(app.lastFrame()).toContain('[x] Alpha');
+    expect(app.lastFrame()).toContain('◼ Alpha');
     expect(change).toHaveBeenCalledOnce();
   });
 

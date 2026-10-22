@@ -53,6 +53,8 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run screenshot
+      - name: Capture README screenshots
+        run: npm run screenshot -- --theme nosey --columns 96
       - name: Record interactive workflow
         env:
           CAPTURE_SCREEN: ${{ inputs.screen || 'home' }}
@@ -66,6 +68,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: terminal-captures
-          path: screenshots/
+          path: |
+            assets/screenshots/
+            assets/recordings/
           if-no-files-found: error
           retention-days: 14

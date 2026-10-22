@@ -241,8 +241,8 @@ typed label, indicator, selection and hint styles from the active semantic palet
 Internal `OptionRow` and `InputLine` primitives in `src/components/control-parts.tsx`
 share presentation without registering input handlers.
 
-- Options reserve a pointer column. Checkbox markers remain `[x]` / `[ ]` in Unicode
-  and ASCII output, independent of focus. Single-select controls reserve a check
+- Options reserve a pointer column. Checkbox markers use `◼` / `◻` in Unicode
+  and `[x]` / `[ ]` in ASCII output, independent of focus or color. Single-select controls reserve a check
   column when `current` is provided. Inactive controls omit active pointers.
 - Input labels and entered values use readable text; placeholders and hints use
   muted text. Active editors show an inverse underscore cursor. Long values
@@ -268,7 +268,7 @@ an unbordered list, one selection total, a two-row brand/project header, and ess
 controls only. Its row budget reserves the summary and footer at 24 rows. Full IDs
 remain unchanged in review and confirmed output. Compact mode has no tabs or command
 menu; partial-scan warnings remain explicit and may extend into scrollback. See the
-[compact Scan capture](screenshots/compact-nosey-96.png).
+[compact Scan capture](../assets/screenshots/compact-nosey-96.png).
 
 Registry context and write targets sit above the reference list, separate from its
 active input control. The shell keeps header/navigation and footer hint rows adjacent.

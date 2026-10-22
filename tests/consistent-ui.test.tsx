@@ -109,6 +109,48 @@ describe('consistent terminal UI', () => {
 });
 
 describe('shared control presentation', () => {
+  it('distinguishes checkbox state from focus across themes, glyph modes and widths', () => {
+    const items = [
+      {value: 'alpha', label: 'Alpha'},
+      {value: 'beta', label: 'Beta'},
+    ];
+
+    for (const theme of ['nosey', 'light', 'mono'] as const) {
+      for (const ascii of [false, true]) {
+        for (const columns of [40, 60, 80, 96, 120]) {
+          for (const active of [false, true]) {
+            const out = renderToString(
+              <ThemeProvider name={theme} ascii={ascii}>
+                <InputActivityProvider active={active}>
+                  <Box flexDirection="column">
+                    <MultiSelect items={items} value={['beta']} compact />
+                    <Toggle label="Cache" value isActive={false} />
+                    <Toggle label="Updates" value={false} isActive={false} />
+                  </Box>
+                </InputActivityProvider>
+              </ThemeProvider>,
+              {columns},
+            );
+
+            const pointer = ascii ? '>' : '❯';
+            const checked = ascii ? '[x]' : '◼';
+            const unchecked = ascii ? '[ ]' : '◻';
+
+            expect(out).toContain(`${active ? pointer : ' '} ${unchecked} Alpha`);
+            expect(out).toContain(`${checked} Beta`);
+            expect(out).toContain(`${checked} Cache: On`);
+            expect(out).toContain(`${unchecked} Updates: Off`);
+
+            if (!active) expect(out).not.toContain(pointer);
+
+            for (const line of out.split('\n'))
+              expect(stringWidth(line)).toBeLessThanOrEqual(columns);
+          }
+        }
+      }
+    }
+  });
+
   it('keeps the editing end visible inside a narrow parent and submits the complete value', async () => {
     const value = '/a/very/long/project/path/with/a/recognizable-tail';
     const submit = vi.fn();

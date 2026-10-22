@@ -64,7 +64,7 @@ describe('VHS capture workflow', () => {
       const recording = run(...common, '--video', '--format', 'webm');
       expect(recording.status, recording.stderr).toBe(0);
       const tape = readFileSync(path.join(dir, 'tapes/home-mono-80-ascii-video.tape'), 'utf8');
-      expect(tape).toContain('Wait+Screen@15s /Scan complete/');
+      expect(tape).toContain('Wait+Screen@15s /Scan complete|Partial scan/');
       expect(tape).toContain('env -u CI -u NO_COLOR -u CLI_ASCII');
       expect(tape).toContain("'--config'");
       expect(tape).toContain('XDG_CONFIG_HOME=');
@@ -87,6 +87,52 @@ describe('VHS capture workflow', () => {
       expect(customOutput).toContain('Wait+Screen@10s /Help/');
       expect(customOutput).not.toContain('Ctrl+K');
       expect(readdirSync(dir)).toEqual(['custom.tape', 'tapes']);
+    } finally {
+      rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  it('defaults to asset directories and keeps replay fixtures beside the media', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'capture-assets-'));
+    const script = path.resolve('scripts/screenshot.tsx');
+
+    try {
+      for (const video of [false, true]) {
+        const result = spawnSync(
+          process.execPath,
+          [
+            '--import',
+            import.meta.resolve('tsx'),
+            script,
+            '--screen',
+            'home',
+            '--theme',
+            'nosey',
+            '--columns',
+            '96',
+            '--dry-run',
+            ...(video ? ['--video'] : []),
+          ],
+          {
+            cwd: dir,
+            encoding: 'utf8',
+            env: {...process.env, TSX_TSCONFIG_PATH: path.resolve('tsconfig.json')},
+          },
+        );
+
+        expect(result.status, result.stderr).toBe(0);
+
+        const destination = path.join(dir, 'assets', video ? 'recordings' : 'screenshots');
+        const name = `home-nosey-96${video ? '-video' : ''}`;
+        const tape = readFileSync(path.join(destination, 'tapes', name + '.tape'), 'utf8');
+
+        expect(tape).toContain('Screenshot ' + tapeQuote(path.join(destination, name + '.png')));
+
+        if (video)
+          expect(tape).toContain('Output ' + tapeQuote(path.join(destination, name + '.mp4')));
+
+        expect(readdirSync(destination)).toEqual(['tapes']);
+      }
     } finally {
       rmSync(dir, {recursive: true, force: true});
     }

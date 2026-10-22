@@ -103,7 +103,7 @@ export async function main(args = process.argv.slice(2)) {
       theme: {type: 'string', multiple: true},
       columns: {type: 'string', multiple: true},
       rows: {type: 'string'},
-      'output-dir': {type: 'string', default: 'screenshots'},
+      'output-dir': {type: 'string'},
       ascii: {type: 'boolean', default: false},
       project: {type: 'string'},
       video: {type: 'boolean', default: false},
@@ -120,7 +120,7 @@ export async function main(args = process.argv.slice(2)) {
   --theme <name>      nosey | dark | light | contrast | mono (repeat; default: all; video: nosey)
   --columns <n>       Terminal width, 40–240 (repeat; default: 80 and 120; video: 100)
   --rows <n>          App terminal height, 24–100 (default: 40; video: 60)
-  --output-dir <dir>  Destination directory (default: screenshots)
+  --output-dir <dir>  Destination directory (default: assets/screenshots; video: assets/recordings)
   --project <path>   Scan a real project instead of the isolated demo workspace
   --ascii            Use ASCII glyphs and borders
   --video            Record keyboard interactions as well as the initial PNG
@@ -200,13 +200,12 @@ Requires VHS 0.12.1+, ttyd, FFmpeg and Chromium. See docs/recording.md.`);
       )
     : undefined;
 
-  const outputDir = path.resolve(values['output-dir']);
+  const outputDir = path.resolve(
+    values['output-dir'] ?? (values.video ? 'assets/recordings' : 'assets/screenshots'),
+  );
 
   // Documentation PNGs are tracked; replay files and demo fixtures stay ignored.
-  const tapeDir = path.join(
-    outputDir === path.join(root, 'docs/screenshots') ? path.join(root, 'screenshots') : outputDir,
-    'tapes',
-  );
+  const tapeDir = path.join(outputDir, 'tapes');
 
   await mkdir(tapeDir, {recursive: true});
   const configDir = await mkdtemp(path.join(tmpdir(), `${pkg.name}-capture-`));

@@ -27,6 +27,8 @@ The examples below use npm; pnpm/bun use `run`, while Yarn also accepts `yarn sc
 
 ```sh
 npm run screenshot
+# Refresh the four images used in the README
+npm run screenshot -- --theme nosey --columns 96
 npm run screenshot -- --screen home --theme dark --columns 100
 npm run screenshot -- --screen help --theme mono --ascii --rows 60
 npm run screenshot -- --output-dir ./screenshots/review
@@ -36,6 +38,10 @@ Screens, themes and columns can be repeated to select a matrix. Defaults are the
 themes, and 80/120 columns. Hidden routes and the `skills` alias can be requested
 with `--screen`. App terminal height defaults to 40 rows. Static PNG viewports expand to fit the
 rendered frame; videos use exactly the requested dimensions (60 rows by default).
+
+PNGs default to the tracked `assets/screenshots/` directory. Review and commit refreshed
+images to update the README; capture commands do not commit files. Generated tapes
+and ANSI/demo fixtures live in an ignored `tapes/` subdirectory of the output directory.
 
 Images use Ink's static `renderToString()` output, with a seeded React/TypeScript/Vite/Vitest demo scan, isolated configuration
 and stable display paths. VHS displays that ANSI output in its terminal and takes a PNG.
@@ -54,8 +60,8 @@ npm run record -- --tape scripts/tapes/workflow.tape
 `record` invokes the screenshot runner with `--video`. Defaults are Home (Scan), Nosey,
 100 columns and 60 rows and GIF + MP4, plus an initial PNG. Use repeatable `--format` for GIF,
 MP4 or WebM. Names include screen, theme, columns, optional `-ascii`, and `-video`.
-`--output-dir` selects the destination. For `docs/screenshots`, the runner keeps
-replay tapes and demo fixtures in the ignored `screenshots/tapes/` directory.
+`--output-dir` selects the destination (default: `assets/recordings/`). Replay tapes
+and demo fixtures stay in the ignored `tapes/` subdirectory beside the media.
 
 The video runs the source CLI in a real PTY, clears CI/NO_COLOR/CLI_ASCII/NOSEY_THEME overrides,
 passes explicit theme flags, a demo project and isolated temporary configuration, and leaves the
@@ -83,7 +89,7 @@ registry configuration use an isolated temporary XDG config directory.
 # Write tapes/fixtures without VHS. Useful for review and debugging.
 npm run record -- --dry-run --tape scripts/tapes/workflow.tape
 # Replay a generated tape from the project root (requires capture tools).
-vhs screenshots/tapes/home-nosey-100-video.tape
+vhs assets/recordings/tapes/home-nosey-100-video.tape
 # Record your own key sequence, then edit it into an interaction-only snippet.
 vhs record > /tmp/my-session.tape
 ```
@@ -99,8 +105,9 @@ workflow, commit the source interaction tape and regenerate on each machine.
 
 `.github/workflows/screenshots.yml` installs pinned VHS 0.12.1, ttyd, FFmpeg and
 fonts through the official VHS action, runs Nosey's typecheck, complete test script
-and build, then captures all 40 default PNGs and the interactive demo. Manual inputs
-select the video screen/theme/width/height/tape. Uploads retain images, videos and generated
+and build, then captures all 40 default PNGs plus the four Nosey/96-column README
+images in `assets/screenshots/` and the interactive demo in `assets/recordings/`.
+Manual inputs select the video screen/theme/width/height/tape. Uploads retain images, videos and generated
 tapes/demo fixtures for 14 days. Media is not published or committed automatically.
 The existing `.github/workflows/ci.yml` continues to run its CLI smoke tests.
 
