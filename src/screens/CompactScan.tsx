@@ -5,7 +5,7 @@ import {CompactScanSummary} from '../components/scan/CompactScanSummary';
 import {CompactSkillPicker} from '../components/scan/CompactSkillPicker';
 import {useScan} from '../features/skills/context';
 import {orderedSelection} from '../features/skills/groups';
-import {generateInstallCommands} from '../features/skills/install';
+import {generateInstallCommands, installedSkillIds} from '../features/skills/install';
 import {useKeymap} from '../hooks/useKeymap';
 import {useTheme} from '../theme/context';
 
@@ -14,11 +14,15 @@ export function CompactScanScreen() {
   const {config, scan, refresh, confirm, installSettings} = useScan();
   const {exit} = useApp();
   const theme = useTheme();
-  const [selected, setSelected] = useState<string[]>([]);
-  const [reviewing, setReviewing] = useState(false);
   const report = scan.status === 'success' ? scan.data : undefined;
   const defaultAgents = installSettings.defaultAgents ?? [];
   const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
+
+  const [selected, setSelected] = useState(() =>
+    installedSkillIds(report?.skills ?? [], statusAgents),
+  );
+
+  const [reviewing, setReviewing] = useState(false);
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
 
   const installPlan = installSettings.enabled
@@ -27,11 +31,11 @@ export function CompactScanScreen() {
 
   const cannotConfirm = reviewing && Boolean(installPlan?.errors.length);
 
-  // A rescan invalidates previous selections and any open confirmation.
+  // A rescan restores installed defaults and invalidates any open confirmation.
   useEffect(() => {
-    setSelected([]);
+    setSelected(installedSkillIds(report?.skills ?? [], statusAgents));
     setReviewing(false);
-  }, [report]);
+  }, [report, statusAgents.join(',')]);
 
   useKeymap(
     [

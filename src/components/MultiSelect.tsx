@@ -3,6 +3,7 @@ import {useRef, useState} from 'react';
 import {useKeymap} from '../hooks/useKeymap';
 import {listIndex, listSize, listWindow} from '../lib/list';
 import {useTheme} from '../theme/context';
+import {OptionRow} from './control-parts';
 import type {SelectItem} from './Select';
 import {Muted} from './typography';
 
@@ -163,21 +164,13 @@ export function MultiSelect<T extends string>({
                   </Text>
                 </Box>
               )}
-            <Text
-              bold={focused}
-              color={
-                focused
-                  ? t.color.primary
-                  : selected.has(item.value)
-                    ? t.color.success
-                    : t.color.text
-              }
-              wrap="truncate-end"
-            >
-              {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
-              {item.label}
-              {item.hint ? ` - ${item.hint}` : ''}
-            </Text>
+            <OptionRow
+              label={item.label}
+              hint={item.hint}
+              focused={focused}
+              selected={selected.has(item.value)}
+              marker="checkbox"
+            />
           </Box>
         );
       })}

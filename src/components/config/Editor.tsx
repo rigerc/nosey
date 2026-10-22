@@ -1,7 +1,7 @@
 import {isString, jsonObjectSchema, type JsonValue, type JsonObject} from '../../lib/values';
 
 import {useKeyboardInput} from '../../hooks/useKeymap';
-import {Box, Text} from 'ink';
+import {Box} from 'ink';
 import {useState} from 'react';
 import {type ConfigField, getAtPath} from '../../config';
 
@@ -9,7 +9,8 @@ import {useInputCapture} from '../../hooks/useInputCapture';
 import {useInputActivity} from '../../hooks/useInputActivity';
 import {useFooterHints} from '../../hooks/useFooterHints';
 import {formatValue} from '../../lib/format';
-import {useTheme} from '../../theme/context';
+import {InputLine, OptionRow} from '../control-parts';
+import {StatusMessage} from '../Status';
 import {MultiSelect} from '../MultiSelect';
 import {Select} from '../Select';
 import {Muted} from '../typography';
@@ -93,8 +94,8 @@ function EditText({
 
   return (
     <Box flexDirection="column">
-      <Text>Edit value: {text || '(empty)'}_</Text>
-      {error && <Text color="red">{error}</Text>}
+      <InputLine label="Edit value" value={text} placeholder="(empty)" isActive={active} />
+      {error && <StatusMessage tone="danger">{error}</StatusMessage>}
     </Box>
   );
 }
@@ -120,7 +121,6 @@ export function ConfigSectionEditor({
   active = true,
 }: ConfigSectionEditorProps) {
   active = useInputActivity() && active;
-  const theme = useTheme();
 
   const visible = fields.filter(
     (field) => !field.visibleWhen || field.visibleWhen(jsonObjectSchema.parse(values)),
@@ -198,15 +198,17 @@ export function ConfigSectionEditor({
 
         return (
           <Box key={item.path} flexDirection="column">
-            <Text
-              wrap="truncate-end"
-              color={i === index ? theme.color.primary : theme.color.text}
-              bold={i === index}
-            >
-              {i === index ? theme.symbols.pointer : ' '} {item.label}: {display}
-              {source && source !== 'default' ? ` [${source}]` : ''}
-            </Text>
-            {i === index && item.description && <Muted>{item.description}</Muted>}
+            <OptionRow
+              label={item.label}
+              value={display}
+              hint={source && source !== 'default' ? `[${source}]` : undefined}
+              focused={active && mode === 'list' && i === index}
+            />
+            {i === index && item.description && (
+              <Box paddingLeft={2}>
+                <Muted>{item.description}</Muted>
+              </Box>
+            )}
           </Box>
         );
       })}

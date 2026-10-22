@@ -51,7 +51,7 @@ export function HelpScreen() {
           ))}
         </Box>
         <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0}>
-          <Panel title={topics[topic]} compact>
+          <Panel title={topics[topic]} compact variant="plain">
             {(topic === 0 || topic === 1) &&
               shortcuts.map((hint) => (
                 <Text key={hint.key}>

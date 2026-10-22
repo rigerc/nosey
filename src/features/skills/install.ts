@@ -216,6 +216,16 @@ export function installationLabel(
   return 'Not installed';
 }
 
+/** Seed each scan with the same fully installed skills identified by its labels. */
+export function installedSkillIds(
+  skills: readonly InstallableSkill[],
+  agents: readonly string[],
+): string[] {
+  return skills.flatMap((skill) =>
+    installationLabel(skill.installation, agents) === 'Installed' ? [skill.id] : [],
+  );
+}
+
 function shellQuote(value: string): string {
   if (/^[A-Za-z0-9_./:@+-]+$/.test(value)) return value;
 

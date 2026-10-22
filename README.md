@@ -92,7 +92,7 @@ cd /path/to/your-project && npx skills add vercel-labs/agent-skills --skill reac
 
 The generated commands always use the scanned project directory, include `--yes --json`, and never use `--global`. **Printing commands does not install skills. Enabling execution and confirming the selection installs them.** Multiple repositories or differing agent requirements yield multiple commands.
 
-Scan also checks project-local skill directories and `skills-lock.json` without launching the Skills CLI. Skills with matching lock provenance and local files are marked **Installed** (all inspected agents) or **Partial** (some agents). Matching file names without verified provenance are marked **Present (unverified)**; Nosey will not silently treat them as installed. Global installations do not count. Fully installed targets are omitted from generated commands; partially installed skills target only missing agents.
+Scan also checks project-local skill directories and `skills-lock.json` without launching the Skills CLI. Skills with matching lock provenance and local files are marked **Installed** (all inspected agents) or **Partial** (some agents). Matching file names without verified provenance are marked **Present (unverified)**; Nosey will not silently treat them as installed. Global installations do not count. Skills marked **Installed** start selected in both Scan views; Space can deselect them. A rescan resets the selection to the newly detected installed skills. Fully installed targets are omitted from generated commands; partially installed skills target only missing agents.
 
 ## Screenshots
 

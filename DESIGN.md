@@ -27,6 +27,8 @@ colors:
   light-on-tone: '#F5E6C8'
 components:
   panel-title:
+    textColor: '{colors.nosey-muted}'
+  panel-title-focused:
     textColor: '{colors.nosey-primary}'
   grouped-skill-heading:
     textColor: '{colors.nosey-muted}'
@@ -35,6 +37,8 @@ components:
   skill-row-focused:
     textColor: '{colors.nosey-primary}'
   text-field-active:
+    textColor: '{colors.nosey-text}'
+  text-field-cursor:
     textColor: '{colors.nosey-primary}'
   badge-solid-primary:
     backgroundColor: '{colors.nosey-primary}'
@@ -65,7 +69,7 @@ The default Nosey palette uses amber, parchment and warm muted browns. Frontmatt
 
 ### Primary
 
-- **Nose amber** (`nosey-primary`, `nosey-accent`, `nosey-focus`): the caret in the brand mark, active tabs, focused options, headings and the focused panel border. These roles intentionally share one brand color.
+- **Nose amber** (`nosey-primary`, `nosey-accent`, `nosey-focus`): the caret in the brand mark, active tabs, focused options, active section titles and the input cursor. These roles intentionally share one brand color.
 - **Burnt amber** (`light-primary`, `light-accent`, `light-focus`): the corresponding emphasis on light terminals. Do not use dark-theme amber as text on parchment.
 
 ### Neutral
@@ -97,13 +101,13 @@ Use existing typography components rather than simulating larger display type or
 
 All measurements are terminal columns and rows, not pixels. The shell orders header, wrapping tabs, screen body, toast host and status footer. Header and tabs are adjacent; body and footer retain a blank row of separation. Header, tabs, screen content and footer use one column of horizontal padding. Tabs have a one-column gap. Screen descriptions and paths truncate in the middle to preserve the beginning and end without adding rows.
 
-Scan uses one column at every width: a three-row summary of scan status, counts, and detected technologies, followed by the focused skill picker. Warnings remain explicit below the summary and may extend into scrollback. The picker uses compact panels and grouped menus: headings sit directly above their options, later groups retain a blank row above the heading, and list metadata has no extra vertical padding. Below 60 columns, options lead with the skill name so common repository prefixes do not hide the distinction between skills. Full IDs remain searchable in hints and visible in details. The unique selected total appears once above the list; the entry range appears below. The no-install statement remains visible inside the picker.
+Scan uses one column at every width: a three-row summary of scan status, counts, and detected technologies, followed by an open skill picker. Warnings remain explicit below the summary and may extend into scrollback. The picker uses a plain compact section and grouped menus: headings sit directly above their options, later groups retain a blank row above the heading, and list metadata has no extra vertical padding. Below 60 columns, options lead with the skill name so common repository prefixes do not hide the distinction between skills. Full IDs remain searchable in hints and visible in details. The unique selected total appears once above the list; the entry range appears below. The no-install statement remains visible inside the picker.
 
 The option budget is `max(3, min(16, rows - 16))`. The physical menu budget is `max(4, rows - (columns < 60 ? 20 : 19) - activeFilterRows)`. These limits keep the focused item visible while accounting for group headings. Primary initial screens fit 24-row terminals at 40, 60, 80, 96 and 120 columns. Longer warnings, review commands, and detail content may use scrollback rather than clipping important information.
 
 Compact Scan follows the same density and selection treatment without panels, tabs, or a command menu. A two-row brand/project header keeps long paths bounded. Narrow rows lead with the skill name, while review and output retain canonical IDs. Its list reserves space for the summary, one selected total, the no-install statement, and essential footer controls in 24-row terminals.
 
-Settings shows section navigation followed by only the active section's values or editor. Paths and pending-change state stay above those controls. Registries separates project/scope/write-target metadata from its focused list or editor. Help is a topic browser: an unbordered 22-column sidebar beside one content panel at 80 columns and above, and wrapping topic labels above the panel below 80 columns. Up/down or j/k changes the topic; visited screens retain their state.
+Settings shows section navigation followed by only the active section's values or editor. Paths and pending-change state stay above those controls. Registries separates project/scope/write-target metadata from its focused list or editor. Help is a topic browser: an unbordered 22-column sidebar beside an open content section at 80 columns and above, and wrapping topic labels above the content below 80 columns. Up/down or j/k changes the topic; visited screens retain their state.
 
 The status footer keeps contextual actions separate from app navigation, with adjacent hint rows. Below 60 columns it shows at most three contextual hints and hides the extra global row when context exists. From 60 through 89 it shows at most five context hints; from 90 it shows at most nine. Editors and confirmations supply their own hints. Horizontal hint spacing is two columns, with one column between key and label.
 
@@ -111,11 +115,11 @@ The status footer keeps contextual actions separate from app navigation, with ad
 
 ## Elevation & Depth
 
-The interface is flat. Focus is conveyed by border weight, primary color, bold text and a pointer; muted borders separate supporting panels. There are no CSS shadows, floating surface layers or prescribed full-panel fills. A screenshot's dark canvas belongs to the terminal/capture environment and must not be promoted into a new component background token.
+The interface is flat. Focus is conveyed by primary color, bold text and a pointer; muted borders distinguish dialogs and reviews from open browsing sections. There are no CSS shadows, floating surface layers or prescribed full-panel fills. A screenshot's dark canvas belongs to the terminal/capture environment and must not be promoted into a new component background token.
 
 ## Shapes
 
-Shapes are terminal border glyphs, not pixel radii. Color themes use `round` base borders and `bold` focus borders. Mono uses `single` base and `double` focus borders. ASCII mode changes both to `classic` and substitutes the ASCII symbol set. Cards use only a left border with one column of left padding. Dividers are horizontal rules; tabs and outline badges use literal brackets.
+Shapes are terminal border glyphs, not pixel radii. Outlined panels use the base border: `round` in color themes, `single` in mono and `classic` in ASCII. Focus border tokens remain available in the theme, while standard panels use a quiet base outline. ASCII mode also substitutes the ASCII symbol set. Cards use only a left border with one column of left padding. Dividers are horizontal rules; tabs and outline badges use literal brackets.
 
 Preserve the `:^)` silhouette through `BrandMark`: colon and closing parenthesis use text color, and the caret uses primary. It already survives ASCII and mono without an alternate logo.
 
@@ -127,19 +131,19 @@ Preserve the `:^)` silhouette through `BrandMark`: colon and closing parenthesis
 
 ### Panels and cards
 
-`Panel` has an optional bold title, semantic title tone, one-column side padding and a muted border at rest. `focused` switches to the active theme's focus border and color. The project summary is unbordered; Suggested skills uses primary and is focused. Compact panels place their title directly above the content. `Card` is the lighter left-rule alternative. Do not add generic browser card styling.
+`Panel` has an optional bold title and a `plain` or `outline` variant. Outlines use a muted base border and one-column side padding; plain sections align directly with their parent. Titles default to muted, or primary when focused; explicit title tones take precedence. Scan browsing, registry browsing, Settings and Help use open sections. Reviews, dialogs and editing flows retain quiet outlines. Compact panels place their title directly above content. `Card` remains the left-rule alternative.
 
 ### Grouped skill selection
 
-`MultiSelect` shows a focus pointer, checkbox and skill ID. Selected rows use the success tone; focused rows use primary and bold text. The checkbox carries selection in mono. Group headings carry their selected/available count and remain visually distinct from options. Shared IDs have synchronized checkboxes across technology, combination and frontend groups, and appear once in confirmed output. Filtering preserves hidden selections. Enter opens Review; the confirmation defaults to No. The list footer distinguishes selected IDs from visible entries.
+`MultiSelect` shows a focus pointer, checkbox and skill ID. Selected markers and unfocused selected labels use the success tone; focused labels use primary and bold text. Hints remain muted in either state. The checkbox carries selection in mono. Inactive controls omit pointers and active emphasis. Group headings carry their selected/available count and remain visually distinct from options. Shared IDs have synchronized checkboxes across technology, combination and frontend groups, and appear once in confirmed output. Filtering preserves hidden selections. Enter opens Review; the confirmation defaults to No. The list footer distinguishes selected IDs from visible entries.
 
 ### Text fields and search
 
-`TextField` is an inline `Label: value_` terminal field, primary when active and muted when inactive. It truncates at the end rather than drawing a browser input box. Active text editing captures keys; Enter accepts, Escape cancels and Ctrl+U clears. Deactivate the underlying list while a text field or search control owns input.
+`TextField` is an inline `Label: value_` terminal field. Labels and entered text use the text role; placeholders use muted text. The active cursor uses primary and inverse styling. Long values truncate at the beginning so the editing end and cursor stay visible; inactive fields omit the cursor. Active text editing captures keys; Enter accepts, Escape cancels and Ctrl+U clears. Deactivate the underlying list while a text field or search control owns input.
 
 ### Badges and statuses
 
-`Badge` supports subtle (symbol plus label), outline (bracketed label) and solid (tone fill with `onTone` text and one space on each side). Mono solid badges use inverse bold text. Read-only and partial labels remain explicit words; loading uses a themed spinner rather than an invented percentage. Empty and error states explain the condition and available action.
+`Badge` supports subtle (symbol plus label), outline (bracketed label with one space inside each bracket) and solid (tone fill with `onTone` text and one space on each side). Mono solid badges use inverse bold text. Read-only and partial labels remain explicit words; loading uses a themed spinner rather than an invented percentage. Empty states align left with surrounding content. Status messages, alert titles and bodies, and spinner labels wrap so complete diagnostics remain accessible. Progress bars shrink within their parent and reserve space for a visible percentage; their value contract remains 0–1.
 
 ### Contextual footer
 

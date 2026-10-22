@@ -1,11 +1,11 @@
 import {useKeyboardInput} from '../hooks/useKeymap';
-import {Box, Text} from 'ink';
+import {Box} from 'ink';
 import {useRef, useState} from 'react';
 import {useInputCapture} from '../hooks/useInputCapture';
 import {useInputActivity} from '../hooks/useInputActivity';
 import {useFooterHints} from '../hooks/useFooterHints';
 import {listIndex, listSize, listWindow} from '../lib/list';
-import {useTheme} from '../theme/context';
+import {InputLine, OptionRow} from './control-parts';
 import type {SelectItem} from './Select';
 import {Muted} from './typography';
 
@@ -53,7 +53,6 @@ export function SearchSelect<T extends string>({
     ],
     isActive,
   );
-  const t = useTheme();
   const [internalQuery, setQuery] = useState(defaultQuery);
   const query = controlledQuery ?? internalQuery;
   const currentQuery = useRef(query);
@@ -140,25 +139,16 @@ export function SearchSelect<T extends string>({
 
   return (
     <Box flexDirection="column">
-      <Text color={isActive ? t.color.primary : t.color.muted} wrap="truncate-end">
-        Search: {query || placeholder}
-      </Text>
+      <InputLine label="Search" value={query} placeholder={placeholder} isActive={isActive} />
       {matches.length === 0 && <Muted>{emptyMessage}</Muted>}
-      {matches.slice(start, end).map((item, offset) => {
-        const focused = isActive && start + offset === index;
-
-        return (
-          <Text
-            key={item.value}
-            bold={focused}
-            color={focused ? t.color.primary : t.color.text}
-            wrap="truncate-end"
-          >
-            {focused ? t.symbols.pointer : ' '} {item.label}
-            {item.hint ? ` - ${item.hint}` : ''}
-          </Text>
-        );
-      })}
+      {matches.slice(start, end).map((item, offset) => (
+        <OptionRow
+          key={item.value}
+          label={item.label}
+          hint={item.hint}
+          focused={isActive && start + offset === index}
+        />
+      ))}
       {matches.length > 0 && (
         <Muted>
           {start + 1}-{end} of {matches.length} matches

@@ -34,7 +34,7 @@ export function Badge({
   if (variant === 'outline') {
     return (
       <Text color={color} dimColor={t.mono && tone === 'muted'}>
-        [{children}]
+        [ {children} ]
       </Text>
     );
   }

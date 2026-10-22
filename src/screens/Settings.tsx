@@ -83,7 +83,7 @@ function SettingsEditor({
 
   return (
     <Stack>
-      <Panel title="Configuration" compact>
+      <Panel title="Configuration" compact variant="plain">
         <Text color={theme.color.muted} wrap="truncate-middle">
           {draft.path}
         </Text>

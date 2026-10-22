@@ -305,7 +305,12 @@ export function RegistryManagerScreen() {
           Write target: {target}
         </Text>
       </Box>
-      <Panel title="Registry references" compact focused>
+      <Panel
+        title="Registry references"
+        compact
+        focused
+        variant={mode === 'list' ? 'plain' : 'outline'}
+      >
         {message && <StatusMessage tone="info">{message}</StatusMessage>}
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
         {busy ? (

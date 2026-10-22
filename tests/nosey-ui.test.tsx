@@ -1,4 +1,4 @@
-import {mkdtempSync, existsSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, relative, dirname} from 'node:path';
 import {renderToString} from 'ink';
@@ -132,6 +132,103 @@ describe('Nosey scan interaction', () => {
 
     expect(compact.lastFrame()).toContain('npx skills update');
   });
+
+  it.each([false, true])(
+    'preselects only Installed skills and retains manual deselection (compact=%s)',
+    async (compactMode) => {
+      const confirmed = vi.fn();
+
+      const installedReport: Report = {
+        ...report,
+        inspectedAgents: ['codex', 'claude-code'],
+        skills: report.skills.map((skill, index) => ({
+          ...skill,
+          installation:
+            index === 0
+              ? {installedAgents: ['codex', 'claude-code'], unverifiedAgents: []}
+              : index === 1
+                ? {installedAgents: ['codex'], unverifiedAgents: []}
+                : {installedAgents: [], unverifiedAgents: ['codex', 'claude-code']},
+        })),
+      };
+
+      const configured = {
+        ...options,
+        compactMode,
+        report: installedReport,
+        onConfirm: confirmed,
+        skillsCli: {enabled: false, defaultAgents: []},
+      };
+
+      const initial = renderToString(<App options={configured} />, {columns: 120});
+
+      expect(initial).toContain('[x] acme/skills/alpha [Installed]');
+      const app = await mount(<App options={configured} />);
+
+      // Review the initial defaults: Partial and unverified skills are not included.
+      await press(app, '\r');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(confirmed).toHaveBeenCalledExactlyOnceWith(['acme/skills/alpha']);
+
+      const editable = await mount(<App options={configured} />);
+      await press(editable, ' '); // Deselect the preselected alpha.
+      expect(editable.lastFrame()).toContain('[ ] acme/skills/alpha [Installed]');
+
+      if (!compactMode) {
+        await press(editable, '/');
+        await press(editable, 'beta');
+        await press(editable, '\r');
+        await press(editable, 'c');
+        await press(editable, '3');
+        await press(editable, '1');
+      }
+
+      expect(editable.lastFrame()).toContain('[ ] acme/skills/alpha [Installed]');
+      await press(editable, '\r');
+      expect(editable.lastFrame()).toContain('No skills selected');
+    },
+  );
+
+  it.each([false, true])(
+    'preselects verified installations after loading and rescanning (compact=%s)',
+    async (compactMode) => {
+      const name = 'react-best-practices';
+      const id = 'vercel-labs/agent-skills/' + name;
+      const directory = join(root, '.agents', 'skills', name);
+      mkdirSync(directory, {recursive: true});
+      writeFileSync(join(directory, 'SKILL.md'), '---\nname: ' + name + '\n---\n');
+      writeFileSync(join(root, 'package.json'), JSON.stringify({dependencies: {react: '^19.0.0'}}));
+      writeFileSync(
+        join(root, 'skills-lock.json'),
+        JSON.stringify({
+          version: 1,
+          skills: {
+            [name]: {source: 'vercel-labs/agent-skills', skillPath: 'skills/' + name + '/SKILL.md'},
+          },
+        }),
+      );
+
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            compactMode,
+            report: undefined,
+            scan: {...options.scan!, frontendBonus: false},
+            skillsCli: {enabled: false, defaultAgents: ['codex']},
+          }}
+        />,
+      );
+
+      await vi.waitFor(() => expect(app.lastFrame()).toContain('[x] ' + id + ' [Installed]'));
+      await press(app, '\u001b[F'); // React's last option is react-best-practices.
+      await press(app, ' ');
+      expect(app.lastFrame()).toContain('[ ] ' + id + ' [Installed]');
+      await press(app, 'r');
+      await vi.waitFor(() => expect(app.lastFrame()).toContain('[x] ' + id + ' [Installed]'));
+    },
+  );
 
   it('shows installed status and prints only missing project agent commands', async () => {
     const confirmed = vi.fn();
@@ -663,9 +760,13 @@ describe('Registry UI writes', () => {
     expect(existsSync(join(root, '.nosey.json'))).toBe(false);
     // Adding the reference saves first, then asynchronously reloads the list.
     // Wait for an interactive list so Enter isn't dispatched while still busy.
-    await vi.waitFor(() => expect(app.lastFrame()).toContain('team-skills global / local'), {
-      timeout: 5000,
-    });
+    await vi.waitFor(
+      () => {
+        expect(app.lastFrame()).toContain('team-skills');
+        expect(app.lastFrame()).toContain('global / local');
+      },
+      {timeout: 5000},
+    );
     await vi.waitFor(() => expect(app.lastFrame()).toContain('[enter] details'), {timeout: 5000});
     await press(app, '\r');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'), {timeout: 5000});

@@ -16,7 +16,11 @@ import {
   TextField,
 } from '../components';
 import {useScan} from '../features/skills/context';
-import {generateInstallCommands, installationLabel} from '../features/skills/install';
+import {
+  generateInstallCommands,
+  installationLabel,
+  installedSkillIds,
+} from '../features/skills/install';
 import {filterSkills} from '../features/skills/filter';
 import {deriveSkillGroups, orderedSelection, selectedInGroup} from '../features/skills/groups';
 import {useScreenHints, useUiAction} from '../features/ui/context';
@@ -40,18 +44,22 @@ export function HomeScreen() {
   const {exit} = useApp();
   const {rows, columns} = useTerminalSize();
   const theme = useTheme();
+  const report = scan.status === 'success' ? scan.data : undefined;
+  const defaultAgents = installSettings.defaultAgents ?? [];
+  const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
   const [mode, setMode] = useState<Mode>('browse');
-  const [selected, setSelected] = useState<string[]>([]);
+
+  const [selected, setSelected] = useState(() =>
+    installedSkillIds(report?.skills ?? [], statusAgents),
+  );
+
   const [filter, setFilter] = useState('');
   const [previousFilter, setPreviousFilter] = useState('');
   const [cursor, setCursor] = useState(0);
   const [detailId, setDetailId] = useState('');
   const [notice, setNotice] = useState('');
-  const report = scan.status === 'success' ? scan.data : undefined;
   const visible = useMemo(() => filterSkills(report?.skills ?? [], filter), [report, filter]);
   const groups = useMemo(() => (report ? deriveSkillGroups(report) : []), [report]);
-  const defaultAgents = installSettings.defaultAgents ?? [];
-  const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
 
   const allItems = useMemo(
     () =>
@@ -118,12 +126,12 @@ export function HomeScreen() {
   const pageSize = Math.max(3, Math.min(16, rows - 16));
   useEffect(() => {
     if (report) {
-      setSelected([]);
+      setSelected(installedSkillIds(report.skills, statusAgents));
       setFilter('');
       setCursor(0);
       setMode('browse');
     }
-  }, [report]);
+  }, [report, statusAgents.join(',')]);
 
   const beginFilter = () => {
     setPreviousFilter(filter);
@@ -156,7 +164,7 @@ export function HomeScreen() {
       {
         key: 'r',
         run: () => {
-          if (selected.length) setNotice('New scan: selection was cleared.');
+          if (selected.length) setNotice('New scan: selection reset to installed skills.');
           void refresh();
         },
       },
@@ -267,6 +275,7 @@ export function HomeScreen() {
   const picker = (
     <Panel
       compact
+      variant={mode === 'review' || mode === 'detail' ? 'outline' : 'plain'}
       title={
         mode === 'review'
           ? 'Review selection'

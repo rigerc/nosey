@@ -12,12 +12,20 @@ export function EmptyState({
   children?: ReactNode;
 }) {
   return (
-    <Box flexDirection="column" alignItems="center" paddingY={1}>
+    <Box flexDirection="column">
       <Box gap={1}>
-        <Icon name="info" tone="muted" />
-        <Text bold>{title}</Text>
+        <Box flexShrink={0}>
+          <Icon name="info" tone="muted" />
+        </Box>
+        <Box flexShrink={1}>
+          <Text bold>{title}</Text>
+        </Box>
       </Box>
-      {hint && <Muted>{hint}</Muted>}
+      {hint && (
+        <Box paddingLeft={2}>
+          <Muted>{hint}</Muted>
+        </Box>
+      )}
       {children}
     </Box>
   );

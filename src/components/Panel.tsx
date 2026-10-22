@@ -11,31 +11,35 @@ export interface PanelProps {
   /** Tone of the title. */
   tone?: Tone;
   focused?: boolean;
+  /** Open sections for content, outlines for dialogs and review. */
+  variant?: 'plain' | 'outline';
   /** Use a tighter title row for task-focused screens. */
   compact?: boolean;
   width?: number | string;
   children: ReactNode;
 }
 
-/** Bordered container. Ink has no border titles, so the title is the first row. */
+/** Shared section title and spacing, with an optional quiet outline. */
 export function Panel({
   title,
   footer,
-  tone = 'primary',
+  tone,
   focused = false,
+  variant = 'outline',
   compact = false,
   width,
   children,
 }: PanelProps) {
   const t = useTheme();
-  const titleStyle = useTone(tone);
+  const titleStyle = useTone(tone ?? (focused ? 'primary' : 'muted'));
 
   return (
     <Box
       flexDirection="column"
-      borderStyle={focused ? t.border.focus : t.border.base}
-      borderColor={focused ? t.color.focus : t.color.border}
-      paddingX={1}
+      borderStyle={variant === 'outline' ? t.border.base : undefined}
+      borderColor={t.color.border}
+      borderDimColor={t.mono}
+      paddingX={variant === 'outline' ? 1 : 0}
       width={width}
     >
       {title && (

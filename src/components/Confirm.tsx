@@ -2,7 +2,8 @@ import {Box, Text} from 'ink';
 import {useRef, useState} from 'react';
 import {useKeymap} from '../hooks/useKeymap';
 import {useInputCapture} from '../hooks/useInputCapture';
-import {useTheme} from '../theme/context';
+import {useInputActivity} from '../hooks/useInputActivity';
+import {OptionRow} from './control-parts';
 import {useFooterHints} from '../hooks/useFooterHints';
 
 export interface ConfirmProps {
@@ -21,6 +22,7 @@ export function Confirm({
   onCancel,
   isActive = true,
 }: ConfirmProps) {
+  isActive = useInputActivity() && isActive;
   const [value, updateValue] = useState(defaultValue);
   const current = useRef(value);
   current.current = value;
@@ -30,7 +32,6 @@ export function Confirm({
     updateValue(next);
   };
 
-  const t = useTheme();
   useFooterHints(
     [
       {key: 'y/n', label: 'choose'},
@@ -59,13 +60,11 @@ export function Confirm({
       <Text>{message}</Text>
       <Box gap={2}>
         {[true, false].map((option) => (
-          <Text
+          <OptionRow
             key={String(option)}
-            bold={option === value}
-            color={option === value ? t.color.primary : t.color.muted}
-          >
-            {option === value ? t.symbols.pointer : ' '} {option ? 'Yes' : 'No'}
-          </Text>
+            focused={isActive && option === value}
+            label={option ? 'Yes' : 'No'}
+          />
         ))}
       </Box>
     </Box>

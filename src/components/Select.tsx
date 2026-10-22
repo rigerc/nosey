@@ -1,9 +1,10 @@
-import {Box, Text} from 'ink';
+import {Box} from 'ink';
 import {useRef, useState} from 'react';
 import {listIndex, listWindow} from '../lib/list';
 import {useKeymap} from '../hooks/useKeymap';
-import {useTheme, useTone} from '../theme/context';
-import {Icon, Muted} from './typography';
+import {useInputActivity} from '../hooks/useInputActivity';
+import {OptionRow} from './control-parts';
+import {Muted} from './typography';
 
 export interface SelectItem<T extends string> {
   value: T;
@@ -30,8 +31,7 @@ export function Select<T extends string>({
   allowWhenCaptured?: boolean;
   maxVisible?: number;
 }) {
-  const t = useTheme();
-  const primary = useTone('primary');
+  isActive = useInputActivity() && isActive;
 
   const [position, setIndex] = useState(
     Math.max(
@@ -77,24 +77,16 @@ export function Select<T extends string>({
 
   return (
     <Box flexDirection="column">
-      {items.slice(start, end).map((item, i) => {
-        const active = start + i === index;
-
-        return (
-          <Box key={item.value} gap={1} flexShrink={1}>
-            <Text {...primary}>{active ? t.symbols.pointer : ' '}</Text>
-            <Text wrap="truncate-end" bold={active} {...(active ? primary : {})}>
-              {item.label}
-            </Text>
-            {item.value === current && <Icon name="success" />}
-            {item.hint && (
-              <Text wrap="truncate-end" color={t.color.muted}>
-                {item.hint}
-              </Text>
-            )}
-          </Box>
-        );
-      })}
+      {items.slice(start, end).map((item, i) => (
+        <OptionRow
+          key={item.value}
+          label={item.label}
+          hint={item.hint}
+          focused={isActive && start + i === index}
+          selected={item.value === current}
+          marker={current === undefined ? undefined : 'check'}
+        />
+      ))}
       {items.length > maxVisible && (
         <Muted>
           {start + 1}-{end} of {items.length}

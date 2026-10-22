@@ -1,7 +1,7 @@
-import {Text} from 'ink';
 import {useState} from 'react';
 import {useKeymap} from '../hooks/useKeymap';
-import {useTheme} from '../theme/context';
+import {useInputActivity} from '../hooks/useInputActivity';
+import {OptionRow} from './control-parts';
 
 export interface ToggleProps {
   label: string;
@@ -23,7 +23,7 @@ export function Toggle({
   onLabel = 'On',
   offLabel = 'Off',
 }: ToggleProps) {
-  const t = useTheme();
+  isActive = useInputActivity() && isActive;
   const [internal, setInternal] = useState(defaultValue);
   const enabled = value ?? internal;
 
@@ -45,9 +45,12 @@ export function Toggle({
   );
 
   return (
-    <Text color={isActive ? t.color.primary : t.color.text} bold={isActive} wrap="truncate-end">
-      {isActive ? t.symbols.pointer : ' '} [{enabled ? 'x' : ' '}] {label}:{' '}
-      {enabled ? onLabel : offLabel}
-    </Text>
+    <OptionRow
+      label={label}
+      value={enabled ? onLabel : offLabel}
+      focused={isActive}
+      selected={enabled}
+      marker="checkbox"
+    />
   );
 }

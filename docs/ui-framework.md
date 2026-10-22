@@ -191,6 +191,11 @@ review content without enabling unrelated handlers. `Stepper` uses screen scope,
 and its existing lock prevents duplicate transitions or submissions. When a choice
 adds or removes conditional steps, commit that choice before calling `goNext()`.
 
+Both Scan views seed each new report with skills whose installation label is `Installed`,
+using configured default agents or the report's inspected agents. Partial and unverified
+installations stay unchecked. Users can deselect installed skills; filtering and tab
+changes preserve their choices, while rescanning restores the installed defaults.
+
 For filtered multi-selection, pass `allItems` as the canonical option set and
 `items` as the visible subset. Changes retain selected IDs outside the filter.
 `cursor` / `onCursorChange` preserve list position, and `submitWhenEmpty` enables
@@ -217,14 +222,42 @@ support deterministic previews without launching asynchronous work. Production
 scans use `useAsync` so superseded results cannot overwrite a newer scan.
 
 Scan keeps a three-row project summary above the skill picker in one column at every
-terminal width. The picker uses `Panel compact` and `MultiSelect compact` to remove
-blank rows below headings and around list metadata. `showSelectedCount={false}`
-omits the duplicate selected total when the screen already displays it. Selected
-rows use the success tone; focus still uses a pointer, bold text, and primary tone.
-The physical row budget includes headings and inter-group spacing; the focused
-option stays visible. Below 60 columns, skill names lead each option and the full ID
-remains in its searchable hint and detail view. Long project paths truncate in the shared screen header;
-full paths remain available in headless reports.
+terminal width. Ordinary browsing uses `Panel variant="plain" compact`; reviews and
+details use a quiet outline. `MultiSelect compact` removes blank rows below headings
+and around list metadata. `showSelectedCount={false}` omits the duplicate selected
+total when the screen already displays it. Selected markers use the success tone;
+focused labels use a primary pointer and bold text. Hints stay muted independently
+of focus and selection. The physical row budget includes headings and inter-group
+spacing; the focused option stays visible. Below 60 columns, skill names lead each
+option and the full ID remains in its searchable hint and detail view. Long project
+paths truncate in the shared screen header; full paths remain available in headless
+reports.
+
+### Component presentation
+
+The visual roles follow [Ink UI's component patterns](https://github.com/vadimdemedes/ink-ui),
+using the local controls and keyboard dispatcher. `src/theme/components.ts` defines
+typed label, indicator, selection and hint styles from the active semantic palette.
+Internal `OptionRow` and `InputLine` primitives in `src/components/control-parts.tsx`
+share presentation without registering input handlers.
+
+- Options reserve a pointer column. Checkbox markers remain `[x]` / `[ ]` in Unicode
+  and ASCII output, independent of focus. Single-select controls reserve a check
+  column when `current` is provided. Inactive controls omit active pointers.
+- Input labels and entered values use readable text; placeholders and hints use
+  muted text. Active editors show an inverse underscore cursor. Long values
+  truncate from the beginning to keep their editing end visible. Inactive editors
+  omit the cursor. Input capture, submission and cancellation stay with the owner.
+- `Panel` defaults to `outline`; use `variant="plain"` for ordinary sections.
+  Outlines use the base border and muted border color even when focused. `focused`
+  emphasizes the title; an explicit `tone` overrides that title color. Plain panels
+  add no horizontal padding, so their contents align with `ScreenLayout`.
+- `StatusMessage`, `Alert` and spinner labels wrap instead of clipping diagnostics.
+  Icons retain their own column; alert bodies indent under the title text.
+  Empty states align with the surrounding content. Progress bars keep the numeric
+  percentage visible while shrinking to the containing width; values remain 0–1.
+- Tabs and wizard steps keep the same primary/bold current state and semantic
+  success state. Contextual key instructions belong in the shared footer.
 
 Settings previews only its active section and resolves nested configuration paths
 with `getAtPath`. Editing, save/discard, draft retention, and override sources use

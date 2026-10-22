@@ -1,8 +1,7 @@
 import {useKeyboardInput} from '../hooks/useKeymap';
-import {Text} from 'ink';
 import {useRef, useState} from 'react';
 import {useInputCapture} from '../hooks/useInputCapture';
-import {useTheme} from '../theme/context';
+import {InputLine} from './control-parts';
 import {useInputActivity} from '../hooks/useInputActivity';
 import {useFooterHints} from '../hooks/useFooterHints';
 
@@ -41,7 +40,6 @@ export function TextField({
   const value = controlledValue ?? internalValue;
   const current = useRef(value);
   current.current = value;
-  const theme = useTheme();
 
   const update = (next: string) => {
     current.current = next;
@@ -86,9 +84,5 @@ export function TextField({
   );
   useInputCapture(isActive);
 
-  return (
-    <Text color={isActive ? theme.color.primary : theme.color.muted} wrap="truncate-end">
-      {label}: {value || placeholder}_
-    </Text>
-  );
+  return <InputLine label={label} value={value} placeholder={placeholder} isActive={isActive} />;
 }

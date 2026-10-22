@@ -202,7 +202,7 @@ describe('compact Scan setting', () => {
     );
 
     expect(app.lastFrame()).toContain('[Installed]');
-    await press(app, ' ');
+    expect(app.lastFrame()).toContain('[x] acme/skills/alpha');
     await press(app, '\r');
     expect(app.lastFrame()).toContain('No installation commands are needed');
     await press(app, 'y');

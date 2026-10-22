@@ -12,8 +12,14 @@ export function Spinner({label, tone = 'primary'}: {label?: string; tone?: Tone}
 
   return (
     <Box gap={1}>
-      <Text {...useTone(tone)}>{glyph}</Text>
-      {label && <Text wrap="truncate-end">{label}</Text>}
+      <Box flexShrink={0}>
+        <Text {...useTone(tone)}>{glyph}</Text>
+      </Box>
+      {label && (
+        <Box flexShrink={1}>
+          <Text>{label}</Text>
+        </Box>
+      )}
     </Box>
   );
 }

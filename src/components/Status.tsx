@@ -7,12 +7,16 @@ import {Icon} from './typography';
 
 const iconFor = {success: 'success', danger: 'error', warn: 'warn', info: 'info'} as const;
 
-/** One-line status: icon + message. Never relies on color alone. */
+/** Icon and wrapping message. Diagnostics remain readable at narrow widths. */
 export function StatusMessage({tone = 'info', children}: {tone?: ToastTone; children: ReactNode}) {
   return (
     <Box gap={1}>
-      <Icon name={iconFor[tone]} tone={tone} />
-      <Text wrap="truncate-end">{children}</Text>
+      <Box flexShrink={0}>
+        <Icon name={iconFor[tone]} tone={tone} />
+      </Box>
+      <Box flexShrink={1} minWidth={0}>
+        <Text>{children}</Text>
+      </Box>
     </Box>
   );
 }
@@ -33,12 +37,20 @@ export function Alert({
   return (
     <Box flexDirection="column" borderStyle={t.border.base} borderColor={color} paddingX={1}>
       <Box gap={1}>
-        <Icon name={iconFor[tone]} tone={tone} />
-        <Text bold wrap="truncate-end" {...useTone(tone)}>
-          {title}
-        </Text>
+        <Box flexShrink={0}>
+          <Icon name={iconFor[tone]} tone={tone} />
+        </Box>
+        <Box flexShrink={1} minWidth={0}>
+          <Text bold {...useTone(tone)}>
+            {title}
+          </Text>
+        </Box>
       </Box>
-      {isString(children) ? <Text>{children}</Text> : children}
+      {children && (
+        <Box flexDirection="column" paddingLeft={2}>
+          {isString(children) ? <Text>{children}</Text> : children}
+        </Box>
+      )}
     </Box>
   );
 }
