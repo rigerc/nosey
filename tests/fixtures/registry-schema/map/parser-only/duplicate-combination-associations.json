@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "combinationSkills": [
+    {
+      "combinationId": "svelte-kit",
+      "skills": ["a"]
+    },
+    {
+      "combinationId": "svelte-kit",
+      "skills": ["b"]
+    }
+  ]
+}

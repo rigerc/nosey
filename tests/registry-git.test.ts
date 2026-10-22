@@ -63,6 +63,39 @@ test('Git cache avoids repeat fetches while TTL is fresh', async () => {
   });
 });
 
+test('the Git cache never carries a document annotation', async () => {
+  await cacheFixture(async (cacheDirectory) => {
+    const annotatedManifest = {...manifest, $schema: './schemas/skills-manifest.schema.json'};
+    const annotatedMap = {...map, $schema: './schemas/skills-map.schema.json'};
+
+    await loadGitRegistry(spec, {
+      cacheDirectory,
+      now: 1_000,
+      async fetcher() {
+        return {
+          loaded: {manifest: annotatedManifest, map: annotatedMap, source: 'fixture'},
+          commit,
+        };
+      },
+    });
+
+    const entries = await fs.readdir(cacheDirectory, {recursive: true, withFileTypes: true});
+    const files = entries.filter((entry) => entry.isFile());
+
+    expect(files.length).toBeGreaterThan(0);
+
+    for (const entry of files) {
+      // eslint-disable-next-line no-await-in-loop
+      const text = await fs.readFile(
+        path.join(entry.parentPath ?? cacheDirectory, entry.name),
+        'utf8',
+      );
+
+      expect(text).not.toContain('$schema');
+    }
+  });
+});
+
 test('cached regex detection rules retain their source and flags', async () => {
   await cacheFixture(async (cacheDirectory) => {
     const regexMap = {

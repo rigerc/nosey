@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "alwaysRecommend": [],
+  "externalSkills": [],
+  "technologies": [],
+  "technologySkills": [],
+  "combinations": [],
+  "combinationSkills": [],
+  "frontendBonusSkills": [],
+  "frontendPackages": [],
+  "webFrontendExtensions": []
+}

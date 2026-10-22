@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "registryId": "example/agent-skills",
+  "skills": [
+    {
+      "id": "example/agent-skills/testing",
+      "name": "Testing conventions",
+      "path": "skills/testing/SKILL.md",
+      "tags": ["a", "a"],
+      "version": 3
+    }
+  ],
+  "$schema": "./schemas/skills-manifest.schema.json",
+  "extraRootKey": {
+    "nested": [1, 2]
+  }
+}

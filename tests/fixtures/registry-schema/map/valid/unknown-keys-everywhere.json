@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "extraRootKey": true,
+  "technologies": [
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "detect": {
+        "packages": ["svelte"]
+      },
+      "extraKey": "kept"
+    }
+  ],
+  "technologySkills": [
+    {
+      "technologyId": "svelte",
+      "skills": ["example/agent-skills/testing"],
+      "extraKey": 1
+    }
+  ],
+  "combinations": [
+    {
+      "id": "svelte-kit",
+      "name": "SvelteKit",
+      "requires": ["svelte"],
+      "extraKey": null
+    }
+  ],
+  "combinationSkills": [
+    {
+      "combinationId": "svelte-kit",
+      "skills": ["example/agent-skills/testing"],
+      "extraKey": []
+    }
+  ],
+  "frontendBonusSkills": []
+}

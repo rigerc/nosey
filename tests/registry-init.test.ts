@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {test, expect, assert} from 'vite-plus/test';
 import {loadLocalRegistry} from '../src/lib/registry/load.js';
+import {registryJson, setAlwaysRecommend, showRegistry} from '../src/lib/registry/commands.js';
+import {type JsonObject, isRecord} from '../src/lib/values.js';
 import {seedRegistrySkill} from './helpers/registry-fixture.js';
 import {
   runRegistryInit,
@@ -16,6 +18,32 @@ import {
 
 const execFileAsync = promisify(execFile);
 const cli = fileURLToPath(new URL('../src/cli.tsx', import.meta.url));
+const templateSource = fileURLToPath(new URL('../templates/registry/', import.meta.url));
+const manifestAnnotation = './schemas/skills-manifest.schema.json';
+const mapAnnotation = './schemas/skills-map.schema.json';
+
+async function readDocument(directory: string, name: string): Promise<JsonObject> {
+  const document = JSON.parse(await fs.readFile(path.join(directory, name), 'utf8'));
+
+  if (!isRecord(document)) throw new Error(name + ' is not an object');
+
+  return document;
+}
+
+/** A pre-schema registry: no `schemas/` directory and no annotations. */
+async function legacyTemplate(parent: string): Promise<string> {
+  const directory = path.join(parent, 'legacy-template');
+  await fs.cp(templateSource, directory, {recursive: true});
+  await fs.rm(path.join(directory, 'schemas'), {recursive: true, force: true});
+
+  for (const name of ['skills-manifest.json', 'skills-map.json']) {
+    const document = await readDocument(directory, name);
+    delete document['$schema'];
+    await fs.writeFile(path.join(directory, name), JSON.stringify(document, null, 2) + '\n');
+  }
+
+  return directory;
+}
 
 async function temporary<T>(run: (parent: string) => Promise<T>): Promise<T> {
   const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-init-'));
@@ -661,5 +689,136 @@ test('Git and GitHub commands isolate repository environment overrides', async (
     for (const name of Object.keys(overrides)) expect(publishedEnv[name]).toBe(undefined);
     expect(publishedEnv['GIT_AUTHOR_NAME']).toBe(env.GIT_AUTHOR_NAME);
     expect(publishedEnv['GIT_TERMINAL_PROMPT']).toBe('0');
+  });
+});
+
+test('scaffold ships schemas and preserves both document annotations', async () => {
+  await temporary(async (parent) => {
+    const destination = path.join(parent, 'annotated');
+    await scaffoldRegistry(destination, 'acme/team-skills');
+
+    for (const name of ['schemas/skills-manifest.schema.json', 'schemas/skills-map.schema.json'])
+      expect((await fs.stat(path.join(destination, name))).isFile()).toBe(true);
+
+    const manifest = await readDocument(destination, 'skills-manifest.json');
+    const map = await readDocument(destination, 'skills-map.json');
+
+    expect(manifest['$schema']).toBe(manifestAnnotation);
+    expect(manifest['registryId']).toBe('acme/team-skills');
+    expect(map['$schema']).toBe(mapAnnotation);
+    expect(map['registryId']).toBe('acme/team-skills');
+    expect(Object.keys(manifest)[0]).toBe('$schema');
+    expect(Object.keys(map)[0]).toBe('$schema');
+  });
+});
+
+test('a legacy template stays unannotated and never gains a dangling reference', async () => {
+  await temporary(async (parent) => {
+    const source = await legacyTemplate(parent);
+    const destination = path.join(parent, 'legacy-registry');
+    await scaffoldRegistry(destination, 'acme/team-skills', source);
+
+    expect(Object.hasOwn(await readDocument(destination, 'skills-manifest.json'), '$schema')).toBe(
+      false,
+    );
+    expect(Object.hasOwn(await readDocument(destination, 'skills-map.json'), '$schema')).toBe(
+      false,
+    );
+    await expect(fs.stat(path.join(destination, 'schemas'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    await execFileAsync(process.execPath, ['scripts/generate-manifest.mjs', '--check'], {
+      cwd: destination,
+    });
+  });
+});
+
+test('custom and non-string annotations survive an identity rewrite', async () => {
+  await temporary(async (parent) => {
+    const source = path.join(parent, 'custom-template');
+    await fs.cp(templateSource, source, {recursive: true});
+    const manifest = await readDocument(source, 'skills-manifest.json');
+    manifest['$schema'] = 'https://example.com/custom.json';
+    await fs.writeFile(
+      path.join(source, 'skills-manifest.json'),
+      JSON.stringify(manifest, null, 2) + '\n',
+    );
+    const map = await readDocument(source, 'skills-map.json');
+    map['$schema'] = 3;
+    await fs.writeFile(path.join(source, 'skills-map.json'), JSON.stringify(map, null, 2) + '\n');
+
+    const destination = path.join(parent, 'custom-registry');
+    await scaffoldRegistry(destination, 'acme/team-skills', source);
+
+    expect((await readDocument(destination, 'skills-manifest.json'))['$schema']).toBe(
+      'https://example.com/custom.json',
+    );
+    expect((await readDocument(destination, 'skills-map.json'))['$schema']).toBe(3);
+  });
+});
+
+test('identity rewrite remaps local IDs and leaves annotations and external IDs untouched', async () => {
+  await temporary(async (parent) => {
+    const source = path.join(parent, 'populated');
+    await scaffoldRegistry(source, 'example/original');
+    await seedRegistrySkill(source);
+
+    const mapPath = path.join(source, 'skills-map.json');
+    const map = await readDocument(source, 'skills-map.json');
+    map['externalSkills'] = [
+      {
+        id: 'acme/upstream-skills/example-testing',
+        name: 'External testing',
+        source: 'acme/upstream-skills',
+        skill: 'example-testing',
+      },
+    ];
+    map['schemaVersion'] = 2;
+    map['alwaysRecommend'] = ['acme/upstream-skills/example-testing'];
+    await fs.writeFile(mapPath, JSON.stringify(map, null, 2) + '\n');
+
+    const destination = path.join(parent, 'renamed');
+    await scaffoldRegistry(destination, 'acme/renamed', source);
+    const rewritten = await readDocument(destination, 'skills-map.json');
+
+    expect(rewritten['$schema']).toBe(mapAnnotation);
+    expect(rewritten['alwaysRecommend']).toEqual(['acme/upstream-skills/example-testing']);
+    expect(rewritten['externalSkills']).toEqual(map['externalSkills']);
+
+    const manifest = await readDocument(destination, 'skills-manifest.json');
+
+    expect(manifest['$schema']).toBe(manifestAnnotation);
+    expect((await loadLocalRegistry(destination)).manifest.skills[0]?.id).toBe(
+      'acme/renamed/example-testing',
+    );
+  });
+});
+
+test('shared document writes never invent or leak an annotation', async () => {
+  await temporary(async (parent) => {
+    const annotated = path.join(parent, 'annotated');
+    await scaffoldRegistry(annotated, 'acme/team-skills');
+    await seedRegistrySkill(annotated);
+
+    const shown = registryJson(await showRegistry(annotated));
+
+    expect(shown).not.toContain('$schema');
+
+    const before = await readDocument(annotated, 'skills-map.json');
+    await setAlwaysRecommend(annotated, ['acme/team-skills/example-testing']);
+    const after = await readDocument(annotated, 'skills-map.json');
+
+    expect(after['$schema']).toBe(before['$schema']);
+    expect(after['alwaysRecommend']).toEqual(['acme/team-skills/example-testing']);
+
+    const legacy = await legacyTemplate(parent);
+    const destination = path.join(parent, 'legacy-writes');
+    await scaffoldRegistry(destination, 'acme/legacy-skills', legacy);
+    await seedRegistrySkill(destination);
+    await setAlwaysRecommend(destination, ['acme/legacy-skills/example-testing']);
+
+    expect(Object.hasOwn(await readDocument(destination, 'skills-map.json'), '$schema')).toBe(
+      false,
+    );
   });
 });

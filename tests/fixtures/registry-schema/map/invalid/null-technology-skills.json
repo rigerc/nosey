@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "technologies": [
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "detect": {
+        "packages": ["svelte"]
+      },
+      "skills": null
+    }
+  ]
+}

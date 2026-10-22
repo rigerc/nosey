@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "technologies": [
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "detect": {
+        "configFileContent": {
+          "patterns": [null]
+        }
+      }
+    }
+  ]
+}

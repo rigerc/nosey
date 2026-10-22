@@ -1,0 +1,7 @@
+{
+  "document": "manifest",
+  "expectedSchemaValid": true,
+  "expectedParse": "throws",
+  "parserOnlyRule": "parser-only:unique-by-property",
+  "reason": "Duplicate skill IDs"
+}

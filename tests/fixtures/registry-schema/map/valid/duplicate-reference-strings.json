@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "alwaysRecommend": ["example/agent-skills/testing", "example/agent-skills/testing"],
+  "technologies": [
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "detect": {
+        "packages": ["svelte"]
+      },
+      "skills": ["example/agent-skills/testing", "example/agent-skills/testing"]
+    }
+  ],
+  "technologySkills": [
+    {
+      "technologyId": "svelte",
+      "skills": ["example/agent-skills/testing", "example/agent-skills/testing"]
+    }
+  ]
+}

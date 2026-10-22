@@ -1,0 +1,7 @@
+{
+  "document": "map",
+  "expectedSchemaValid": true,
+  "expectedParse": "throws",
+  "parserOnlyRule": "parser-only:regex-compile",
+  "reason": "Invalid regular expression"
+}
