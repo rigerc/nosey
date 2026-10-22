@@ -26,6 +26,7 @@ export type UpgradeResult = {
 
 type PlannedFile = UpgradeEntry & {
   content: Buffer;
+  mode: number;
   originalHash?: string;
 };
 
@@ -65,31 +66,33 @@ async function readManagedFile(root: string, relative: string): Promise<Buffer |
 
 function planFile(file: TemplateFile, current: Buffer | undefined, baseline?: string): PlannedFile {
   if (current && hashFile(current) === file.hash) {
-    return {path: file.path, content: file.content, action: 'unchanged'};
+    return {path: file.path, content: file.content, mode: file.mode, action: 'unchanged'};
   }
 
   if (!current && baseline) {
     return {
       path: file.path,
       content: file.content,
+      mode: file.mode,
       action: 'skipped',
       reason: 'previously managed file was removed locally',
     };
   }
 
   if (!current) {
-    return {path: file.path, content: file.content, action: 'added'};
+    return {path: file.path, content: file.content, mode: file.mode, action: 'added'};
   }
 
   const originalHash = hashFile(current);
 
   if (baseline && originalHash === baseline) {
-    return {path: file.path, content: file.content, originalHash, action: 'updated'};
+    return {path: file.path, content: file.content, mode: file.mode, originalHash, action: 'updated'};
   }
 
   return {
     path: file.path,
     content: file.content,
+    mode: file.mode,
     originalHash,
     action: 'skipped',
     reason: baseline ? 'locally modified' : 'unknown original version',
@@ -98,9 +101,10 @@ function planFile(file: TemplateFile, current: Buffer | undefined, baseline?: st
 
 async function atomicReplace(filename: string, content: Buffer): Promise<void> {
   const temporary = filename + '.' + randomUUID() + '.tmp';
+  const prior = await fs.stat(filename);
 
   try {
-    await fs.writeFile(temporary, content, {flag: 'wx', mode: 0o600});
+    await fs.writeFile(temporary, content, {flag: 'wx', mode: prior.mode & 0o777});
     await fs.rename(temporary, filename);
   } finally {
     await fs.rm(temporary, {force: true});
@@ -189,7 +193,10 @@ export async function upgradeRegistry(
       // eslint-disable-next-line no-await-in-loop
       await fs.mkdir(path.dirname(path.join(root, file.path)), {recursive: true});
       // eslint-disable-next-line no-await-in-loop
-      await fs.writeFile(path.join(root, file.path), file.content, {flag: 'wx'});
+      await fs.writeFile(path.join(root, file.path), file.content, {
+        flag: 'wx',
+        mode: file.mode,
+      });
     } else {
       if (!current || hashFile(current) !== file.originalHash) {
         throw new Error('Template target changed during upgrade: ' + file.path);
