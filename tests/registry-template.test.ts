@@ -6,10 +6,13 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {test, expect} from 'vite-plus/test';
+import {type JsonObject, isRecord, isString} from '../src/lib/values.js';
 
 const run = promisify(execFile);
 const source = fileURLToPath(new URL('../templates/registry/', import.meta.url));
+const packageFile = fileURLToPath(new URL('../package.json', import.meta.url));
 const generator = path.join(source, 'scripts/generate-manifest.mjs');
+const documents = ['skills-manifest.json', 'skills-map.json'];
 
 test('template generator is deterministic and leaves the skill map untouched', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'skillsense-template-'));
@@ -124,6 +127,52 @@ test('generator supports registries containing only external skills', async () =
     );
 
     expect(manifest.skills).toEqual([]);
+  } finally {
+    await fs.rm(directory, {recursive: true, force: true});
+  }
+});
+
+test('the packaged template ships schemas and self-resolving annotations', async () => {
+  // SAFETY: the owned package manifest is JSON; the assertions below verify the field used here.
+  const packageJson = JSON.parse(await fs.readFile(packageFile, 'utf8')) as {files: string[]};
+
+  expect(packageJson.files).toContain('templates/registry');
+
+  for (const file of ['schemas/skills-manifest.schema.json', 'schemas/skills-map.schema.json'])
+    expect((await fs.stat(path.join(source, file))).isFile()).toBe(true);
+
+  for (const name of documents) {
+    // SAFETY: template documents are owned JSON; the annotation assertions below verify the shape.
+    const document = JSON.parse(await fs.readFile(path.join(source, name), 'utf8')) as JsonObject;
+    const annotation = document['$schema'];
+
+    expect(isString(annotation)).toBe(true);
+
+    if (!isString(annotation)) throw new Error(name + ' annotation must be a string');
+
+    // A relative annotation must resolve inside a copied registry, not in the Nosey checkout.
+    expect(annotation.startsWith('./')).toBe(true);
+    expect((await fs.stat(path.resolve(source, annotation))).isFile()).toBe(true);
+    expect(isRecord(document)).toBe(true);
+  }
+});
+
+test('the README generator never writes the registry documents', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-readme-documents-'));
+
+  try {
+    await fs.cp(source, directory, {recursive: true});
+
+    const annotated = await Promise.all(
+      documents.map((name) => fs.readFile(path.join(directory, name), 'utf8')),
+    );
+
+    await run(process.execPath, [path.join(directory, 'scripts/generate-readme.mjs')], {
+      cwd: directory,
+    });
+
+    for (const [index, name] of documents.entries())
+      expect(await fs.readFile(path.join(directory, name), 'utf8')).toBe(annotated[index]);
   } finally {
     await fs.rm(directory, {recursive: true, force: true});
   }

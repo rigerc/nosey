@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "registryId": "example/agent-skills",
+  "skills": [
+    {
+      "id": "example/agent-skills/group/testing",
+      "name": "Testing conventions",
+      "path": "skills/group/testing/SKILL.md"
+    }
+  ]
+}

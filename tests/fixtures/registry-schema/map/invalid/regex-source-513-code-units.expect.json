@@ -1,0 +1,6 @@
+{
+  "document": "map",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "regex exceeds 512 characters"
+}

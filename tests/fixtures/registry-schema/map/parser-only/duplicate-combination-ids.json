@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "combinations": [
+    {
+      "id": "svelte-kit",
+      "name": "SvelteKit",
+      "requires": ["svelte"]
+    },
+    {
+      "id": "svelte-kit",
+      "name": "SvelteKit",
+      "requires": ["svelte"]
+    }
+  ]
+}

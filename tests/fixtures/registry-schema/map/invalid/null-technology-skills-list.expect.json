@@ -1,0 +1,6 @@
+{
+  "document": "map",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "technologySkills must be an array"
+}

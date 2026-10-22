@@ -1,0 +1,7 @@
+{
+  "document": "map",
+  "expectedSchemaValid": true,
+  "expectedParse": "throws",
+  "parserOnlyRule": "parser-only:unique-by-property",
+  "reason": "Duplicate combination associations"
+}

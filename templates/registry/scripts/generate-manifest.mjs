@@ -2,12 +2,18 @@
 // Dependency-free manifest generator for the Nosey registry template.
 // Scans skill files, never executes them, and never writes skills-map.json.
 import {randomUUID} from 'node:crypto';
+import {existsSync} from 'node:fs';
 import {readFile, readdir, lstat, writeFile, rename, rm} from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
 const check = process.argv.includes('--check');
+const manifestPath = path.join(root, 'skills-manifest.json');
+
+// Relative so the annotation resolves inside a copied registry, never in the Nosey checkout.
+const manifestSchema = './schemas/skills-manifest.schema.json';
+const manifestSchemaFile = path.join(root, 'schemas', 'skills-manifest.schema.json');
 
 function scalar(value) {
   const text = value.trim();
@@ -96,6 +102,23 @@ async function enumerate(relative = 'skills') {
   return files;
 }
 
+async function existingAnnotation() {
+  let raw;
+
+  try {
+    raw = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch {
+    raw = undefined;
+  }
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Standalone registry generator reads an untrusted manifest without dependencies.
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && Object.hasOwn(raw, '$schema')) {
+    return raw['$schema'];
+  }
+
+  return existsSync(manifestSchemaFile) ? manifestSchema : undefined;
+}
+
 async function main() {
   const settings = JSON.parse(await readFile(path.join(root, 'registry.json'), 'utf8'));
 
@@ -136,18 +159,18 @@ async function main() {
 
   records.sort((a, b) => a.id.localeCompare(b.id));
 
+  // The annotation is a convention, not contract data: preserve whatever is there,
+  // and add the local reference only when this registry actually ships the schema.
+  const annotation = await existingAnnotation();
+  const document = {schemaVersion: 1, registryId: settings.registryId, skills: records};
+
   const output =
     JSON.stringify(
-      {
-        schemaVersion: 1,
-        registryId: settings.registryId,
-        skills: records,
-      },
+      annotation === undefined ? document : {$schema: annotation, ...document},
       null,
       2,
     ) + '\n';
 
-  const manifestPath = path.join(root, 'skills-manifest.json');
   let mode = 0o666;
 
   try {

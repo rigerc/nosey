@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "externalSkills": [
+    {
+      "id": "acme/upstream-skills/example-testing",
+      "name": "External testing",
+      "source": "https://gitlab.com/acme/skills",
+      "skill": "example-testing"
+    }
+  ]
+}

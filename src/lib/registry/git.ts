@@ -260,6 +260,14 @@ export async function loadGitRegistry(
       source,
     );
 
+    // Cache the parsed model, so unknown document keys such as an editor annotation
+    // never reach the snapshot file.
+    const cachedMap = JSON.parse(
+      JSON.stringify(validated.map, (_key: string, value) =>
+        value instanceof RegExp ? {source: value.source, flags: value.flags} : value,
+      ),
+    );
+
     await fs.mkdir(directory, {recursive: true});
     const temporary = path.join(directory, 'snapshot-' + randomUUID() + '.json');
 
@@ -269,7 +277,7 @@ export async function loadGitRegistry(
         JSON.stringify({
           manifest: validated.manifest,
           // Keep regexes as JSON rules; the validated map contains RegExp objects.
-          map: jsonMap,
+          map: cachedMap,
           commit: snapshot.commit,
           fetchedAt: now,
         }) + '\n',

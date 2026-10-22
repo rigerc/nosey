@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "externalSkills": [
+    {
+      "id": "acme/one/a",
+      "name": "External testing",
+      "source": "acme/one",
+      "skill": "example-testing"
+    },
+    {
+      "id": "acme/two/a",
+      "name": "External testing",
+      "source": "https://github.com/Acme/Two",
+      "skill": "example-testing"
+    },
+    {
+      "id": "acme/three/a",
+      "name": "External testing",
+      "source": "git@github.com:acme/three.git",
+      "skill": "example-testing"
+    },
+    {
+      "id": "acme/four/a",
+      "name": "External testing",
+      "source": "acme/four/",
+      "skill": "example-testing"
+    },
+    {
+      "id": "acme/five/a",
+      "name": "External testing",
+      "source": "Acme/Five.Git",
+      "skill": "example-testing"
+    }
+  ]
+}

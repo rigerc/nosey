@@ -44,7 +44,9 @@ both workflows and `.agents/prompts/`, then update the identity as described bel
 
 1. If copied manually, set the same unique `registryId` in `registry.json` and
    `skills-map.json`, and update skill ID references in the map to match. Init
-   already does this for you.
+   already does this for you. Keep the `$schema` annotation at the top of
+   `skills-manifest.json` and `skills-map.json`: it points at the copy of the contract
+   shipped in `schemas/`, and every generator here preserves it.
 2. Add your own skills under
    `skills/<skill-name>/SKILL.md`, with YAML frontmatter containing a name and
    a description explaining when to use the skill. Nested skill folders are supported.
@@ -173,3 +175,31 @@ whether its manifest is up to date, run
 
 Only the registry JSON files are interpreted by Nosey; skill files are
 never executed or installed during detection.
+
+## Schema annotations and validation
+
+`skills-manifest.json` and `skills-map.json` start with a relative `$schema` annotation
+that points at a copy of the contract shipped here:
+
+- [skills-manifest.schema.json](schemas/skills-manifest.schema.json)
+- [skills-map.schema.json](schemas/skills-map.schema.json)
+
+Editors use the annotation for completion and field diagnostics. Nosey ignores it, and
+every writer in this template preserves it verbatim — including a custom value — while a
+registry that ships no `schemas/` directory keeps its documents unannotated. Delete the
+annotation if you do not want it.
+
+The schemas are structural only. Uniqueness by property, regular-expression compilation,
+path normalization, GitHub source spelling, `registryId` agreement, skill file existence,
+and dangling references are parser or integration rules that a JSON Schema cannot express.
+A document can therefore be schema-valid and still be rejected by
+`nosey registry validate`, and a schema-valid registry is only fully valid once that
+command accepts it. The
+[registry schema reference](https://github.com/rigerc/nosey/blob/main/docs/registry-schema.md)
+lists every field, the separate rules for generated local IDs and three-segment external
+IDs, and the three validity levels.
+
+CI in this template stays dependency-free. It runs the generator tests and both `--check`
+modes on pushes and pull requests that touch the registry documents, skills, or `schemas/`
+and it does not install Nosey or a JSON Schema validator. It therefore checks generated
+output only — not schema conformance and not full registry validity.

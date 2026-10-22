@@ -1,0 +1,6 @@
+{
+  "document": "map",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "content pattern must be an object"
+}

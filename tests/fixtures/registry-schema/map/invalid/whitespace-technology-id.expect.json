@@ -1,0 +1,6 @@
+{
+  "document": "map",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "technology.id must be a nonempty string"
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "registryId": "example/agent-skills",
+  "skills": [
+    {
+      "id": "example/agent-skills/testing",
+      "name": "Тестирование",
+      "path": "skills/testing/SKILL.md"
+    }
+  ]
+}

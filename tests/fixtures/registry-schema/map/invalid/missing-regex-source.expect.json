@@ -1,0 +1,6 @@
+{
+  "document": "map",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "requires source and optional flags"
+}

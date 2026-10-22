@@ -23,6 +23,9 @@ headless commands, without adding a separate UI framework dependency.
   Execution is separately opt-in: after selection confirmation and Ink exit,
   `src/features/skills/execute.ts` runs the structured plan sequentially in the scanned directory.
 - `templates/registry/` is the packaged registry template and trusted manifest generator.
+  `templates/registry/schemas/` publishes the hand-authored JSON Schema contracts for the two
+  registry documents, and `scripts/build-schema-docs.mjs` generates
+  [the schema reference](registry-schema.md) from their annotations.
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
 - `assets/nosey-brand-kit/` retains Nosey's original asset exports; runtime semantic

@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {parseManifest, parseMap} from './validate.js';
-import {errorCode} from '../values.js';
+import {errorCode, isRecord, type JsonValue} from '../values.js';
 
 import {execFile} from 'node:child_process';
 import {existsSync} from 'node:fs';
@@ -141,6 +141,13 @@ function remapId(id: string, from: string, to: string): string {
   return id.startsWith(from + '/') ? to + id.slice(from.length) : id;
 }
 
+/** Read a preserved editor annotation without constraining or normalizing its value. */
+function annotationOf(raw: JsonValue): JsonValue {
+  if (!isRecord(raw) || !Object.hasOwn(raw, '$schema')) return undefined;
+
+  return raw['$schema'];
+}
+
 async function rewriteRegistryIdentity(directory: string, registryId: string): Promise<void> {
   const settingsPath = path.join(directory, 'registry.json');
   const manifestPath = path.join(directory, 'skills-manifest.json');
@@ -158,6 +165,10 @@ async function rewriteRegistryIdentity(directory: string, registryId: string): P
 
   const manifest = parseManifest(JSON.parse(manifestText));
   const mapping = parseMap(JSON.parse(mapText));
+  // SAFETY: parseManifest/parseMap above validate both raw documents before these reads.
+  const rawManifest = JSON.parse(manifestText) as JsonValue;
+  // SAFETY: parseManifest/parseMap above validate both raw documents before these reads.
+  const rawMap = JSON.parse(mapText) as JsonValue;
   const formerId = settings.registryId;
 
   if (manifest.registryId !== formerId || mapping.registryId !== formerId) {
@@ -192,13 +203,23 @@ async function rewriteRegistryIdentity(directory: string, registryId: string): P
     remapId(id, formerId, registryId),
   );
 
+  // The editor annotation is not part of the typed model, so it is carried over from the
+  // raw document verbatim; a legacy template without one stays unannotated.
+  const manifestAnnotation = annotationOf(rawManifest);
+  const mapAnnotation = annotationOf(rawMap);
+
+  const manifestDocument =
+    manifestAnnotation === undefined ? manifest : {$schema: manifestAnnotation, ...manifest};
+
+  const mapDocument = mapAnnotation === undefined ? mapping : {$schema: mapAnnotation, ...mapping};
+
   await Promise.all([
     fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n'),
-    fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n'),
+    fs.writeFile(manifestPath, JSON.stringify(manifestDocument, null, 2) + '\n'),
     fs.writeFile(
       mapPath,
       JSON.stringify(
-        mapping,
+        mapDocument,
         (_key, value) =>
           value instanceof RegExp ? {source: value.source, flags: value.flags} : value,
         2,

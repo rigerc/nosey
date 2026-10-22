@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "skills": [
+    {
+      "id": "example/agent-skills/testing",
+      "name": "Testing conventions",
+      "path": "skills/testing/SKILL.md"
+    }
+  ]
+}

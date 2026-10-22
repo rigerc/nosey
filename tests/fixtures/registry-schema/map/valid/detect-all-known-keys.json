@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "registryId": "example/agent-skills",
+  "technologies": [
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "detect": {
+        "packages": ["a"],
+        "pythonPackages": ["b"],
+        "composerPackages": ["c"],
+        "goModules": ["d"],
+        "rustCrates": ["e"],
+        "elixirPackages": ["f"],
+        "configFiles": ["g"],
+        "fileExtensions": ["h"],
+        "gems": ["i"],
+        "packagePatterns": [],
+        "configFileContent": [
+          {
+            "patterns": ["j"]
+          }
+        ]
+      }
+    }
+  ]
+}

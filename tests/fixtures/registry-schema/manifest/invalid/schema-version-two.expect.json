@@ -1,0 +1,6 @@
+{
+  "document": "manifest",
+  "expectedSchemaValid": false,
+  "expectedParse": "throws",
+  "reason": "Unsupported schemaVersion"
+}
