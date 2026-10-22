@@ -1,4 +1,5 @@
 {
   "schemaVersion": 1,
-  "registryId": "example/agent-skills"
+  "registryId": "example/agent-skills",
+  "templateVersion": 1
 }
