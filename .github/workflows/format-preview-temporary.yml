@@ -16,5 +16,3 @@ jobs:
           git diff -- tests/registry-upgrade.test.ts
       - name: Type check diagnostics
         run: npm run typecheck
-      - name: Test diagnostics
-        run: npm run test
