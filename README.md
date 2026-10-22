@@ -219,6 +219,25 @@ npm run start -- ../your-project
 
 You can also run `npm link` after building to use the `nosey` executable locally.
 
+### Linting
+
+~~~bash
+npm run lint   # Vite+ / Oxlint, including anti-slop rules
+npm run check  # Full Vite+ format, lint, and type checks
+~~~
+
+Anti-slop's generic rules are enabled at error severity in `vite.config.ts`.
+The plugin is vendored in `tools/oxlint/anti-slop/`; its `UPSTREAM.md` records the
+exact source revision and update requirements. Keep `@oxlint/plugins` pinned to
+the Oxlint version used by Vite+ when upgrading. The optional Effect rules are
+not enabled because this project does not depend on Effect.
+
+The initial installation leaves existing source violations for a separate cleanup,
+so lint and check can report failures until those findings are addressed. The
+pre-commit hook also runs `vp check --fix` on staged files; review its diagnostics
+when changing source. Installed agent tooling and the vendored plugin are excluded
+from linting and formatting.
+
 ### Capture the terminal UI
 
 The repository includes a [VHS-based recording workflow](docs/recording.md) and an editable [interaction tape](scripts/tapes/workflow.tape).
