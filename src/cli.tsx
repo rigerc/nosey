@@ -20,7 +20,7 @@ const cli = meow(
     $ ${APP_NAME} [options]
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
-    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh>
+    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh|upgrade>
     $ ${APP_NAME} doctor [--json] [--config path]
     $ ${APP_NAME} --setup [--config path]
 
@@ -47,6 +47,7 @@ const cli = meow(
     --no-git         Skip Git initialization for a registry
     --github         Create a GitHub registry repository with gh
     --visibility <level> private | public for GitHub creation
+    --dry-run        Preview registry template upgrade without writing
     --debug          Write logs to a file and show stack traces
 
   Environment
@@ -80,6 +81,7 @@ const cli = meow(
       git: {type: 'boolean'},
       github: {type: 'boolean'},
       visibility: {type: 'string'},
+      dryRun: {type: 'boolean'},
       debug: {type: 'boolean'},
     },
   },
@@ -176,6 +178,7 @@ async function main() {
     'git',
     'github',
     'visibility',
+    'dryRun',
   ]);
 
   for (const key of Object.keys(flags))
@@ -258,6 +261,9 @@ async function main() {
 
     return;
   }
+
+  if (flags.dryRun !== undefined)
+    throw new AppError('--dry-run requires registry upgrade', {exitCode: 2});
 
   if (registryInitOptions.some((key) => flags[key] !== undefined))
     throw new AppError('Registry initialization options require: nosey registry init', {
