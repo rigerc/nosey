@@ -11,8 +11,9 @@ import {
 } from './commands.js';
 import type {LoadedRegistry} from './types.js';
 import {loadGitRegistry} from './git.js';
+import {upgradeRegistry} from './upgrade.js';
 
-const usage = 'Expected: nosey registry <init|list|add|remove|show|validate|build|refresh>';
+const usage = 'Expected: nosey registry <init|list|add|remove|show|validate|build|refresh|upgrade>';
 
 interface AllowedOptions {
   [key: string]: string[];
@@ -26,9 +27,16 @@ const allowedOptions: AllowedOptions = {
   validate: ['json'],
   build: [],
   refresh: ['json', 'global', 'ref'],
+  upgrade: ['json', 'dry-run'],
 };
 
-type CommandFlags = {json: boolean; global?: boolean; project?: boolean; ref?: string};
+type CommandFlags = {
+  json: boolean;
+  global?: boolean;
+  project?: boolean;
+  ref?: string;
+  dryRun?: boolean;
+};
 
 function validateArguments(command: string, args: string[]): void {
   if (!Object.hasOwn(allowedOptions, command)) throw new Error(usage);
@@ -218,6 +226,27 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
 
     case 'refresh': {
       await runRefresh(source, flags);
+      break;
+    }
+
+    case 'upgrade': {
+      const result = await upgradeRegistry(source ?? '.', {dryRun: flags.dryRun});
+      if (flags.json) {
+        process.stdout.write(registryJson(result));
+      } else {
+        process.stdout.write(
+          'Registry template ' + (result.dryRun ? 'preview' : 'upgrade') +
+            ' (' + (result.fromVersion ?? 'legacy') + ' → ' + result.targetVersion + ')\n',
+        );
+        for (const file of result.files) {
+          if (file.action === 'unchanged') continue;
+          process.stdout.write(
+            file.action + ': ' + file.path + (file.reason ? ' (' + file.reason + ')' : '') + '\n',
+          );
+        }
+        process.stdout.write(result.complete ? 'Template is current.\n' : 'Conflicts require manual merging; no customized files were overwritten.\n');
+      }
+      if (!result.complete) process.exitCode = 1;
       break;
     }
 
