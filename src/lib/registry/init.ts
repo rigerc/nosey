@@ -3,19 +3,15 @@ import {parseManifest, parseMap} from './validate.js';
 import {errorCode, isRecord, type JsonValue} from '../values.js';
 
 import {execFile} from 'node:child_process';
-import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import {createInterface} from 'node:readline/promises';
-import {fileURLToPath} from 'node:url';
 import {promisify, stripVTControlCharacters} from 'node:util';
 import {loadLocalRegistry} from './load.js';
+import {recordTemplateBaseline, templateRoot} from './template.js';
 
 const execFileAsync = promisify(execFile);
-const sourceTemplate = fileURLToPath(new URL('../../../templates/registry/', import.meta.url));
-const bundledTemplate = fileURLToPath(new URL('../templates/registry/', import.meta.url));
-const templateRoot = existsSync(sourceTemplate) ? sourceTemplate : bundledTemplate;
 
 // Repository-local variables exported by Git must not redirect initialization,
 // staging, commits, or the Git commands gh runs into the caller's repository.
@@ -293,6 +289,7 @@ export async function scaffoldRegistry(
         maxBuffer: 1024 * 1024,
       },
     );
+    await recordTemplateBaseline(destination, templateDirectory);
   } catch (error: unknown) {
     await fs.rm(destination, {recursive: true, force: true});
     throw error;
