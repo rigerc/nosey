@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {existsSync} from 'node:fs';
+import {existsSync, type Stats} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -41,7 +41,7 @@ export async function managedTemplateFiles(root = templateRoot): Promise<Templat
 
   const visit = async (relative: string): Promise<void> => {
     const filename = path.join(root, relative);
-    let stat;
+    let stat: Stats;
 
     try {
       stat = await fs.lstat(filename);
