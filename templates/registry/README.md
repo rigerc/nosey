@@ -136,6 +136,9 @@ manual dispatch. Validation errors fail the job. A filtered SARIF copy omits
 findings without file locations so GitHub code scanning can accept the upload;
 the original diagnostics and lint result are preserved. Upload failures are
 nonfatal, and code scanning availability depends on repository settings.
+`.agnix.toml` promotes credential exposure, dangerous execution and permission
+escalation rules to errors, so those findings fail validation even without
+`--strict`.
 
 For agent-assisted remediation, use
 [Fix skill diagnostics with agnix](.agents/prompts/fix-skills-using-agnix.md).
