@@ -149,10 +149,10 @@ function collectRows(node, definitions, versions, field, required, rows) {
         rows,
       );
     }
-
-    return;
   }
 
+  // An anyOf may allow a single object or an array of objects.
+  // Document both shapes instead of stopping after the object branch.
   const item = arrayItem(node, definitions);
 
   if (item) collectRows(item, definitions, versions, field + '[]', '—', rows);
