@@ -3,10 +3,10 @@ import type {Stats} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {z} from 'zod';
+import {errorCode} from '../values.js';
 import {loadLocalRegistry} from './load.js';
 import {
   hashFile,
-  isMissing,
   managedTemplateFiles,
   templateRoot,
   templateVersion,
@@ -14,6 +14,7 @@ import {
 } from './template.js';
 
 export type UpgradeAction = 'added' | 'updated' | 'unchanged' | 'skipped';
+
 export type UpgradeEntry = {path: string; action: UpgradeAction; reason?: string};
 
 export type UpgradeResult = {
@@ -47,7 +48,7 @@ async function readManagedFile(root: string, relative: string): Promise<Buffer |
       // eslint-disable-next-line no-await-in-loop
       stat = await fs.lstat(current);
     } catch (error: unknown) {
-      if (isMissing(error)) return undefined;
+      if (errorCode(error) === 'ENOENT') return undefined;
       throw error;
     }
 
@@ -172,11 +173,13 @@ export async function upgradeRegistry(
     targetVersion: latest,
     dryRun: Boolean(options.dryRun),
     complete: planned.every((item) => item.action !== 'skipped'),
-    files: planned.map(({path: filename, action, reason}) => ({
-      path: filename,
-      action,
-      ...(reason ? {reason} : {}),
-    })),
+    files: planned.map(({path: filename, action, reason}) => {
+      const item: UpgradeEntry = {path: filename, action};
+
+      if (reason) item.reason = reason;
+
+      return item;
+    }),
   };
 
   if (options.dryRun) return result;
@@ -217,17 +220,12 @@ export async function upgradeRegistry(
   }
 
   // Never report the new version as fully installed while conflicts remain.
-  const updatedSettings = {
-    ...settings,
-    ...(result.complete ? {templateVersion: latest} : {}),
-    templateFiles: hashes,
-  };
+  const updatedSettings = {...settings, templateFiles: hashes};
+
+  if (result.complete) updatedSettings.templateVersion = latest;
 
   if (JSON.stringify(updatedSettings) !== JSON.stringify(settings)) {
-    await atomicReplace(
-      settingsPath,
-      Buffer.from(JSON.stringify(updatedSettings, null, 2) + '\n'),
-    );
+    await atomicReplace(settingsPath, Buffer.from(JSON.stringify(updatedSettings, null, 2) + '\n'));
   }
 
   return result;
