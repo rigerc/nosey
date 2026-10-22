@@ -280,6 +280,7 @@ async function declaredParserOnlyRules(name: DocumentName): Promise<Set<string>>
 
 test('every registry schema fixture meets its declared expectations', async () => {
   const results = await evaluateFixtures();
+
   const rulesByDocument = {
     manifest: await declaredParserOnlyRules('manifest'),
     map: await declaredParserOnlyRules('map'),
