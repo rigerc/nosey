@@ -36,7 +36,9 @@ const settingsSchema = z
   .passthrough();
 
 async function settingsOf(registry: string) {
-  return settingsSchema.parse(JSON.parse(await fs.readFile(path.join(registry, 'registry.json'), 'utf8')));
+  return settingsSchema.parse(
+    JSON.parse(await fs.readFile(path.join(registry, 'registry.json'), 'utf8')),
+  );
 }
 
 async function nextTemplate(root: string): Promise<string> {
