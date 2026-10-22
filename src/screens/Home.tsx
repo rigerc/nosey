@@ -327,7 +327,7 @@ export function HomeScreen() {
           showSelectedCount={false}
           maxVisibleRows={Math.max(
             4,
-            rows - (columns < 60 ? 20 : 19) - (filter ? 1 : 0) - (mode === 'filter' ? 1 : 0),
+            rows - (columns < 60 ? 22 : 21) - (filter ? 1 : 0) - (mode === 'filter' ? 1 : 0),
           )}
           submitWhenEmpty
           onSubmit={() => setMode('review')}

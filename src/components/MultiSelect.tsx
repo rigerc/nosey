@@ -55,6 +55,7 @@ export function MultiSelect<T extends string>({
   showSelectedCount = true,
 }: MultiSelectProps<T>) {
   const t = useTheme();
+  const grouped = items.some((item) => item.group);
   const [internal, setInternal] = useState<readonly T[]>(defaultValue);
   const [internalCursor, setInternalCursor] = useState(0);
   const cursor = controlledCursor ?? internalCursor;
@@ -146,7 +147,7 @@ export function MultiSelect<T extends string>({
   }
 
   return (
-    <Box flexDirection="column" marginTop={compact ? 0 : 1}>
+    <Box flexDirection="column" marginTop={compact && !grouped ? 0 : 1}>
       {items.length === 0 && <Muted>{emptyMessage}</Muted>}
       {items.slice(start, end).map((item, offset) => {
         const focused = isActive && start + offset === index;
@@ -175,11 +176,11 @@ export function MultiSelect<T extends string>({
         );
       })}
       {items.length > 0 && (
-        <Box marginTop={compact ? 0 : 1}>
+        <Box marginTop={compact && !grouped ? 0 : 1}>
           <Muted>
             {showSelectedCount ? `${values().length} selected / ` : ''}
             {start + 1}-{end} of {items.length}
-            {items.some((item) => item.group) ? ' entries' : ''}
+            {grouped ? ' entries' : ''}
           </Muted>
         </Box>
       )}
