@@ -1,8 +1,6 @@
 name: Format preview (temporary)
 on:
-  push:
-    branches:
-      - feat/registry-template-upgrade
+  pull_request:
 jobs:
   format:
     runs-on: ubuntu-latest
