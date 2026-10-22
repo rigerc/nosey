@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {z} from 'zod';
+import {errorCode} from '../values.js';
 
 const sourceTemplate = fileURLToPath(new URL('../../../templates/registry/', import.meta.url));
 const bundledTemplate = fileURLToPath(new URL('../templates/registry/', import.meta.url));
@@ -13,13 +14,7 @@ export const templateRoot = existsSync(sourceTemplate) ? sourceTemplate : bundle
  * Only files maintained by the Nosey template are upgradeable. Registry content,
  * the map, generated manifest, README, and registry settings are never copied.
  */
-const managedRoots = [
-  '.agnix.toml',
-  '.agents/prompts',
-  '.github/workflows',
-  'scripts',
-  'schemas',
-];
+const managedRoots = ['.agnix.toml', '.agents/prompts', '.github/workflows', 'scripts', 'schemas'];
 
 export type TemplateFile = {path: string; content: Buffer; hash: string; mode: number};
 
@@ -46,7 +41,7 @@ export async function managedTemplateFiles(root = templateRoot): Promise<Templat
     try {
       stat = await fs.lstat(filename);
     } catch (error: unknown) {
-      if (isMissing(error)) return;
+      if (errorCode(error) === 'ENOENT') return;
       throw error;
     }
 
@@ -77,17 +72,18 @@ export async function managedTemplateFiles(root = templateRoot): Promise<Templat
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function isMissing(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
 /** Record the exact scaffolded file hashes, including custom template fixtures. */
-export async function recordTemplateBaseline(directory: string, root = templateRoot): Promise<void> {
+export async function recordTemplateBaseline(
+  directory: string,
+  root = templateRoot,
+): Promise<void> {
   const configPath = path.join(directory, 'registry.json');
+
   const settings = z
     .object({schemaVersion: z.literal(1), registryId: z.string()})
     .passthrough()
     .parse(JSON.parse(await fs.readFile(configPath, 'utf8')));
+
   const hashes: Record<string, string> = {};
 
   for (const file of await managedTemplateFiles(root)) {
