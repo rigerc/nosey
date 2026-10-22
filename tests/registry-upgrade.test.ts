@@ -122,9 +122,7 @@ test('upgrade previews and replaces only untouched files, while retaining regist
     const after = await settingsOf(registry);
     expect(after['customProperty']).toEqual({retained: true});
     expect(after['templateVersion']).toBe(1);
-    expect(after.templateFiles?.[script]).toBe(
-      hashFile(Buffer.from('// new upstream version\n')),
-    );
+    expect(after.templateFiles?.[script]).toBe(hashFile(Buffer.from('// new upstream version\n')));
 
     const rerun = await upgradeRegistry(registry, {templateDirectory: template});
     expect(rerun.files.find((file) => file.path === script)?.action).toBe('unchanged');
