@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import type {Stats} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {z} from 'zod';
@@ -40,7 +41,7 @@ async function readManagedFile(root: string, relative: string): Promise<Buffer |
 
   for (const [index, part] of parts.entries()) {
     current = path.join(current, part);
-    let stat;
+    let stat: Stats;
 
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -86,7 +87,13 @@ function planFile(file: TemplateFile, current: Buffer | undefined, baseline?: st
   const originalHash = hashFile(current);
 
   if (baseline && originalHash === baseline) {
-    return {path: file.path, content: file.content, mode: file.mode, originalHash, action: 'updated'};
+    return {
+      path: file.path,
+      content: file.content,
+      mode: file.mode,
+      originalHash,
+      action: 'updated',
+    };
   }
 
   return {
