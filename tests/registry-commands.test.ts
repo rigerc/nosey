@@ -17,6 +17,7 @@ import {
 } from '../src/lib/registry/commands.js';
 import type {LoadedRegistry} from '../src/lib/registry/types.js';
 import {runRegistryInProcess} from './helpers/registry-command.js';
+import {seedRegistrySkill} from './helpers/registry-fixture.js';
 
 const exec = promisify(execFile);
 const tsx = import.meta.resolve('tsx');
@@ -59,6 +60,7 @@ async function fixture<T>(
 
   try {
     await scaffoldRegistry(registry, 'acme/skills');
+    await seedRegistrySkill(registry);
 
     return await run({
       root,

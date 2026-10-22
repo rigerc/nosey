@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {test, expect, assert} from 'vite-plus/test';
 import {loadLocalRegistry} from '../src/lib/registry/load.js';
+import {seedRegistrySkill} from './helpers/registry-fixture.js';
 import {
   runRegistryInit,
   scaffoldRegistry,
@@ -26,19 +27,20 @@ async function temporary<T>(run: (parent: string) => Promise<T>): Promise<T> {
   }
 }
 
-test('scaffold rewrites all template IDs and retains the manifest workflow', async () => {
+test('scaffold starts empty with current generated files and registry maintenance tools', async () => {
   await temporary(async (parent) => {
     const destination = path.join(parent, 'nested', 'skills-registry');
     await scaffoldRegistry(destination, 'acme/team-skills');
     const registry = await loadLocalRegistry(destination);
     expect(registry.manifest.registryId).toBe('acme/team-skills');
     expect(registry.map.registryId).toBe('acme/team-skills');
-    expect(registry.manifest.skills.map((skill) => skill.id)).toStrictEqual([
-      'acme/team-skills/example-testing',
-    ]);
-    expect(registry.map.technologySkills[0]?.skills).toStrictEqual([
-      'acme/team-skills/example-testing',
-    ]);
+    expect(registry.manifest.skills).toEqual([]);
+    expect(registry.map.technologySkills).toEqual([]);
+    expect(registry.map.externalSkills).toEqual([]);
+    expect(registry.map.alwaysRecommend).toEqual([]);
+    await expect(fs.stat(path.join(destination, 'skills/example-testing'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
 
     // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
     const settings = JSON.parse(
@@ -49,10 +51,46 @@ test('scaffold rewrites all template IDs and retains the manifest workflow', asy
     const workflow = await fs.stat(path.join(destination, '.github/workflows/update-manifest.yml'));
     expect(workflow.isFile()).toBe(true);
 
+    for (const name of [
+      '.github/workflows/agnix.yml',
+      '.agents/prompts/fix-skills-using-agnix.md',
+      'scripts/generate-readme.mjs',
+      'scripts/generate-readme.test.mjs',
+      'scripts/prepare-agnix-sarif.mjs',
+      'scripts/prepare-agnix-sarif.test.mjs',
+    ]) {
+      expect((await fs.stat(path.join(destination, name))).isFile()).toBe(true);
+    }
+
     const script = path.join(destination, 'scripts/generate-manifest.mjs');
     await execFileAsync(process.execPath, [script, '--check'], {
       cwd: destination,
     });
+    await execFileAsync(process.execPath, ['scripts/generate-readme.mjs', '--check'], {
+      cwd: destination,
+    });
+    const readme = await fs.readFile(path.join(destination, 'README.md'), 'utf8');
+    expect(readme).toContain('Registry: acme/team-skills');
+    expect(readme).toContain('No skills are registered.');
+  });
+});
+
+test('scaffold still remaps populated template skill IDs and regenerates the catalog', async () => {
+  await temporary(async (parent) => {
+    const template = path.join(parent, 'populated-template');
+    await scaffoldRegistry(template, 'example/original');
+    await seedRegistrySkill(template);
+    const destination = path.join(parent, 'new-registry');
+    await scaffoldRegistry(destination, 'acme/renamed', template);
+    const loaded = await loadLocalRegistry(destination);
+    expect(loaded.manifest.skills[0]?.id).toBe('acme/renamed/example-testing');
+    expect(loaded.map.technologySkills[0]?.skills).toEqual(['acme/renamed/example-testing']);
+    await execFileAsync(process.execPath, ['scripts/generate-readme.mjs', '--check'], {
+      cwd: destination,
+    });
+    expect(await fs.readFile(path.join(destination, 'README.md'), 'utf8')).toContain(
+      'Registry: acme/renamed',
+    );
   });
 });
 
@@ -129,7 +167,8 @@ for (const repository of ['.github', '.github-private', '_skills']) {
       const destination = path.join(parent, 'registry');
       await scaffoldRegistry(destination, 'acme/' + repository);
       const registry = await loadLocalRegistry(destination);
-      expect(registry.manifest.skills[0]?.id).toBe('acme/' + repository + '/example-testing');
+      expect(registry.manifest.registryId).toBe('acme/' + repository);
+      expect(registry.manifest.skills).toEqual([]);
       await execFileAsync(process.execPath, ['scripts/generate-manifest.mjs', '--check'], {
         cwd: destination,
       });

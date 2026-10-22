@@ -18,7 +18,7 @@
     "lint": "vp lint",
     "check": "vp check",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:unit && npm run test:catalog && npm run test:map",
+    "test": "npm run test:unit && npm run test:catalog && npm run test:map && npm run test:registry",
     "test:unit": "vp test run",
     "test:catalog": "node --import=tsx --test scripts/build-skills-catalog.test.mjs",
     "test:map": "node --import=tsx --test scripts/propose-skill-mappings.test.mjs",
@@ -31,7 +31,8 @@
     "theme:list": "node scripts/theme.mjs list",
     "theme:token": "node scripts/theme.mjs token",
     "theme:default": "node scripts/theme.mjs default",
-    "record": "node --import tsx scripts/screenshot.tsx --video"
+    "record": "node --import tsx scripts/screenshot.tsx --video",
+    "test:registry": "node --test templates/registry/scripts/*.test.mjs"
   },
   "dependencies": {
     "ink": "^8.0.0",

@@ -1,4 +1,4 @@
-name: Update Nosey manifest
+name: Update Nosey manifest and README
 
 on:
   push:
@@ -6,17 +6,24 @@ on:
     paths:
       - 'skills/**'
       - 'registry.json'
-      - 'scripts/generate-manifest.mjs'
+      - 'skills-manifest.json'
+      - 'skills-map.json'
+      - 'README.md'
+      - 'scripts/generate-*.mjs'
+      - '.github/workflows/update-manifest.yml'
   pull_request:
     paths:
       - 'skills/**'
       - 'registry.json'
-      - 'scripts/generate-manifest.mjs'
       - 'skills-manifest.json'
+      - 'skills-map.json'
+      - 'README.md'
+      - 'scripts/generate-*.mjs'
+      - '.github/workflows/update-manifest.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   manifest:
@@ -26,18 +33,46 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Generate manifest
-        run: node scripts/generate-manifest.mjs
+      - name: Test generators
+        run: node --test scripts/generate-*.test.mjs
       - name: Verify on pull requests
         if: github.event_name == 'pull_request'
-        run: git diff --exit-code -- skills-manifest.json
-      - name: Commit generated manifest
-        if: github.event_name != 'pull_request'
         run: |
-          if ! git diff --quiet -- skills-manifest.json; then
+          node scripts/generate-manifest.mjs --check
+          node scripts/generate-readme.mjs --check
+
+  update:
+    needs: manifest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: registry-generated-main
+      cancel-in-progress: false
+    steps:
+      # Resolve main after acquiring the concurrency slot so queued runs use
+      # the latest sources, including any preceding generated commit.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test current generators
+        run: node --test scripts/generate-*.test.mjs
+      - name: Generate manifest and README
+        run: |
+          node scripts/generate-manifest.mjs
+          node scripts/generate-readme.mjs
+          node scripts/generate-manifest.mjs --check
+          node scripts/generate-readme.mjs --check
+      - name: Commit generated files
+        run: |
+          if ! git diff --quiet -- skills-manifest.json README.md; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add skills-manifest.json
-            git commit -m "chore: regenerate skills manifest"
-            git push
+            git add skills-manifest.json README.md
+            git commit -m "chore: regenerate skills manifest and README"
+            git push origin HEAD:main
           fi

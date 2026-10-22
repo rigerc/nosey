@@ -4,12 +4,7 @@
   "alwaysRecommend": [],
   "externalSkills": [],
   "technologies": [],
-  "technologySkills": [
-    {
-      "technologyId": "react",
-      "skills": ["example/agent-skills/example-testing"]
-    }
-  ],
+  "technologySkills": [],
   "combinations": [],
   "combinationSkills": [],
   "frontendBonusSkills": [],

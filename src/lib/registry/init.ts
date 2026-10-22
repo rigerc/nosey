@@ -262,6 +262,16 @@ export async function scaffoldRegistry(
 
     await rewriteRegistryIdentity(destination, registryId);
     await loadLocalRegistry(destination);
+    // Render with the bundled generator, never a script supplied by the destination.
+    await execFileAsync(
+      process.execPath,
+      [path.join(templateRoot, 'scripts/generate-readme.mjs')],
+      {
+        cwd: destination,
+        timeout: 60_000,
+        maxBuffer: 1024 * 1024,
+      },
+    );
   } catch (error: unknown) {
     await fs.rm(destination, {recursive: true, force: true});
     throw error;

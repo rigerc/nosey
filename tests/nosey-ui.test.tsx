@@ -11,6 +11,7 @@ import {scaffoldRegistry} from '../src/lib/registry/init';
 import * as registryInit from '../src/lib/registry/init';
 import {themeNames} from '../src/theme/tokens';
 import {mount, press, settle} from './helpers/terminal';
+import {seedRegistrySkill} from './helpers/registry-fixture';
 
 // Illustrative results exercise presentation and selection, not detection quality.
 const report: Report = {
@@ -789,6 +790,7 @@ describe('Registry UI writes', () => {
   it('filters, reviews, restores and clears always recommended skills without saving cancelled drafts', async () => {
     const registry = join(root, 'team-skills');
     await scaffoldRegistry(registry, 'acme/team');
+    await seedRegistrySkill(registry);
     const configPath = join(root, '.nosey.json');
     const mapPath = join(registry, 'skills-map.json');
     const original = {schemaVersion: 1, registries: [{type: 'local', path: 'team-skills'}]};

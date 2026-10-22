@@ -25,7 +25,7 @@ test('template generator is deterministic and leaves the skill map untouched', a
       await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'),
     ) as {skills: Array<{id: string}>};
 
-    expect(manifest.skills[0]?.id).toBe('example/agent-skills/example-testing');
+    expect(manifest.skills).toEqual([]);
     expect(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).toBe(originalMap);
     await fs.mkdir(path.join(directory, 'skills/another'), {recursive: true});
     await fs.writeFile(
@@ -103,7 +103,7 @@ test('generator supports registries containing only external skills', async () =
 
   try {
     await fs.cp(source, directory, {recursive: true});
-    await fs.rm(path.join(directory, 'skills'), {recursive: true});
+    await fs.rm(path.join(directory, 'skills'), {recursive: true, force: true});
     const mapPath = path.join(directory, 'skills-map.json');
     const map = JSON.parse(await fs.readFile(mapPath, 'utf8'));
     map.externalSkills = [
