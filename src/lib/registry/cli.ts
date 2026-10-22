@@ -235,8 +235,13 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
         process.stdout.write(registryJson(result));
       } else {
         process.stdout.write(
-          'Registry template ' + (result.dryRun ? 'preview' : 'upgrade') +
-            ' (' + (result.fromVersion ?? 'legacy') + ' → ' + result.targetVersion + ')\n',
+          'Registry template ' +
+            (result.dryRun ? 'preview' : 'upgrade') +
+            ' (' +
+            (result.fromVersion ?? 'legacy') +
+            ' → ' +
+            result.targetVersion +
+            ')\n',
         );
         for (const file of result.files) {
           if (file.action === 'unchanged') continue;
@@ -244,7 +249,11 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
             file.action + ': ' + file.path + (file.reason ? ' (' + file.reason + ')' : '') + '\n',
           );
         }
-        process.stdout.write(result.complete ? 'Template is current.\n' : 'Conflicts require manual merging; no customized files were overwritten.\n');
+        process.stdout.write(
+          result.complete
+            ? 'Template is current.\n'
+            : 'Conflicts require manual merging; no customized files were overwritten.\n',
+        );
       }
       if (!result.complete) process.exitCode = 1;
       break;
