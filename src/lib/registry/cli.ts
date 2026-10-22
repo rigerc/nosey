@@ -231,6 +231,7 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
 
     case 'upgrade': {
       const result = await upgradeRegistry(source ?? '.', {dryRun: flags.dryRun});
+
       if (flags.json) {
         process.stdout.write(registryJson(result));
       } else {
@@ -243,18 +244,21 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
             result.targetVersion +
             ')\n',
         );
+
         for (const file of result.files) {
           if (file.action === 'unchanged') continue;
           process.stdout.write(
             file.action + ': ' + file.path + (file.reason ? ' (' + file.reason + ')' : '') + '\n',
           );
         }
+
         process.stdout.write(
           result.complete
             ? 'Template is current.\n'
             : 'Conflicts require manual merging; no customized files were overwritten.\n',
         );
       }
+
       if (!result.complete) process.exitCode = 1;
       break;
     }
