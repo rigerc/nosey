@@ -12,6 +12,7 @@ export interface RegistryCommandOptions {
   git?: boolean;
   github?: boolean;
   visibility?: string;
+  dryRun?: boolean;
 }
 
 export const registryInitOptions = ['registryId', 'yes', 'git', 'github', 'visibility'] as const;
@@ -27,6 +28,7 @@ export async function runRegistry(args: string[], options: RegistryCommandOption
       global: options.global,
       project: options.project,
       ref: options.ref,
+      dryRun: options.dryRun,
     });
 
     return;
