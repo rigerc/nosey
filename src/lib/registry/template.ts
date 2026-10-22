@@ -21,7 +21,7 @@ const managedRoots = [
   'schemas',
 ];
 
-export type TemplateFile = {path: string; content: Buffer; hash: string};
+export type TemplateFile = {path: string; content: Buffer; hash: string; mode: number};
 
 export function hashFile(content: Buffer): string {
   return createHash('sha256').update(content).digest('hex');
@@ -66,7 +66,7 @@ export async function managedTemplateFiles(root = templateRoot): Promise<Templat
     }
 
     const content = await fs.readFile(filename);
-    files.push({path: relative, content, hash: hashFile(content)});
+    files.push({path: relative, content, hash: hashFile(content), mode: stat.mode & 0o777});
   };
 
   for (const relative of managedRoots) {
