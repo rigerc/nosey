@@ -28,6 +28,10 @@ export interface MultiSelectProps<T extends string> {
   cursor?: number;
   onCursorChange?: (index: number) => void;
   submitWhenEmpty?: boolean;
+  /** Dense group spacing for results screens; option and heading rows remain distinct. */
+  compact?: boolean;
+  /** Omit the duplicate selected total when a screen already presents it. */
+  showSelectedCount?: boolean;
 }
 
 /** Space toggles, arrows or j/k move, Enter submits. Values follow item order. */
@@ -46,6 +50,8 @@ export function MultiSelect<T extends string>({
   cursor: controlledCursor,
   onCursorChange,
   submitWhenEmpty = false,
+  compact = false,
+  showSelectedCount = true,
 }: MultiSelectProps<T>) {
   const t = useTheme();
   const [internal, setInternal] = useState<readonly T[]>(defaultValue);
@@ -113,7 +119,7 @@ export function MultiSelect<T extends string>({
     for (let offset = start; offset < end; offset++) {
       const item = items[offset]!;
       if (item.group && (offset === start || item.group.key !== items[offset - 1]?.group?.key))
-        count += 3;
+        count += compact ? (offset === start ? 1 : 2) : 3;
     }
     return count;
   };
@@ -123,7 +129,7 @@ export function MultiSelect<T extends string>({
     else end--;
   }
   return (
-    <Box flexDirection="column" marginTop={1}>
+    <Box flexDirection="column" marginTop={compact ? 0 : 1}>
       {items.length === 0 && <Muted>{emptyMessage}</Muted>}
       {items.slice(start, end).map((item, offset) => {
         const focused = isActive && start + offset === index;
@@ -134,7 +140,7 @@ export function MultiSelect<T extends string>({
           >
             {item.group &&
               (offset === 0 || item.group.key !== items[start + offset - 1]?.group?.key) && (
-                <Box marginTop={offset === 0 ? 0 : 1} marginBottom={1}>
+                <Box marginTop={offset === 0 ? 0 : 1} marginBottom={compact ? 0 : 1}>
                   <Text bold color={t.color.muted} wrap="truncate-end">
                     {item.group.label}
                   </Text>
@@ -142,7 +148,13 @@ export function MultiSelect<T extends string>({
               )}
             <Text
               bold={focused}
-              color={focused ? t.color.primary : t.color.text}
+              color={
+                focused
+                  ? t.color.primary
+                  : selected.has(item.value)
+                    ? t.color.success
+                    : t.color.text
+              }
               wrap="truncate-end"
             >
               {focused ? t.symbols.pointer : ' '} [{selected.has(item.value) ? 'x' : ' '}]{' '}
@@ -153,9 +165,10 @@ export function MultiSelect<T extends string>({
         );
       })}
       {items.length > 0 && (
-        <Box marginTop={1}>
+        <Box marginTop={compact ? 0 : 1}>
           <Muted>
-            {values().length} selected / {start + 1}-{end} of {items.length}
+            {showSelectedCount ? `${values().length} selected / ` : ''}
+            {start + 1}-{end} of {items.length}
             {items.some((item) => item.group) ? ' entries' : ''}
           </Muted>
         </Box>

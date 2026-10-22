@@ -10,6 +10,8 @@ export interface PanelProps {
   /** Tone of the title. */
   tone?: Tone;
   focused?: boolean;
+  /** Use a tighter title row for task-focused screens. */
+  compact?: boolean;
   width?: number | string;
   children: ReactNode;
 }
@@ -20,6 +22,7 @@ export function Panel({
   footer,
   tone = 'primary',
   focused = false,
+  compact = false,
   width,
   children,
 }: PanelProps) {
@@ -34,7 +37,7 @@ export function Panel({
       width={width}
     >
       {title && (
-        <Box marginBottom={1}>
+        <Box marginBottom={compact ? 0 : 1}>
           <Text bold wrap="truncate-end" {...titleStyle}>
             {title}
           </Text>

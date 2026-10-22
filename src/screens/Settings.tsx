@@ -4,7 +4,7 @@ import {Badge, Confirm, Panel, ScreenLayout, Stack, StatusMessage} from '../comp
 import {useScreenHints} from '../features/ui/context';
 import {formatValue} from '../lib/format';
 import {ConfigSectionEditor, ConfigWizard} from '../components/config';
-import {appConfig, configSections, resolveConfig} from '../config';
+import {appConfig, configSections, getAtPath, resolveConfig} from '../config';
 import {useConfigRuntime} from '../config/context';
 import {useKeymap} from '../hooks';
 import {useConfigDraft} from '../hooks/useConfigDraft';
@@ -31,6 +31,11 @@ function SettingsEditor({
   const section = sections[sectionIndex] ?? 'Appearance';
   const resolved = resolveConfig(appConfig.fields, draft.draft, {flags});
   const sources = resolved.sources;
+  const fields = appConfig.fields.filter((field) => field.section === section);
+  const visibleFields = fields.filter(
+    (field) =>
+      !('visibleWhen' in field) || !field.visibleWhen || field.visibleWhen(resolved.values),
+  );
   useScreenHints(
     'settings',
     confirmWizard
@@ -74,26 +79,44 @@ function SettingsEditor({
   );
 
   return (
-    <Stack gap={1}>
-      <Panel title="Configuration">
-        <Text wrap="truncate-end">{draft.path}</Text>
-        <Text>{draft.changed ? 'Unsaved changes' : 'No pending changes'}</Text>
-        {appConfig.fields.map((field) => (
-          <Text key={field.path}>
-            {field.label}:{' '}
-            {formatValue(resolved.values[field.path as keyof typeof resolved.values])} [
-            {sources[field.path]}]
-          </Text>
-        ))}
-        {sections.map((name, index) => (
-          <Text
-            key={name}
-            bold={index === sectionIndex}
-            color={index === sectionIndex ? theme.color.primary : theme.color.text}
-          >
-            {index === sectionIndex ? theme.symbols.pointer : ' '} {name}
-          </Text>
-        ))}
+    <Stack>
+      <Panel title="Configuration" compact>
+        <Text color={theme.color.muted} wrap="truncate-middle">
+          {draft.path}
+        </Text>
+        <Text color={draft.changed ? theme.color.warn : theme.color.muted}>
+          {draft.changed ? 'Unsaved changes' : 'No pending changes'}
+        </Text>
+        <Box columnGap={2} flexWrap="wrap" marginTop={1}>
+          {sections.map((name, index) => (
+            <Text
+              key={name}
+              bold={index === sectionIndex}
+              color={index === sectionIndex ? theme.color.primary : theme.color.muted}
+            >
+              {index === sectionIndex ? `[${name}]` : name}
+            </Text>
+          ))}
+        </Box>
+        <Box flexDirection="column">
+          {editing && !draft.error ? (
+            <ConfigSectionEditor
+              key={section}
+              fields={fields}
+              values={draft.draft}
+              onChange={draft.update}
+              onBack={() => setEditing(false)}
+              sources={sources}
+            />
+          ) : (
+            visibleFields.map((field) => (
+              <Text key={field.path} wrap="truncate-end">
+                {field.label}: {formatValue(getAtPath(resolved.values, field.path)) || '(unset)'}
+                <Text color={theme.color.muted}> [{sources[field.path]}]</Text>
+              </Text>
+            ))
+          )}
+        </Box>
       </Panel>
       {draft.error && <StatusMessage tone="danger">{draft.error}</StatusMessage>}
       {confirmWizard && (
@@ -105,23 +128,10 @@ function SettingsEditor({
           }}
         />
       )}
-      {editing && !draft.error && (
-        <Panel title={section}>
-          <ConfigSectionEditor
-            key={section}
-            fields={appConfig.fields.filter((field) => field.section === section)}
-            values={draft.draft}
-            onChange={draft.update}
-            onBack={() => setEditing(false)}
-            sources={sources}
-          />
-        </Panel>
-      )}
       {!editing && (
         <Box flexDirection="column">
-          <Text dimColor>Save commits all changes. Discard restores the loaded file.</Text>
-          <Text dimColor>Environment variables and CLI flags override saved settings.</Text>
-          <Text dimColor>Drafts are preserved when you switch tabs.</Text>
+          <Text color={theme.color.muted}>Drafts stay when switching tabs.</Text>
+          <Text color={theme.color.muted}>Flags and env override saved values.</Text>
         </Box>
       )}
     </Stack>
@@ -141,7 +151,7 @@ export function SettingsScreen() {
       actions={dirty ? <Badge tone="warn">UNSAVED</Badge> : undefined}
     >
       {wizard ? (
-        <Panel title="Guided configuration">
+        <Panel title="Guided configuration" compact>
           <ConfigWizard
             path={path}
             onFinish={() => {

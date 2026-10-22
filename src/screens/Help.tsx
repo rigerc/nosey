@@ -1,66 +1,134 @@
-import {Text} from 'ink';
-import {Panel, ScreenLayout, Stack, Muted} from '../components';
+import {Box, Text} from 'ink';
+import {useState} from 'react';
+import {Kbd, Muted, Panel, ScreenLayout} from '../components';
+import {useScreenHints} from '../features/ui/context';
+import {useKeymap, useTerminalSize} from '../hooks';
 import {getGlobalKeys} from '../keys';
+import {useTheme} from '../theme/context';
 import {navScreens} from './index';
 import {scanHints} from './Home';
 
+const topics = ['Global keys', 'Scan and selection', 'Registries', 'Settings', 'CLI / safety'];
+
 export function HelpScreen() {
+  const [topic, setTopic] = useState(0);
+  const theme = useTheme();
+  const {columns} = useTerminalSize();
+  useKeymap(
+    [
+      {key: 'up', run: () => setTopic((index) => (index + topics.length - 1) % topics.length)},
+      {key: 'k', run: () => setTopic((index) => (index + topics.length - 1) % topics.length)},
+      {key: 'down', run: () => setTopic((index) => (index + 1) % topics.length)},
+      {key: 'j', run: () => setTopic((index) => (index + 1) % topics.length)},
+    ],
+    {scope: 'screen'},
+  );
+  useScreenHints('help', [{key: 'up/down', label: 'topic'}]);
+  const shortcuts = topic === 0 ? getGlobalKeys(navScreens.length) : scanHints;
   return (
     <ScreenLayout title="Help" description="Scanning and selecting never installs skills.">
-      <Stack gap={1}>
-        <Panel title="Global keys" tone="muted">
-          {getGlobalKeys(navScreens.length).map((hint) => (
-            <Text key={hint.key}>
-              {hint.key} {hint.label}
+      <Box flexDirection={columns >= 80 ? 'row' : 'column'} gap={1}>
+        <Box
+          flexDirection={columns >= 80 ? 'column' : 'row'}
+          width={columns >= 80 ? 22 : undefined}
+          flexShrink={0}
+          columnGap={2}
+          flexWrap="wrap"
+        >
+          {topics.map((name, index) => (
+            <Text
+              key={name}
+              bold={topic === index}
+              color={topic === index ? theme.color.primary : theme.color.muted}
+            >
+              {topic === index
+                ? `${theme.symbols.pointer} ${name}`
+                : columns >= 80
+                  ? `  ${name}`
+                  : name}
             </Text>
           ))}
-          <Muted>Shortcuts pause while a text field or confirmation owns the keyboard.</Muted>
-        </Panel>
-        <Panel title="Scan and selection" tone="muted">
-          {scanHints.map((hint) => (
-            <Text key={hint.key}>
-              {hint.key} {hint.label}
-            </Text>
-          ))}
-          <Text>f or / filters by skill ID and source. c clears the applied filter.</Text>
-          <Text>Hidden selections stay selected. g toggles groups; d searches skill details.</Text>
-          <Text>
-            Enter reviews; choose Yes then Enter to print IDs or installation commands. Nothing runs.
-          </Text>
-          <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
-        </Panel>
-        <Panel title="Registries" tone="muted">
-          <Text>a Add globally / i Initialize / r Reload references / Enter Details</Text>
-          <Text>In details: v Validate local / u Build metadata / d Remove reference / b Back</Text>
-          <Text>
-            a in local details marks Always recommend skills; Space toggles, / filters, s reviews.
-          </Text>
-          <Text>Additions go to global config. Legacy project references can still be removed.</Text>
-          <Text>
-            Removing references never deletes registry files. Ctrl+X cancels initialization.
-          </Text>
-        </Panel>
-        <Panel title="Settings" tone="muted">
-          <Text>Up/down Section / Enter Edit / Escape Back / s Save / d Discard / w Wizard</Text>
-          <Text>Skills CLI: opt in and choose default target agents for project-only commands.
-            Drafts survive tab changes. Preview themes in Settings without saving.</Text>
-          <Text>Enable check-on-start in Registries to fetch remote changes on launch.</Text>
-          <Text>Registry updates can suggest npx skills update; Nosey never runs it.</Text>
-          <Text>NO_COLOR always forces mono. --ascii uses ASCII borders and symbols.</Text>
-        </Panel>
-        <Panel title="CLI / safety" tone="muted">
-          <Text>nosey [path] [--explain | --json | --skills-only | --plain]</Text>
-          <Text>nosey scan [path] --depth 8 --max-files 20000</Text>
-          <Text>nosey registry init|list|add|remove|show|validate|build|refresh</Text>
-          <Text>nosey doctor --json / nosey --setup</Text>
-          <Text>--no-interactive produces a plain report. Piped output never prompts.</Text>
-          <Text>
-            Scan targets are read-only. Installed indicators use project-local files and lock metadata.
-            Partial results show limits, skipped files, or registry
-            warnings.
-          </Text>
-        </Panel>
-      </Stack>
+        </Box>
+        <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0}>
+          <Panel title={topics[topic]} compact>
+            {(topic === 0 || topic === 1) &&
+              shortcuts.map((hint) => (
+                <Text key={hint.key}>
+                  <Kbd>{hint.key}</Kbd> {hint.label}
+                </Text>
+              ))}
+            <Box flexDirection="column" marginTop={topic === 1 ? 1 : 0}>
+              {topic === 0 && <Muted>Text fields and confirmations capture shortcuts.</Muted>}
+              {topic === 1 && (
+                <>
+                  <Text>f or / filters by skill ID and source. c clears the filter.</Text>
+                  <Text>
+                    Hidden selections stay selected. g toggles groups; d searches skill details.
+                  </Text>
+                  <Text>
+                    Enter reviews; choose Yes then Enter to print IDs or installation commands.
+                    Nothing runs.
+                  </Text>
+                  <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
+                </>
+              )}
+              {topic === 2 && (
+                <>
+                  <Text>
+                    <Kbd>a</Kbd> Add globally / <Kbd>i</Kbd> Initialize
+                  </Text>
+                  <Text>
+                    <Kbd>r</Kbd> Reload references / <Kbd>enter</Kbd> Details
+                  </Text>
+                  <Text>
+                    In details: v validates local registries, u builds metadata, d removes a
+                    reference, b goes back.
+                  </Text>
+                  <Text>
+                    a in local details edits Always recommend skills. Space toggles, / filters, s
+                    reviews.
+                  </Text>
+                  <Muted>
+                    Additions go to global config. Removing a reference never deletes registry
+                    files. Ctrl+X cancels initialization.
+                  </Muted>
+                </>
+              )}
+              {topic === 3 && (
+                <>
+                  <Text>Up/down selects a section; Enter edits it. Escape returns.</Text>
+                  <Text>
+                    <Kbd>s</Kbd> Save / <Kbd>d</Kbd> Discard / <Kbd>w</Kbd> Wizard
+                  </Text>
+                  <Text>Drafts survive tab changes. Preview themes without saving.</Text>
+                  <Text>
+                    Skills CLI enables project-only command generation and default target agents.
+                  </Text>
+                  <Text>
+                    Registries can check for Git updates on startup. Nosey never runs Skills CLI.
+                  </Text>
+                  <Muted>NO_COLOR forces mono. --ascii uses ASCII borders and symbols.</Muted>
+                </>
+              )}
+              {topic === 4 && (
+                <>
+                  <Text>nosey [path] [--explain | --json | --skills-only | --plain]</Text>
+                  <Text>nosey scan [path] --depth 8 --max-files 20000</Text>
+                  <Text>nosey registry init|list|add|remove|show|validate|build|refresh</Text>
+                  <Text>nosey doctor --json / nosey --setup</Text>
+                  <Muted>
+                    --no-interactive produces a plain report. Piped output never prompts.
+                  </Muted>
+                  <Muted>
+                    Scan targets are read-only. Installed indicators use project-local files and
+                    lock metadata. Partial results show limits, skipped files, or registry warnings.
+                  </Muted>
+                </>
+              )}
+            </Box>
+          </Panel>
+        </Box>
+      </Box>
     </ScreenLayout>
   );
 }

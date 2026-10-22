@@ -37,7 +37,7 @@ export const scanHints = [
 export function HomeScreen() {
   const {config, scan, refresh, confirm, installSettings} = useScan();
   const {exit} = useApp();
-  const {rows} = useTerminalSize();
+  const {rows, columns} = useTerminalSize();
   const theme = useTheme();
   const [mode, setMode] = useState<Mode>('browse');
   const [selected, setSelected] = useState<string[]>([]);
@@ -52,11 +52,17 @@ export function HomeScreen() {
   const defaultAgents = installSettings.defaultAgents ?? [];
   const statusAgents = defaultAgents.length ? defaultAgents : (report?.inspectedAgents ?? []);
   const allItems = useMemo(
-    () => (report?.skills ?? []).map((skill) => {
-      const label = installationLabel(skill.installation, statusAgents);
-      return {value: skill.id, label: skill.id + (label ? ' [' + label + ']' : '')};
-    }),
-    [report, statusAgents.join(',')],
+    () =>
+      (report?.skills ?? []).map((skill) => {
+        const label = installationLabel(skill.installation, statusAgents);
+        const name = columns < 60 ? skill.id.split('/').at(-1)! : skill.id;
+        return {
+          value: skill.id,
+          label: name + (label ? ' [' + label + ']' : ''),
+          hint: columns < 60 ? skill.id : undefined,
+        };
+      }),
+    [report, statusAgents.join(','), columns],
   );
   const chosen = report ? orderedSelection(report, new Set(selected)) : [];
   const installPlan = installSettings.enabled
@@ -95,7 +101,7 @@ export function HomeScreen() {
     (report.truncated ||
       report.skippedFiles.length > 0 ||
       (report.registryWarnings?.length ?? 0) > 0);
-  const pageSize = Math.max(3, Math.min(10, rows - 18));
+  const pageSize = Math.max(3, Math.min(16, rows - 16));
   useEffect(() => {
     if (report) {
       setSelected([]);
@@ -151,10 +157,13 @@ export function HomeScreen() {
       isActive: mode === 'groups' || mode === 'detail',
     },
   );
-  useKeymap([
-    {key: 'esc', run: () => setMode('browse')},
-    {key: 'b', run: () => setMode('browse')},
-  ], {scope: 'screen', isActive: mode === 'review' && Boolean(installPlan?.errors.length)});
+  useKeymap(
+    [
+      {key: 'esc', run: () => setMode('browse')},
+      {key: 'b', run: () => setMode('browse')},
+    ],
+    {scope: 'screen', isActive: mode === 'review' && Boolean(installPlan?.errors.length)},
+  );
   useScreenHints(
     'home',
     mode === 'browse'
@@ -203,64 +212,45 @@ export function HomeScreen() {
   );
 
   const overview = (
-    <Panel title="Project" tone="muted">
-      <Stack>
+    <Box flexDirection="column">
+      <Text wrap="truncate-end">
         <Text bold color={partial ? theme.color.warn : theme.color.success}>
           {partial ? '! Partial scan' : `${theme.symbols.success} Scan complete`}
         </Text>
-        <Text>{report?.scannedFiles ?? 0} files scanned</Text>
-        <Text>
-          {report?.technologies.length ?? 0} technologies / {report?.combinations.length ?? 0}{' '}
-          combinations
-        </Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text bold>Technologies</Text>
-          <Text>
-            {report?.technologies
-              .slice(0, 4)
-              .map((tech) => tech.name)
-              .join(', ') || 'No technologies detected'}
-          </Text>
-          {(report?.technologies.length ?? 0) > 4 && (
-            <Muted>+{report!.technologies.length - 4} more technologies</Muted>
-          )}
-          {!!report?.combinations.length && (
-            <>
-              <Text bold>Combinations</Text>
-              <Text>
-                {report.combinations
-                  .slice(0, 2)
-                  .map((combo) => combo.name)
-                  .join(', ')}
-              </Text>
-              {report.combinations.length > 2 && (
-                <Muted>+{report.combinations.length - 2} more combinations</Muted>
-              )}
-            </>
-          )}
-        </Box>
-        {report?.truncated && (
-          <StatusMessage tone="warn">
-            Limit reached. Detection may be incomplete; increase --depth or --max-files.
-          </StatusMessage>
-        )}
-        {!!report?.skippedFiles.length && (
-          <StatusMessage tone="warn">
-            {report.skippedFiles.length} skipped inputs; detection may be incomplete.
-          </StatusMessage>
-        )}
-        {report?.registryWarnings?.map((warning, i) => (
-          <StatusMessage key={i} tone="warn">
-            {warning.source}: {warning.message}
-          </StatusMessage>
-        ))}
-        {notice && <Muted>{notice}</Muted>}
-      </Stack>
-    </Panel>
+        <Text color={theme.color.muted}> / {report?.scannedFiles ?? 0} files scanned</Text>
+      </Text>
+      <Text color={theme.color.muted}>
+        {report?.technologies.length ?? 0} technologies / {report?.combinations.length ?? 0}{' '}
+        combinations
+      </Text>
+      <Text wrap="truncate-end">
+        {[
+          ...(report?.technologies.map((tech) => tech.name) ?? []),
+          ...(report?.combinations.map((combo) => combo.name) ?? []),
+        ].join(', ') || 'No technologies detected'}
+      </Text>
+      {report?.truncated && (
+        <StatusMessage tone="warn">
+          Limit reached. Detection may be incomplete; increase --depth or --max-files.
+        </StatusMessage>
+      )}
+      {!!report?.skippedFiles.length && (
+        <StatusMessage tone="warn">
+          {report.skippedFiles.length} skipped inputs; detection may be incomplete.
+        </StatusMessage>
+      )}
+      {report?.registryWarnings?.map((warning, i) => (
+        <StatusMessage key={i} tone="warn">
+          {warning.source}: {warning.message}
+        </StatusMessage>
+      ))}
+      {notice && <Muted>{notice}</Muted>}
+    </Box>
   );
 
   const picker = (
     <Panel
+      compact
       title={
         mode === 'review'
           ? 'Review selection'
@@ -308,7 +298,12 @@ export function HomeScreen() {
           onCursorChange={setCursor}
           isActive={mode === 'browse'}
           maxVisible={pageSize}
-          maxVisibleRows={Math.max(7, rows - 21)}
+          compact
+          showSelectedCount={false}
+          maxVisibleRows={Math.max(
+            4,
+            rows - (columns < 60 ? 20 : 19) - (filter ? 1 : 0) - (mode === 'filter' ? 1 : 0),
+          )}
           submitWhenEmpty
           onSubmit={() => setMode('review')}
           emptyMessage={
@@ -403,12 +398,18 @@ export function HomeScreen() {
           />
           {installPlan && (
             <Stack gap={1}>
-              <Muted>Project-only commands will be printed after confirmation, never executed.</Muted>
+              <Muted>
+                Project-only commands will be printed after confirmation, never executed.
+              </Muted>
               {installPlan.errors.map((error) => (
-                <StatusMessage tone="warn" key={error}>{error}</StatusMessage>
+                <StatusMessage tone="warn" key={error}>
+                  {error}
+                </StatusMessage>
               ))}
               {installPlan.commands.map((command) => (
-                <Text key={command} wrap="wrap">{command}</Text>
+                <Text key={command} wrap="wrap">
+                  {command}
+                </Text>
               ))}
               {!installPlan.errors.length && !installPlan.commands.length && (
                 <Muted>No installation commands are needed for this selection.</Muted>
@@ -417,7 +418,11 @@ export function HomeScreen() {
           )}
           {(!installPlan || !installPlan.errors.length) && (
             <Confirm
-              message={installPlan ? 'Print installation commands and exit?' : 'Confirm these skill IDs and exit?'}
+              message={
+                installPlan
+                  ? 'Print installation commands and exit?'
+                  : 'Confirm these skill IDs and exit?'
+              }
               onConfirm={(yes) => {
                 if (yes) {
                   if (installPlan) confirm(chosen, installPlan.commands);
@@ -429,8 +434,8 @@ export function HomeScreen() {
           )}
         </>
       )}
-      <Box marginTop={1}>
-        <Muted>Suggestions only - no skills were installed by Nosey.</Muted>
+      <Box>
+        <Muted>Nothing installed by Nosey.</Muted>
       </Box>
     </Panel>
   );

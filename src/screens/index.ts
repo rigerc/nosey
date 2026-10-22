@@ -21,9 +21,9 @@ export const screens: ScreenDef[] = [
     label: 'Registries',
     Component: RegistryManagerScreen,
     hints: [
+      {key: 'enter', label: 'details'},
       {key: 'a', label: 'add'},
       {key: 'i', label: 'initialize'},
-      {key: 'g', label: 'new scope'},
       {key: 'r', label: 'refresh'},
     ],
   },
@@ -39,7 +39,7 @@ export const screens: ScreenDef[] = [
       {key: 'w', label: 'wizard'},
     ],
   },
-  {id: 'help', label: 'Help', Component: HelpScreen},
+  {id: 'help', label: 'Help', Component: HelpScreen, hints: [{key: 'up/down', label: 'topic'}]},
   {id: 'skills', label: 'Scan', Component: HomeScreen, showInNav: false},
   {
     id: 'registry-setup',

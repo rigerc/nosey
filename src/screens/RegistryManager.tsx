@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {resolve} from 'node:path';
-import {Text} from 'ink';
+import {Box, Text} from 'ink';
 import {
   Confirm,
   Muted,
@@ -15,7 +15,7 @@ import {
   StatusMessage,
   TextField,
 } from '../components';
-import {useKeymap, useInputCapture, useToast} from '../hooks';
+import {useKeymap, useInputCapture, useToast, useTerminalSize} from '../hooks';
 import {useInputActivity} from '../hooks/useInputActivity';
 import {useScan} from '../features/skills/context';
 import {useScreenHints, useUiAction} from '../features/ui/context';
@@ -58,6 +58,7 @@ async function readRegistry(source: string, ref?: string) {
 export function RegistryManagerScreen() {
   const {config, static: preview} = useScan();
   const root = config.root;
+  const {rows} = useTerminalSize();
   const active = useInputActivity();
   const router = useRouter();
   const toast = useToast();
@@ -277,10 +278,14 @@ export function RegistryManagerScreen() {
 
   return (
     <ScreenLayout title="Registries" description="Manage references, not installed skills">
-      <Panel title="Registry references" tone="muted">
-        <Text>Project: {root}</Text>
-        <Text>New registry references: global</Text>
-        <Muted>Write target: {target}</Muted>
+      <Box flexDirection="column">
+        <Text wrap="truncate-middle">Project: {root}</Text>
+        <Muted>New registry references: global</Muted>
+        <Text dimColor wrap="truncate-middle">
+          Write target: {target}
+        </Text>
+      </Box>
+      <Panel title="Registry references" compact focused>
         {message && <StatusMessage tone="info">{message}</StatusMessage>}
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
         {busy ? (
@@ -304,6 +309,7 @@ export function RegistryManagerScreen() {
                 }
               >
                 <Select
+                  maxVisible={Math.max(3, Math.min(12, rows - 16))}
                   items={entries.map((entry, index) => ({
                     value: String(index),
                     label: sourceOf(entry),
@@ -408,7 +414,8 @@ export function RegistryManagerScreen() {
                 {detail && (
                   <>
                     <Text>
-                      {detail.manifest.skills.length} local · {(detail.map.externalSkills?.length ?? 0)} external ·{' '}
+                      {detail.manifest.skills.length} local ·{' '}
+                      {detail.map.externalSkills?.length ?? 0} external ·{' '}
                       {knownRecommendations.length} always recommended
                     </Text>
                     <PaginatedList

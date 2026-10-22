@@ -216,9 +216,34 @@ Scanning is shared through `ScanProvider`; the `report` seed and `static` app op
 support deterministic previews without launching asynchronous work. Production
 scans use `useAsync` so superseded results cannot overwrite a newer scan.
 
-Scan stacks the project overview above skill selection in a single column at every
-terminal width. Test all primary flows at 40, 60, 80, 96, and 120 columns, and verify
-mono/ASCII output as well as the Nosey and light palettes.
+Scan keeps a three-row project summary above the skill picker in one column at every
+terminal width. The picker uses `Panel compact` and `MultiSelect compact` to remove
+blank rows below headings and around list metadata. `showSelectedCount={false}`
+omits the duplicate selected total when the screen already displays it. Selected
+rows use the success tone; focus still uses a pointer, bold text, and primary tone.
+The physical row budget includes headings and inter-group spacing; the focused
+option stays visible. Below 60 columns, skill names lead each option and the full ID
+remains in its searchable hint and detail view. Long project paths truncate in the shared screen header;
+full paths remain available in headless reports.
+
+Settings previews only its active section and resolves nested configuration paths
+with `getAtPath`. Editing, save/discard, draft retention, and override sources use
+the existing configuration controls. Help uses screen-scoped up/down or j/k to
+browse topics, with a sidebar at 80 columns and wrapping topic labels below that.
+Compact Scan uses the same dense selection rows and narrow skill-name labels, with
+an unbordered list, one selection total, a two-row brand/project header, and essential
+controls only. Its row budget reserves the summary and footer at 24 rows. Full IDs
+remain unchanged in review and confirmed output. Compact mode has no tabs or command
+menu; partial-scan warnings remain explicit and may extend into scrollback. See the
+[compact Scan capture](screenshots/compact-nosey-96.png).
+
+Registry context and write targets sit above the reference list, separate from its
+active input control. The shell keeps header/navigation and footer hint rows adjacent.
+
+Test primary screens at 40, 60, 80, 96, and 120 columns, including 24-row terminals,
+and verify mono/ASCII output as well as the Nosey and light palettes. Longer warning
+or detail content can extend into terminal scrollback; do not clip diagnostics to
+force the frame to fit.
 
 ## Testing and quality
 

@@ -55,7 +55,7 @@ The application renders inline and preserves terminal scrollback. Its hierarchy 
 - One warm brand accent, semantic status colors and terminal-controlled typography.
 - Technology-grouped suggestions with synchronized shared-skill selection.
 - Separate contextual controls and global navigation hints.
-- Stacked narrow layouts and a two-column wide Scan layout.
+- A compact project summary above results at every terminal width.
 
 Authority: runtime tokens in [palettes.json](src/theme/palettes.json), [tokens.ts](src/theme/tokens.ts) and [themes.ts](src/theme/themes.ts); assets in [the brand kit](assets/nosey-brand-kit/README.md); composition in [AppShell](src/components/AppShell.tsx), [Panel](src/components/Panel.tsx) and [Home](src/screens/Home.tsx). Implementation is authoritative for the finished interface.
 
@@ -95,17 +95,19 @@ Use existing typography components rather than simulating larger display type or
 
 ## Layout
 
-All measurements are terminal columns and rows, not pixels. The shell orders header, wrapping tabs, screen body, toast host and status footer. Its main vertical gap is one row. Header, tabs, screen content and footer use one column of horizontal padding. Panels use one column of internal horizontal padding; their titles have one blank row below, and optional footers have one blank row above. `Stack` defaults to zero gap and exposes the existing 0–4 cell scale.
+All measurements are terminal columns and rows, not pixels. The shell orders header, wrapping tabs, screen body, toast host and status footer. Header and tabs are adjacent; body and footer retain a blank row of separation. Header, tabs, screen content and footer use one column of horizontal padding. Tabs have a one-column gap. Screen descriptions and paths truncate in the middle to preserve the beginning and end without adding rows.
 
-Scan stacks Project and Suggested skills below 96 columns. At 96 columns and above, the implementation uses a row with a one-column gap and 35%/65% width assignments for the overview and picker. The available terminal width and flex shrinking determine the final cell widths. At 40 columns, navigation wraps, paths wrap, menus truncate and the two panels stack. At 120 columns, both panels sit side by side. These are reviewed evidence widths, not additional breakpoints.
+Scan uses one column at every width: a three-row summary of scan status, counts, and detected technologies, followed by the focused skill picker. Warnings remain explicit below the summary and may extend into scrollback. The picker uses compact panels and grouped menus: headings sit directly above their options, later groups retain a blank row above the heading, and list metadata has no extra vertical padding. Below 60 columns, options lead with the skill name so common repository prefixes do not hide the distinction between skills. Full IDs remain searchable in hints and visible in details. The unique selected total appears once above the list; the entry range appears below. The no-install statement remains visible inside the picker.
 
-Grouped menus keep a blank row between every group heading and its first option. Later groups also receive a blank row above the heading. Headings are not selectable keyboard stops and repeat when a window starts inside a group. A shared skill can occur in multiple groups; every occurrence reflects one selection keyed by skill ID. The selected total counts unique IDs rather than displayed occurrences.
+The option budget is `max(3, min(16, rows - 16))`. The physical menu budget is `max(4, rows - (columns < 60 ? 20 : 19) - activeFilterRows)`. These limits keep the focused item visible while accounting for group headings. Primary initial screens fit 24-row terminals at 40, 60, 80, 96 and 120 columns. Longer warnings, review commands, and detail content may use scrollback rather than clipping important information.
 
-Scan's option budget is `max(3, min(10, rows - 18))`; the grouped physical-row budget is `max(7, rows - 21)`. The control reduces the visible window to accommodate headings and keep the focused option visible. Preserve the selected/position summary and the no-install statement below the list.
+Compact Scan follows the same density and selection treatment without panels, tabs, or a command menu. A two-row brand/project header keeps long paths bounded. Narrow rows lead with the skill name, while review and output retain canonical IDs. Its list reserves space for the summary, one selected total, the no-install statement, and essential footer controls in 24-row terminals.
 
-The status footer separates context hints from app navigation. Below 60 columns it shows at most three contextual hints and hides the extra global row when context exists. From 60 through 89 it shows at most five context hints; from 90 it shows at most nine. At 60 and above, global hints occupy a separate row when context exists. Editors and confirmations supply their own hints. Horizontal hint spacing is two columns, with one column between key and label; hint rows are separated by one blank row.
+Settings shows section navigation followed by only the active section's values or editor. Paths and pending-change state stay above those controls. Registries separates project/scope/write-target metadata from its focused list or editor. Help is a topic browser: an unbordered 22-column sidebar beside one content panel at 80 columns and above, and wrapping topic labels above the panel below 80 columns. Up/down or j/k changes the topic; visited screens retain their state.
 
-**The Group Spacing Rule.** Keep the heading-to-menu blank row even in compact terminals; window the list instead of compressing that separation.
+The status footer keeps contextual actions separate from app navigation, with adjacent hint rows. Below 60 columns it shows at most three contextual hints and hides the extra global row when context exists. From 60 through 89 it shows at most five context hints; from 90 it shows at most nine. Editors and confirmations supply their own hints. Horizontal hint spacing is two columns, with one column between key and label.
+
+**The Density Rule.** Spend terminal rows on task content. Keep meaningful separation between groups while removing blank rows between a heading and its options.
 
 ## Elevation & Depth
 
@@ -121,15 +123,15 @@ Preserve the `:^)` silhouette through `BrandMark`: colon and closing parenthesis
 
 ### Shared shell and navigation
 
-`AppShell` provides one application header, navigation, body, toast host and footer. Screens compose `ScreenLayout`; they do not create another shell. Tabs wrap, use a two-column gap, and show the active tab in bold primary text inside brackets. The four primary labels remain Scan, Registries, Settings and Help.
+`AppShell` provides one application header, navigation, body, toast host and footer. Screens compose `ScreenLayout`; they do not create another shell. Tabs wrap, use a one-column gap, and show the active tab in bold primary text inside brackets. The four primary labels remain Scan, Registries, Settings and Help.
 
 ### Panels and cards
 
-`Panel` has an optional bold title, semantic title tone, one-column side padding and a muted border at rest. `focused` switches to the active theme's focus border and color. Project deliberately uses a muted title; Suggested skills uses primary and is focused. `Card` is the lighter left-rule alternative. Do not add generic browser card styling.
+`Panel` has an optional bold title, semantic title tone, one-column side padding and a muted border at rest. `focused` switches to the active theme's focus border and color. The project summary is unbordered; Suggested skills uses primary and is focused. Compact panels place their title directly above the content. `Card` is the lighter left-rule alternative. Do not add generic browser card styling.
 
 ### Grouped skill selection
 
-`MultiSelect` shows a focus pointer, checkbox and skill ID. Group headings carry their selected/available count and remain visually distinct from options. Shared IDs have synchronized checkboxes across technology, combination and frontend groups, and appear once in confirmed output. Filtering preserves hidden selections. Enter opens Review; the confirmation defaults to No. The list footer distinguishes selected IDs from visible entries.
+`MultiSelect` shows a focus pointer, checkbox and skill ID. Selected rows use the success tone; focused rows use primary and bold text. The checkbox carries selection in mono. Group headings carry their selected/available count and remain visually distinct from options. Shared IDs have synchronized checkboxes across technology, combination and frontend groups, and appear once in confirmed output. Filtering preserves hidden selections. Enter opens Review; the confirmation defaults to No. The list footer distinguishes selected IDs from visible entries.
 
 ### Text fields and search
 
@@ -149,9 +151,9 @@ Preserve the `:^)` silhouette through `BrandMark`: colon and closing parenthesis
 
 - **Do** reuse the existing `:^)` mark and Nosey brand assets.
 - **Do** resolve colors, borders and glyphs from the active semantic theme.
-- **Do** preserve blank rows around group headings and synchronized selection for shared skill IDs.
+- **Do** preserve separation between groups and synchronized selection for shared skill IDs.
 - **Do** compose screens inside `ScreenLayout` and preserve the shared contextual footer.
-- **Do** review stacked 40-column and wide 120-column output alongside light, mono and ASCII variants.
+- **Do** review 24-row output at 40 and 120 columns alongside light, mono and ASCII variants.
 - **Do** state that suggestions and selection do not install skills.
 
 ### Don't:

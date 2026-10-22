@@ -5,7 +5,7 @@ export function Tabs({items, activeId}: {items: {id: string; label: string}[]; a
   const primary = useTone('primary');
   const muted = useTone('muted');
   return (
-    <Box columnGap={2} paddingX={1} flexWrap="wrap">
+    <Box columnGap={1} paddingX={1} flexWrap="wrap">
       {items.map((item, i) =>
         item.id === activeId ? (
           <Text key={item.id} bold {...primary}>
