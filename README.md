@@ -157,6 +157,24 @@ npm run dev -- registry list --json
 npm run dev -- registry validate ./team-skills --json
 ```
 
+### Updating a registry scaffold
+
+To update the maintenance scripts, GitHub workflows, lint rules, prompts, and
+schemas of an existing local registry without altering its skills or mapping:
+
+```bash
+npm run dev -- registry upgrade ./team-skills --dry-run
+npm run dev -- registry upgrade ./team-skills
+```
+
+New registries record a template version and per-file checksums. The upgrade
+replaces only files that have not been customized. For older registries with no
+checksums, differing existing files are reported for manual merging rather
+than overwritten. Conflicts cause a nonzero exit status; the template version
+is advanced only once all managed files match. Regenerate the skill manifest
+and README catalog and validate afterward. The command never changes the
+registry's skills, mapping, or README prose.
+
 ### Refreshing Git registries
 
 Normally Git registries use a cached snapshot for up to 24 hours. To **force a network
