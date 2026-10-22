@@ -6,6 +6,7 @@ import process from 'node:process';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {expect, test} from 'vite-plus/test';
+import {z} from 'zod';
 import {scaffoldRegistry} from '../src/lib/registry/init.js';
 import {hashFile, templateRoot} from '../src/lib/registry/template.js';
 import {upgradeRegistry} from '../src/lib/registry/upgrade.js';
@@ -26,8 +27,16 @@ async function fixture<T>(run: (root: string, registry: string) => Promise<T>): 
   }
 }
 
-async function settingsOf(registry: string): Promise<Record<string, unknown>> {
-  return JSON.parse(await fs.readFile(path.join(registry, 'registry.json'), 'utf8'));
+const settingsSchema = z
+  .object({
+    registryId: z.string(),
+    templateVersion: z.number().optional(),
+    templateFiles: z.record(z.string(), z.string()).optional(),
+  })
+  .passthrough();
+
+async function settingsOf(registry: string) {
+  return settingsSchema.parse(JSON.parse(await fs.readFile(path.join(registry, 'registry.json'), 'utf8')));
 }
 
 async function nextTemplate(root: string): Promise<string> {
@@ -45,7 +54,7 @@ async function nextTemplate(root: string): Promise<string> {
 test('init records a template version and exact hashes for owned files', async () => {
   await fixture(async (_root, registry) => {
     const settings = await settingsOf(registry);
-    const tracked = settings['templateFiles'] as Record<string, string>;
+    const tracked = settings.templateFiles ?? {};
 
     expect(settings['templateVersion']).toBe(1);
     expect(tracked['scripts/generate-manifest.mjs']).toBe(
@@ -111,7 +120,7 @@ test('upgrade previews and replaces only untouched files, while retaining regist
     const after = await settingsOf(registry);
     expect(after['customProperty']).toEqual({retained: true});
     expect(after['templateVersion']).toBe(1);
-    expect((after['templateFiles'] as Record<string, string>)[script]).toBe(
+    expect(after.templateFiles?.[script]).toBe(
       hashFile(Buffer.from('// new upstream version\n')),
     );
 
@@ -138,10 +147,7 @@ test('legacy registries add missing files but never overwrite untracked scripts'
       JSON.stringify(settings, null, 2) + '\n',
     );
     await fs.writeFile(path.join(registry, 'scripts/generate-readme.mjs'), '// legacy changes\n');
-    await fs.writeFile(
-      path.join(template, '.github/workflows/added.yml'),
-      'name: added\n',
-    );
+    await fs.writeFile(path.join(template, '.github/workflows/added.yml'), 'name: added\n');
 
     const result = await upgradeRegistry(registry, {templateDirectory: template});
     expect(result.fromVersion).toBe(null);
@@ -193,6 +199,7 @@ test('unsafe symlinks abort the entire upgrade before writes', async () => {
 test('upgrade CLI supports JSON dry-run with no writes', async () => {
   await fixture(async (_root, registry) => {
     const before = await fs.readFile(path.join(registry, 'registry.json'));
+
     const {stdout} = await execute(process.execPath, [
       '--import',
       'tsx',
@@ -203,6 +210,7 @@ test('upgrade CLI supports JSON dry-run with no writes', async () => {
       '--dry-run',
       '--json',
     ]);
+
     const output = JSON.parse(stdout);
     expect(output).toMatchObject({
       directory: registry,
