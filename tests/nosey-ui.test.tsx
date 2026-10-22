@@ -174,6 +174,112 @@ describe('Nosey scan interaction', () => {
     ]);
   });
 
+  it.each([false, true])(
+    'reviews execution and requires confirmation (compact=%s)',
+    async (compactMode) => {
+      const confirmed = vi.fn();
+
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            compactMode,
+            onConfirm: confirmed,
+            skillsCli: {enabled: true, execute: true, defaultAgents: ['codex']},
+          }}
+        />,
+      );
+
+      expect(app.lastFrame()).not.toContain('Nothing installed by Nosey.');
+      expect(app.lastFrame()).not.toContain('READ-ONLY');
+      await press(app, ' ');
+      await press(app, '\r');
+      expect(app.lastFrame()).toContain('Install selected skills and exit?');
+      expect(app.lastFrame()).toContain('npx skills add acme/skills');
+      expect(app.lastFrame()).toContain('--agent codex');
+      expect(app.lastFrame()).not.toContain('never executed');
+      await press(app, '\r'); // No remains the default.
+      expect(confirmed).not.toHaveBeenCalled();
+      await press(app, '\r');
+      await press(app, '\u001b'); // Escape cancels review.
+      expect(confirmed).not.toHaveBeenCalled();
+      await press(app, '\r');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(confirmed).toHaveBeenCalledExactlyOnceWith(
+        ['acme/skills/alpha'],
+        [expect.stringContaining('npx skills add acme/skills')],
+        [
+          {
+            cwd: root,
+            args: [
+              'skills',
+              'add',
+              'acme/skills',
+              '--skill',
+              'alpha',
+              '--agent',
+              'codex',
+              '--yes',
+              '--json',
+            ],
+          },
+        ],
+      );
+    },
+  );
+
+  it.each([false, true])(
+    'ignores execution when command generation is disabled (compact=%s)',
+    async (compactMode) => {
+      const confirmed = vi.fn();
+
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            compactMode,
+            onConfirm: confirmed,
+            skillsCli: {enabled: false, execute: true, defaultAgents: ['codex']},
+          }}
+        />,
+      );
+
+      await press(app, ' ');
+      await press(app, '\r');
+      expect(app.lastFrame()).toContain('Confirm these skill IDs and exit?');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(confirmed).toHaveBeenCalledExactlyOnceWith(['acme/skills/alpha']);
+    },
+  );
+
+  it.each([false, true])(
+    'blocks execution without target agents (compact=%s)',
+    async (compactMode) => {
+      const confirmed = vi.fn();
+
+      const app = await mount(
+        <App
+          options={{
+            ...options,
+            compactMode,
+            onConfirm: confirmed,
+            skillsCli: {enabled: true, execute: true, defaultAgents: []},
+          }}
+        />,
+      );
+
+      await press(app, ' ');
+      await press(app, '\r');
+      expect(app.lastFrame()).toContain('Choose default agents in Settings');
+      expect(app.lastFrame()).not.toContain('Install selected skills and exit?');
+      await press(app, 'y');
+      await press(app, '\r');
+      expect(confirmed).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not allow printing commands before default agents are configured', async () => {
     const confirmed = vi.fn();
 

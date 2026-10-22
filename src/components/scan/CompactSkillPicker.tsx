@@ -4,7 +4,7 @@ import {MultiSelect} from '../MultiSelect';
 import {PaginatedList} from '../PaginatedList';
 import {Muted} from '../typography';
 import {StatusMessage} from '../Status';
-import {installationLabel} from '../../features/skills/install';
+import {installationLabel, type InstallCommands} from '../../features/skills/install';
 import {useKeymap} from '../../hooks/useKeymap';
 import {orderedSelection} from '../../features/skills/groups';
 import {useTerminalSize} from '../../hooks/useTerminalSize';
@@ -13,7 +13,8 @@ import type {Report} from '../../lib/detect';
 interface Props {
   report: Report;
   statusAgents: readonly string[];
-  installPlan?: {commands: string[]; errors: string[]};
+  installPlan?: InstallCommands;
+  execute?: boolean;
   selected: string[];
   onSelect: (ids: string[]) => void;
   reviewing: boolean;
@@ -27,6 +28,7 @@ export function CompactSkillPicker({
   report,
   statusAgents,
   installPlan,
+  execute = false,
   selected,
   onSelect,
   reviewing,
@@ -74,7 +76,9 @@ export function CompactSkillPicker({
           {installPlan && (
             <Box flexDirection="column">
               <Muted>
-                Project-only commands will be printed after confirmation, never executed.
+                {execute
+                  ? 'Project-only commands will run after confirmation.'
+                  : 'Project-only commands will be printed after confirmation, never executed.'}
               </Muted>
               {installPlan.errors.map((error) => (
                 <StatusMessage tone="warn" key={error}>
@@ -95,7 +99,9 @@ export function CompactSkillPicker({
             <Confirm
               message={
                 installPlan
-                  ? 'Print installation commands and exit?'
+                  ? execute
+                    ? 'Install selected skills and exit?'
+                    : 'Print installation commands and exit?'
                   : 'Confirm these skill IDs and exit?'
               }
               onCancel={onBack}
@@ -122,7 +128,11 @@ export function CompactSkillPicker({
         />
       )}
       <Box>
-        <Muted>Nothing installed by Nosey.</Muted>
+        <Muted>
+          {installPlan && execute
+            ? 'Installation requires confirmation.'
+            : 'Nothing installed by Nosey.'}
+        </Muted>
       </Box>
     </Box>
   );

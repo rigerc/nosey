@@ -50,7 +50,7 @@ To get a text report instead of opening the interface:
 npm run dev -- scan ../your-project --explain
 ```
 
-Nosey reads manifests and configuration signals without executing the scanned project's code. It reports detected technologies, matching agent skills, and supporting evidence. It does not install recommended skills.
+Nosey reads manifests and configuration signals without executing the scanned project's code. It reports detected technologies, matching agent skills, and supporting evidence. Installing recommended skills requires enabling Skills CLI execution and confirming a selection.
 
 ## Terminal workflow
 
@@ -80,15 +80,17 @@ Navigate four tabs in one terminal session:
 
 Selections stay intact when you filter results or switch tabs. Confirming the selection prints distinct skill IDs after the terminal UI exits. Confirmation defaults to **No**.
 
-### Optional Skills CLI commands
+### Optional Skills CLI commands and execution
 
-Open **Settings → Skills CLI** to enable installation command generation and select one or more default agents. This feature is **off by default**. After selecting skills, Scan previews copy-pasteable project-local commands instead of installing anything. Confirming prints the commands only after the terminal UI exits.
+Open **Settings → Skills CLI** to enable installation command generation and select one or more default agents. This feature is **off by default**. After selecting skills, Scan previews project-local commands. By default, confirming prints copy-pasteable commands only after the terminal UI exits.
+
+Enable **Settings → Skills CLI → Execute Skills CLI commands** to run the reviewed commands for you. Execution is **off by default** and requires command generation to be enabled. Save and relaunch to apply settings. Both full and compact Scan show the commands, project directory and agents before asking **Install selected skills and exit?**, defaulting to **No**. After confirmation, Nosey exits the UI and runs commands sequentially in the scanned directory, showing Skills CLI output and a completion summary. npm may download Skills CLI without a further prompt. A failure stops the remaining commands and returns a nonzero exit status; Ctrl+C cancels execution. Completed commands are not rolled back.
 
 ```bash
 cd /path/to/your-project && npx skills add vercel-labs/agent-skills --skill react-best-practices --agent claude-code --agent codex --yes --json
 ```
 
-The generated commands always use the scanned project directory, include `--yes --json`, and never use `--global`. **Running a generated command yourself installs skills; printing it in Nosey does not.** Multiple repositories or differing agent requirements yield multiple commands.
+The generated commands always use the scanned project directory, include `--yes --json`, and never use `--global`. **Printing commands does not install skills. Enabling execution and confirming the selection installs them.** Multiple repositories or differing agent requirements yield multiple commands.
 
 Scan also checks project-local skill directories and `skills-lock.json` without launching the Skills CLI. Skills with matching lock provenance and local files are marked **Installed** (all inspected agents) or **Partial** (some agents). Matching file names without verified provenance are marked **Present (unverified)**; Nosey will not silently treat them as installed. Global installations do not count. Fully installed targets are omitted from generated commands; partially installed skills target only missing agents.
 
@@ -180,8 +182,7 @@ or installs skills.
 When enabled, an interactive launch forces one Git update check as part of the
 initial scan, regardless of the cache TTL. If a previously cached Git revision
 changed, Nosey displays the affected sources. With **Skills CLI** enabled, it
-also suggests running `npx skills update` yourself. Neither the startup check
-nor the suggestion executes Skills CLI or updates installed skills. Ordinary
+also suggests running `npx skills update` yourself. The startup check and update suggestion remain advisory, including when Skills CLI execution is enabled; run the update command yourself. Ordinary
 headless scans continue to use the configured registry TTL.
 
 To create a registry in a **new** directory:
@@ -204,7 +205,7 @@ npm run dev -- --setup
 
 Settings are saved only when you choose to save them. Theme previews do not change saved preferences.
 
-**Compact mode** is an optional toggle in Settings (off by default). When enabled, launching the interactive Scan directly with `nosey [path]` opens a minimal interface without application tabs or the command menu. You can still select skills with Space, review them with Enter, rescan with `r`, or quit with `q`. The compact Scan supports the same opt-in Skills CLI commands and installed status labels as the full Scan. Launches that start on another screen retain the standard interface. The explicit `nosey scan [path]` command, `--plain`, and noninteractive reports remain headless and unchanged. Restart Nosey after saving this setting.
+**Compact mode** is an optional toggle in Settings (off by default). When enabled, launching the interactive Scan directly with `nosey [path]` opens a minimal interface without application tabs or the command menu. You can still select skills with Space, review them with Enter, rescan with `r`, or quit with `q`. The compact Scan supports the same opt-in Skills CLI command printing or execution and installed status labels as the full Scan. Launches that start on another screen retain the standard interface. The explicit `nosey scan [path]` command, `--plain`, and noninteractive reports remain headless and unchanged. Restart Nosey after saving this setting.
 
 ## Development
 

@@ -101,3 +101,36 @@ describe('settings screen', () => {
     expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({version: 1, ascii: true});
   });
 });
+
+it('shows execution only with Skills CLI enabled and saves or discards the draft', async () => {
+  const path = fixture();
+
+  const app = await mount(
+    <App
+      options={{theme: 'mono', ascii: true, debug: false, screen: 'settings', configFile: path}}
+    />,
+  );
+
+  await press(app, '\u001b[B'); // Registries
+  await press(app, '\u001b[B'); // Skills CLI
+  await press(app, '\r');
+  expect(app.lastFrame()).not.toContain('Execute Skills CLI commands');
+  await press(app, '\r'); // Enable generation
+  expect(app.lastFrame()).toContain('Execute Skills CLI commands: false');
+  await press(app, '\u001b[B');
+  await press(app, '\r'); // Enable execution
+  expect(app.lastFrame()).toContain('Execute Skills CLI commands: true');
+  expect(existsSync(path)).toBe(false);
+  await press(app, '\u001b');
+  await press(app, 'd'); // Discard
+  await press(app, '\r');
+  expect(app.lastFrame()).not.toContain('Execute Skills CLI commands');
+  await press(app, '\r');
+  await press(app, '\u001b[B');
+  await press(app, '\r');
+  await press(app, '\u001b');
+  await press(app, 's');
+  expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({
+    skillsCli: {enabled: true, execute: true},
+  });
+});

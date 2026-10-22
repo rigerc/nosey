@@ -222,9 +222,21 @@ function shellQuote(value: string): string {
   return "'" + value.replaceAll("'", "'\\''") + "'";
 }
 
-/** Never invokes the CLI. Each command targets only missing agents in the project. */
+export interface InstallInvocation {
+  cwd: string;
+  args: string[];
+}
+
+export type ConfirmSelection = (
+  ids: string[],
+  commands?: string[],
+  execution?: InstallInvocation[],
+) => void;
+
+/** Planning never invokes the CLI. Each command targets only missing agents in the project. */
 export interface InstallCommands {
   commands: string[];
+  invocations: InstallInvocation[];
   errors: string[];
 }
 
@@ -234,13 +246,21 @@ export function generateInstallCommands(
   agents: readonly string[],
   projectRoot: string,
 ): InstallCommands {
-  if (selectedIds.length === 0) return {commands: [], errors: []};
+  if (selectedIds.length === 0) return {commands: [], invocations: [], errors: []};
 
   if (!agents.length)
-    return {commands: [], errors: ['Choose default agents in Settings > Skills CLI.']};
+    return {
+      commands: [],
+      invocations: [],
+      errors: ['Choose default agents in Settings > Skills CLI.'],
+    };
 
   if (!validAgents(agents))
-    return {commands: [], errors: ['Invalid or duplicate Skills CLI agent settings.']};
+    return {
+      commands: [],
+      invocations: [],
+      errors: ['Invalid or duplicate Skills CLI agent settings.'],
+    };
   const byId = new Map(available.map((skill) => [skill.id, skill]));
   const groups = new Map<string, {source: string; agents: string[]; skills: string[]}>();
   const errors: string[] = [];
@@ -258,6 +278,8 @@ export function generateInstallCommands(
     if (
       !origin ||
       !origin.source ||
+      origin.source.startsWith('-') ||
+      origin.name.startsWith('-') ||
       !safeIdentifier.test(origin.name) ||
       /#[^#]+$/.test(origin.source) ||
       /[\r\n\0]/.test(origin.source)
@@ -277,22 +299,28 @@ export function generateInstallCommands(
     groups.set(key, group);
   }
 
-  if (errors.length) return {commands: [], errors};
+  if (errors.length) return {commands: [], invocations: [], errors};
 
-  const commands = [...groups.values()].map((group) => {
-    const args = [
-      'npx',
+  const invocations = [...groups.values()].map((group) => ({
+    cwd: path.resolve(projectRoot),
+    args: [
       'skills',
       'add',
-      shellQuote(group.source),
-      ...group.skills.flatMap((name) => ['--skill', shellQuote(name)]),
-      ...group.agents.flatMap((agent) => ['--agent', shellQuote(agent)]),
+      group.source,
+      ...group.skills.flatMap((name) => ['--skill', name]),
+      ...group.agents.flatMap((agent) => ['--agent', agent]),
       '--yes',
       '--json',
-    ];
+    ],
+  }));
 
-    return 'cd ' + shellQuote(path.resolve(projectRoot)) + ' && ' + args.join(' ');
-  });
+  const commands = invocations.map(formatInstallCommand);
 
-  return {commands, errors};
+  return {commands, invocations, errors};
+}
+
+export function formatInstallCommand(invocation: InstallInvocation): string {
+  return (
+    'cd ' + shellQuote(invocation.cwd) + ' && npx ' + invocation.args.map(shellQuote).join(' ')
+  );
 }

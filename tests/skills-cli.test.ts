@@ -3,6 +3,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {afterEach, expect, test} from 'vite-plus/test';
 import {appConfig, resolveConfig, type Config} from '../src/config';
+import {loadConfig, saveConfig} from '../src/lib/config';
 import {
   generateInstallCommands,
   inspectInstalledSkills,
@@ -33,7 +34,7 @@ afterEach(() => {
 
 test('Skills CLI is opt-in with validated default agent choices', () => {
   const config = resolveConfig<Config>(appConfig.fields, {}).values;
-  expect(config.skillsCli).toEqual({enabled: false, defaultAgents: []});
+  expect(config.skillsCli).toEqual({enabled: false, execute: false, defaultAgents: []});
   expect(
     appConfig.schema.safeParse({
       skillsCli: {
@@ -240,4 +241,34 @@ test('supports project-local GitHub URL provenance and partial agent status', as
   expect(installationLabel(result.get('acme/skills/alpha'), ['claude-code', 'codex'])).toBe(
     'Partial 1/2',
   );
+});
+
+test('execution defaults off for existing configs and persists independently', () => {
+  const config = resolveConfig<Config>(appConfig.fields, {
+    skillsCli: {enabled: true, defaultAgents: ['codex']},
+  }).values;
+
+  expect(config.skillsCli?.execute).toBe(false);
+  const file = path.join(fixture(), 'config.json');
+  saveConfig({skillsCli: {...config.skillsCli, execute: true}}, file);
+  expect(loadConfig(file).config.skillsCli?.execute).toBe(true);
+  expect(appConfig.schema.safeParse({skillsCli: {execute: 'yes'}}).success).toBe(false);
+});
+
+test('rejects sources and skill names that could be interpreted as options', () => {
+  for (const origin of [
+    {source: '--global', name: 'alpha'},
+    {source: 'team/skills', name: '--all'},
+  ]) {
+    const plan = generateInstallCommands(
+      ['demo'],
+      [{id: 'demo', installSource: origin}],
+      ['codex'],
+      fixture(),
+    );
+
+    expect(plan.errors).toHaveLength(1);
+    expect(plan.commands).toEqual([]);
+    expect(plan.invocations).toEqual([]);
+  }
 });

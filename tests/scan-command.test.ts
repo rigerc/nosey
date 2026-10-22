@@ -87,3 +87,17 @@ test('ASCII plain reports use ASCII decorations and retain detection evidence', 
   expect(ascii.stdout).toContain('  - React');
   expect(ascii.stdout).toContain('      -> packages: react (package.json)');
 });
+
+test('execution-enabled config leaves headless scans as reports without installation', async () => {
+  const config = join(root, 'execution.json');
+  await writeFile(
+    config,
+    JSON.stringify({skillsCli: {enabled: true, execute: true, defaultAgents: ['codex']}}),
+  );
+  const before = await readdir(root);
+  const plain = await command('scan', '--plain', '--config', config);
+  expect(plain.stdout).toContain('no skills were installed');
+  const json = await command('--json', '--config', config);
+  expect(JSON.parse(json.stdout).skills.length).toBeGreaterThan(0);
+  expect(await readdir(root)).toEqual(before);
+});

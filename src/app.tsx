@@ -13,6 +13,7 @@ import {
 } from './components';
 import {ConfigRuntimeProvider} from './config/context';
 import type {Config} from './config';
+import type {ConfirmSelection} from './features/skills/install';
 import {
   useExit,
   useKeymap,
@@ -49,7 +50,7 @@ export interface AppOptions {
   scan?: ScanConfig;
   report?: Report;
   registryInit?: RegistryInitOptions;
-  onConfirm?: (ids: string[], commands?: string[]) => void;
+  onConfirm?: ConfirmSelection;
   static?: boolean;
 }
 

@@ -3,7 +3,7 @@ import {jsonValueSchema} from '../lib/values';
 import pkg from '../../package.json';
 import {themeNames} from '../theme/tokens';
 import {defaultTheme} from '../theme/resolve';
-import {defineConfig} from './definition';
+import {defineConfig, getAtPath} from './definition';
 import {SKILLS_CLI_AGENTS, validAgents} from '../features/skills/install';
 
 /** Loose parsing retains application-specific extension keys during edits. */
@@ -18,6 +18,7 @@ export const configSchema = z
     skillsCli: z
       .object({
         enabled: z.boolean().optional(),
+        execute: z.boolean().optional(),
         defaultAgents: z
           .array(z.string())
           .refine(validAgents, 'Unsupported or duplicate agent')
@@ -62,8 +63,18 @@ export const appConfig = defineConfig({
       label: 'Generate Skills CLI commands',
       section: 'Skills CLI',
       kind: 'toggle',
-      description: 'Only print project-local install commands after confirmation; never run them.',
+      description: 'Review project-local install commands for selected skills.',
       defaultValue: false,
+    },
+    {
+      path: 'skillsCli.execute',
+      label: 'Execute Skills CLI commands',
+      section: 'Skills CLI',
+      kind: 'toggle',
+      description:
+        'Off prints commands; on installs selected skills after confirmation and UI exit.',
+      defaultValue: false,
+      visibleWhen: (values) => getAtPath(values, 'skillsCli.enabled') === true,
     },
     {
       path: 'skillsCli.defaultAgents',

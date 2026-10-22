@@ -419,7 +419,9 @@ export function HomeScreen() {
           {installPlan && (
             <Stack gap={1}>
               <Muted>
-                Project-only commands will be printed after confirmation, never executed.
+                {installSettings.execute
+                  ? 'Project-only commands will run after confirmation.'
+                  : 'Project-only commands will be printed after confirmation, never executed.'}
               </Muted>
               {installPlan.errors.map((error) => (
                 <StatusMessage tone="warn" key={error}>
@@ -440,13 +442,18 @@ export function HomeScreen() {
             <Confirm
               message={
                 installPlan
-                  ? 'Print installation commands and exit?'
+                  ? installSettings.execute
+                    ? 'Install selected skills and exit?'
+                    : 'Print installation commands and exit?'
                   : 'Confirm these skill IDs and exit?'
               }
               onConfirm={(yes) => {
                 if (yes) {
-                  if (installPlan) confirm(chosen, installPlan.commands);
-                  else confirm(chosen);
+                  if (installPlan) {
+                    if (installSettings.execute)
+                      confirm(chosen, installPlan.commands, installPlan.invocations);
+                    else confirm(chosen, installPlan.commands);
+                  } else confirm(chosen);
                   exit();
                 } else setMode('browse');
               }}
@@ -455,7 +462,11 @@ export function HomeScreen() {
         </>
       )}
       <Box>
-        <Muted>Nothing installed by Nosey.</Muted>
+        <Muted>
+          {installSettings.enabled && installSettings.execute
+            ? 'Installation requires confirmation.'
+            : 'Nothing installed by Nosey.'}
+        </Muted>
       </Box>
     </Panel>
   );
@@ -464,7 +475,19 @@ export function HomeScreen() {
     <ScreenLayout
       title="Scan"
       description={config.root}
-      actions={<Badge tone={partial ? 'warn' : 'muted'}>{partial ? 'PARTIAL' : 'READ-ONLY'}</Badge>}
+      actions={
+        <Badge
+          tone={
+            partial ? 'warn' : installSettings.enabled && installSettings.execute ? 'info' : 'muted'
+          }
+        >
+          {partial
+            ? 'PARTIAL'
+            : installSettings.enabled && installSettings.execute
+              ? 'INSTALL ENABLED'
+              : 'READ-ONLY'}
+        </Badge>
+      }
     >
       <ScreenState
         status={report ? 'success' : scan.status === 'error' ? 'error' : 'loading'}

@@ -67,8 +67,8 @@ export function HelpScreen() {
                     Hidden selections stay selected. g toggles groups; d searches skill details.
                   </Text>
                   <Text>
-                    Enter reviews; choose Yes then Enter to print IDs or installation commands.
-                    Nothing runs.
+                    Enter reviews; choose Yes then Enter to print IDs or commands, or install when
+                    Skills CLI execution is enabled.
                   </Text>
                   <Text>Escape or b returns from details/groups. Ctrl+U clears active text.</Text>
                 </>
@@ -103,10 +103,12 @@ export function HelpScreen() {
                   </Text>
                   <Text>Drafts survive tab changes. Preview themes without saving.</Text>
                   <Text>
-                    Skills CLI enables project-only command generation and default target agents.
+                    Skills CLI configures project-only commands, target agents and optional
+                    execution.
                   </Text>
                   <Text>
-                    Registries can check for Git updates on startup. Nosey never runs Skills CLI.
+                    Execution is off by default and requires selection confirmation. Startup
+                    registry checks suggest updates for you to run.
                   </Text>
                   <Muted>NO_COLOR forces mono. --ascii uses ASCII borders and symbols.</Muted>
                 </>

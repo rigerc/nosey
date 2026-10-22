@@ -1,6 +1,6 @@
 import {createContext, useContext, useEffect, useRef, type ReactNode} from 'react';
 import type {Config} from '../../config';
-import {inspectInstalledSkills, discoverProjectSkillAgents} from './install';
+import {inspectInstalledSkills, discoverProjectSkillAgents, type ConfirmSelection} from './install';
 import {resolve} from 'node:path';
 import {detectProject, type Report} from '../../lib/detect';
 import {resolveRegistries} from '../../lib/registry/resolve';
@@ -93,7 +93,7 @@ function useScanState(
 }
 
 type Value = ReturnType<typeof useScanState> & {
-  confirm: (ids: string[], commands?: string[]) => void;
+  confirm: ConfirmSelection;
 };
 
 const Context = createContext<Value | null>(null);
@@ -110,7 +110,7 @@ export function ScanProvider({
   config?: ScanConfig;
   initialReport?: Report;
   enabled?: boolean;
-  onConfirm?: (ids: string[], commands?: string[]) => void;
+  onConfirm?: ConfirmSelection;
   installSettings?: Config['skillsCli'];
   checkRegistryUpdatesOnStart?: boolean;
   children: ReactNode;
@@ -127,8 +127,11 @@ export function ScanProvider({
     <Context.Provider
       value={{
         ...value,
-        confirm: (ids, commands) =>
-          commands === undefined ? onConfirm?.(ids) : onConfirm?.(ids, commands),
+        confirm: (ids, commands, execution) => {
+          if (execution !== undefined) onConfirm?.(ids, commands, execution);
+          else if (commands !== undefined) onConfirm?.(ids, commands);
+          else onConfirm?.(ids);
+        },
       }}
     >
       {children}

@@ -98,13 +98,16 @@ export function CompactScanScreen() {
               report={report}
               statusAgents={statusAgents}
               installPlan={installPlan}
+              execute={installSettings.execute}
               selected={selected}
               onSelect={setSelected}
               reviewing={reviewing}
               onReview={() => setReviewing(true)}
               onBack={() => setReviewing(false)}
               onConfirm={(ids, commands) => {
-                if (commands) confirm(ids, commands);
+                if (commands && installSettings.execute && installPlan)
+                  confirm(ids, commands, installPlan.invocations);
+                else if (commands) confirm(ids, commands);
                 else confirm(ids);
                 exit();
               }}

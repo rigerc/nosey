@@ -4,6 +4,7 @@ import {render, renderToString} from 'ink';
 import meow from 'meow';
 import {App, PlainView, type AppOptions} from './app';
 import {runCommand} from './commands';
+import {completeSelection, type ConfirmedSelection} from './features/skills/execute';
 import {registryInitOptions, validateRegistryInit} from './commands/registry';
 import {appConfig, resolveConfig, type Config} from './config';
 import {ConfigSetup} from './demos/ConfigSetup';
@@ -127,32 +128,24 @@ function presentation(screen: string, root: string): AppOptions {
 }
 
 async function showApp(options: AppOptions) {
-  let confirmed: string[] | undefined;
-  let generatedCommands: string[] | undefined;
+  let selection: ConfirmedSelection | undefined;
   await render(
     <App
       options={{
         ...options,
-        onConfirm: (ids, commands) => {
-          confirmed = ids;
-          generatedCommands = commands;
+        onConfirm: (ids, commands, execution) => {
+          selection = {
+            ids,
+            commands,
+            execution:
+              options.skillsCli?.enabled && options.skillsCli.execute ? execution : undefined,
+          };
         },
       }}
     />,
   ).waitUntilExit();
 
-  if (confirmed) {
-    if (generatedCommands !== undefined)
-      process.stdout.write(
-        generatedCommands.length
-          ? generatedCommands.join('\n') + '\n'
-          : 'No installation commands necessary.\n',
-      );
-    else
-      process.stdout.write(
-        confirmed.length ? confirmed.join('\n') + '\n' : 'No skills selected.\n',
-      );
-  }
+  if (selection) process.exitCode = await completeSelection(selection);
 }
 
 async function main() {

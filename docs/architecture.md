@@ -20,7 +20,8 @@ headless commands, without adding a separate UI framework dependency.
 - `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
 - `src/features/skills/install.ts` inspects project-local installations (lock provenance
   and agent folders) and generates copyable `skills add --yes --json` commands.
-  It never executes them.
+  Execution is separately opt-in: after selection confirmation and Ink exit,
+  `src/features/skills/execute.ts` runs the structured plan sequentially in the scanned directory.
 - `templates/registry/` is the packaged registry template and trusted manifest generator.
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
@@ -38,7 +39,10 @@ Ink. Non-Scan plain previews remain separate. Confirmed skill IDs are printed on
 after Ink exits; quit/cancel never confirms a selection.
 When Skills CLI is enabled in saved settings, confirmations instead print grouped
 project-only commands targeting the selected agents; fully installed targets are
-omitted. Disabled mode retains ID output.
+omitted. With `skillsCli.execute` also enabled, the reviewed structured plan is
+executed after Ink exits. Execution defaults off; failures stop the batch and Ctrl+C
+cancels the process group. Headless scans remain reports. Disabled command
+generation retains ID output.
 
 `src/app.tsx` owns one provider tree and shell. Visited primary screens remain
 mounted, retaining their local selections, filters, cursors, and drafts. Each is
