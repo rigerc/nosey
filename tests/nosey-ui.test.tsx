@@ -9,6 +9,7 @@ import {defaultScan} from '../src/features/skills/context';
 import type {Report} from '../src/lib/detect';
 import {scaffoldRegistry, fixtureTransport} from './helpers/registry-template';
 import * as registryInit from '../src/lib/registry/init';
+import * as registrySuggest from '../src/lib/registry/suggest';
 import {themeNames} from '../src/theme/tokens';
 import {mount, press, settle} from './helpers/terminal';
 import {seedRegistrySkill} from './helpers/registry-fixture';
@@ -671,6 +672,52 @@ describe('Nosey scan interaction', () => {
 });
 
 describe('Registry UI writes', () => {
+  beforeEach(() => {
+    vi.spyOn(registrySuggest, 'suggestRegistryId').mockResolvedValue(undefined);
+  });
+
+  it('prefills identity after choosing a destination and preserves an edited identity', async () => {
+    const suggest = vi.mocked(registrySuggest.suggestRegistryId);
+    suggest.mockImplementation(async (directory) => 'signed-in/' + directory.split('/').at(-1));
+    const app = await mount(<App options={{...options, screen: 'registry-setup'}} />);
+    await press(app, '\u0015');
+    await press(app, 'team-skills');
+    await press(app, '\r');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('signed-in/team-skills'));
+    expect(suggest).toHaveBeenCalledWith(join(root, 'team-skills'));
+
+    await press(app, '\u001b');
+    await press(app, '\u0015');
+    await press(app, 'other-skills');
+    await press(app, '\r');
+    await vi.waitFor(() => expect(app.lastFrame()).toContain('signed-in/other-skills'));
+    await press(app, '\u0015');
+    await press(app, 'my-org/custom');
+    await press(app, '\r');
+    await press(app, '\u001b'); // back from Git to identity
+    expect(app.lastFrame()).toContain('my-org/custom');
+    await press(app, '\u001b'); // back to destination
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('my-org/custom');
+    expect(suggest).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps an explicit registry ID without looking up GitHub', async () => {
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          screen: 'registry-setup',
+          registryInit: {registryId: 'acme/explicit'},
+        }}
+      />,
+    );
+
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('acme/explicit');
+    expect(registrySuggest.suggestRegistryId).not.toHaveBeenCalled();
+  });
+
   it('shows publication failures without truncation and returns without recreating local files', async () => {
     const destination = join(root, 'partial-registry');
 
@@ -741,6 +788,9 @@ describe('Registry UI writes', () => {
     await press(app, '\r');
     await settle();
     expect(app.lastFrame()).toContain('Owner/repository');
+    await press(app, 'manual/skills');
+    await press(app, '\r');
+    expect(app.lastFrame()).toContain('Initialize a local Git repository?');
     expect(app.lastFrame()).not.toContain('Destination already exists');
     expect(existsSync(join(root, 'fresh-registry'))).toBe(false);
   });

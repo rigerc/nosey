@@ -501,10 +501,19 @@ export async function runRegistryInit(
     let {registryId} = options;
 
     if (!registryId && interactive) {
+      const {suggestRegistryId} = await import('./suggest.js');
+
+      const suggestion = await suggestRegistryId(directoryInput, {
+        run: async (command, args) => (await runner(command, args)) ?? '',
+      });
+
       while (!registryId) {
         // eslint-disable-next-line no-await-in-loop
-        const response = await ask('Registry ID (owner/repository): ');
-        const answer = response.trim();
+        const response = await ask(
+          `Registry ID (owner/repository)${suggestion ? ' [' + suggestion + ']' : ''}: `,
+        );
+
+        const answer = response.trim() || suggestion || '';
 
         try {
           validateRegistryId(answer);
