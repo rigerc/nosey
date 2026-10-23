@@ -21,6 +21,7 @@ const cli = meow(
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh>
+    $ ${APP_NAME} schema <skills-map|manifest>
     $ ${APP_NAME} doctor [--json] [--config path]
     $ ${APP_NAME} --setup [--config path]
 
@@ -268,6 +269,25 @@ async function main() {
     throw new AppError('--global, --project and --ref require a registry subcommand', {
       exitCode: 2,
     });
+
+  if (input[0] === 'schema') {
+    if (
+      flags.setup ||
+      flags.screen !== 'home' ||
+      flags.skillsOnly ||
+      flags.explain ||
+      flags.depth !== undefined ||
+      flags.maxFiles !== undefined ||
+      flags.frontendBonus !== undefined ||
+      (flags.registry?.length ?? 0) > 0
+    )
+      throw new AppError('Scan and setup flags cannot be used with schema', {exitCode: 2});
+
+    await runCommand('schema', input.slice(1), flags);
+
+    return;
+  }
+
   const explicitScan = input[0] === 'scan';
   const paths = explicitScan ? input.slice(1) : input;
 

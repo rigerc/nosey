@@ -23,6 +23,11 @@ validate registry documents.
 Both schemas are hand-authored JSON Schema 2020-12 documents. Each declares an absolute `$id` and
 references only fragments of its own `$defs`, so validation never fetches anything over the network.
 
+Use `nosey schema skills-map` or `nosey schema manifest` to print a canonical schema
+as JSON to stdout. Redirect the output to save a local schema copy. The command
+works offline, without a registry or interactive terminal; `--json` is optional.
+`skill-map` and `map` are aliases for `skills-map`; `skills-manifest` aliases `manifest`.
+
 ## Editor annotations
 
 The template does not distribute schemas or `$schema` annotations. Schemas and this

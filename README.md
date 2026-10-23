@@ -285,7 +285,16 @@ and after configuration. Existing registries and offline `registry build` do not
 need a template download.
 
 JSON Schemas stay in Nosey under `schemas/registry/`; the template does not include
-them or `$schema` annotations. See the
+them or `$schema` annotations. Export a schema as JSON on stdout:
+
+```bash
+npm run --silent dev -- schema skills-map > skills-map.schema.json
+npm run --silent dev -- schema manifest > skills-manifest.schema.json
+```
+
+The command always runs headlessly and needs no registry or network access.
+`skill-map` and `map` are aliases for `skills-map`; `skills-manifest` is an alias
+for `manifest`. See the
 [registry schema reference](docs/registry-schema.md) for the document fields and
 parser-only rules.
 

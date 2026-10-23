@@ -10,6 +10,7 @@ headless commands, without adding a separate UI framework dependency.
 - `src/commands/index.ts` registers headless commands.
 - `src/commands/scan.ts` resolves registries, scans workspaces, and prints reports.
 - `src/commands/registry.ts` routes registry management and noninteractive initialization.
+- `src/commands/schema.ts` prints the canonical map or manifest JSON Schema offline.
 - `src/lib/scanner.ts`, `manifests.ts`, `detect.ts`, `report.ts`, and `text-cache.ts`
   implement bounded scanning, manifest parsing, detection, reporting, and caching.
 - `src/lib/registry/` implements local/Git registry loading, validation, merging,
