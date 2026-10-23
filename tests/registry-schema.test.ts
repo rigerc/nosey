@@ -539,18 +539,18 @@ test('generated schema guide covers every inventoried field', async () => {
 
 test('MCP schema and parser support named server mappings with exact config paths', async () => {
   const validate = await compileSchema('map');
+
   const mapping = (matcher: Record<string, string[]>) => ({
     schemaVersion: 2,
     registryId: 'example/skills',
-    technologies: [
-      {id: 'custom-mcp', name: 'Custom MCP', detect: {mcpServers: [matcher]}},
-    ],
+    technologies: [{id: 'custom-mcp', name: 'Custom MCP', detect: {mcpServers: [matcher]}}],
   });
 
   const valid = mapping({
     serverNames: ['company-docs'],
     configFiles: ['packages/api/.mcp.json'],
   });
+
   expect(validate(valid)).toBe(true);
   expect(() => parseMap(valid)).not.toThrow();
 
@@ -562,6 +562,7 @@ test('MCP schema and parser support named server mappings with exact config path
     serverNames: ['company-docs'],
     configFiles: ['../.mcp.json'],
   });
+
   expect(validate(invalidPath)).toBe(true);
   expect(() => parseMap(invalidPath)).toThrow(/normalized project-relative MCP config paths/);
 

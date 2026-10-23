@@ -525,31 +525,21 @@
           "minItems": 1,
           "maxItems": 64,
           "description": "Optional exact project-relative MCP configuration file paths (including nested workspace paths). Restricts all identities in this matcher; no globs or suffix matching. Valid recognized MCP config paths only.",
-          "x-parserOnly": [
-            "parser-only:path-normalization"
-          ]
+          "x-parserOnly": ["parser-only:path-normalization"]
         }
       },
       "anyOf": [
         {
-          "required": [
-            "packages"
-          ]
+          "required": ["packages"]
         },
         {
-          "required": [
-            "pythonPackages"
-          ]
+          "required": ["pythonPackages"]
         },
         {
-          "required": [
-            "endpoints"
-          ]
+          "required": ["endpoints"]
         },
         {
-          "required": [
-            "serverNames"
-          ]
+          "required": ["serverNames"]
         }
       ]
     },

@@ -211,9 +211,7 @@ Use a case-sensitive `serverNames` matcher, optionally scoped to exact project-r
   "id": "company-docs-mcp",
   "name": "Company Docs MCP",
   "detect": {
-    "mcpServers": [
-      {"serverNames": ["company-docs"], "configFiles": [".mcp.json"]}
-    ]
+    "mcpServers": [{"serverNames": ["company-docs"], "configFiles": [".mcp.json"]}]
   },
   "skills": ["acme/team-skills/company-docs"]
 }
