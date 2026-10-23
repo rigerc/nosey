@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
       - name: Print formatted source
         run: |
-          ./node_modules/.bin/vp check --fix
+          ./node_modules/.bin/vp check --fix || true
           echo FORMAT_HELPER_START
           base64 -w 0 tests/helpers/registry-template.ts
           echo
