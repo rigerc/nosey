@@ -11,8 +11,8 @@ changes require an incremented `schemaVersion`.
 
 ## Testing without a vendored template
 
-The repository does **not** carry a snapshot of the template. Test initialization
-uses an ephemeral, minimal synthetic registry created by
+The repository does **not** vendor the template for tests or initialization.
+Test initialization uses an ephemeral, minimal synthetic registry created by
 `tests/helpers/registry-template.ts`, with a mocked GitHub archive transport.
 These tests verify Nosey's creation, identity rewriting, archive-extraction
 security, schema loading and installed package behavior entirely offline.
@@ -21,7 +21,11 @@ The helper is not a template release and must not be published as one.
 Template tools, Agnix and synchronization are tested and maintained in the
 separate `rigerc/nosey-registry-template` repository. Verify interoperability
 against an approved real template revision during releases, rather than
-copying the template into Nosey source control.
+vendoring the template into Nosey source control.
+
+The illustrative layout in `docs/example/registry/` is documentation only. It
+is not a template release, is not executed by CI, and must not be used for
+initialization.
 
 ## Registry creation
 
