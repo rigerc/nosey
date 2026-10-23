@@ -40,6 +40,12 @@ const directories = new Map<string, string>(
 
 const safeIdentifier = /^[A-Za-z0-9_.@-]+$/;
 
+// Recommendation IDs retain their catalog slugs; Skills CLI selects frontmatter names.
+const builtInInstallNames = new Map([
+  ['vercel-labs/agent-skills/react-best-practices', 'vercel-react-best-practices'],
+  ['vercel-labs/agent-skills/composition-patterns', 'vercel-composition-patterns'],
+]);
+
 export function validAgents(agents: readonly string[]): boolean {
   return agents.every((agent) => directories.has(agent)) && new Set(agents).size === agents.length;
 }
@@ -58,7 +64,7 @@ export function skillSource(skill: InstallableSkill): SkillInstallSource | undef
   )
     return;
 
-  return {source: owner + '/' + repository, name};
+  return {source: owner + '/' + repository, name: builtInInstallNames.get(skill.id) ?? name};
 }
 
 /** Canonicalize GitHub shorthand and URLs; keep local paths separate. */
@@ -99,12 +105,7 @@ function lockMatches(
   )
     return false;
 
-  if (value.skillPath !== undefined) {
-    const parent = path.posix.basename(path.posix.dirname(value.skillPath));
-
-    if (parent !== expected.name) return false;
-  }
-
+  // The lock is keyed by the declared name. Its source path may use a different folder name.
   return true;
 }
 

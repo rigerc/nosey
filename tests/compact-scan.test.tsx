@@ -129,7 +129,7 @@ describe('compact Scan setting', () => {
     await press(app, '\r');
     expect(app.lastFrame()).toContain('Print installation commands and exit?');
     expect(app.lastFrame()).toContain('npx skills add acme/skills');
-    expect(app.lastFrame()).toContain('--skill alpha');
+    expect(app.lastFrame()).toMatch(/--skill\s+alpha/);
     expect(app.lastFrame()).toContain('--agent claude-code');
     expect(app.lastFrame()).not.toContain('--agent codex');
     expect(app.lastFrame()).toMatch(/--yes\s+--json/);
