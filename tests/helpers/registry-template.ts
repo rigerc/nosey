@@ -28,6 +28,7 @@ function write(name: string, data: string): void {
   fs.mkdirSync(path.dirname(file), {recursive: true});
   fs.writeFileSync(file, data);
 }
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Only local, explicitly constructed test documents are serialized here.
 function json(name: string, data: unknown): void {
   write(name, JSON.stringify(data, null, 2) + '\n');
 }
