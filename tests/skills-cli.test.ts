@@ -301,6 +301,7 @@ test('recognizes installed built-ins whose declared names differ from source fol
 
 test('explicit registry install names take precedence over built-in aliases', () => {
   const id = 'vercel-labs/agent-skills/react-best-practices';
+
   const result = generateInstallCommands(
     [id],
     [{id, installSource: {source: 'acme/fork', name: 'custom-react'}}],

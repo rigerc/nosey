@@ -331,11 +331,13 @@ test('external schema rejects malformed sources, duplicate IDs, and v1 external 
 
 test('local registry commands select the manifest name rather than the source folder', () => {
   const id = 'acme/skills/nested/review';
+
   const manifest = parseManifest({
     schemaVersion: 1,
     registryId: 'acme/skills',
     skills: [{id, name: 'code-review', path: 'skills/nested/review/SKILL.md'}],
   });
+
   const map = parseMap({schemaVersion: 1, registryId: 'acme/skills', alwaysRecommend: [id]});
   const {registry, warnings} = mergeRegistries([{manifest, map, source: '/team/skills'}]);
   expect(warnings).toEqual([]);
