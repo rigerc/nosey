@@ -60,6 +60,29 @@ afterEach(() => {
 });
 
 describe('compact Scan setting', () => {
+  it('shows MCP status and partial-scan warnings alongside mapped skills', async () => {
+    const {options} = setup();
+
+    const app = await mount(
+      <App
+        options={{
+          ...options,
+          report: {
+            ...report,
+            skippedFiles: [{file: '.codex/config.toml', reason: 'invalid-config'}],
+            mcpServers: [{file: '.mcp.json', name: 'off', transport: 'http', status: 'disabled'}],
+          },
+        }}
+      />,
+    );
+
+    expect(app.lastFrame()).toContain('Partial scan');
+    expect(app.lastFrame()).toContain('1 MCP servers configured (1 disabled)');
+    expect(app.lastFrame()).toContain('availability unchecked');
+    expect(app.lastFrame()).toContain('1 skipped inputs');
+    expect(app.lastFrame()).toContain('demo/one');
+  });
+
   it('defaults to disabled and persists as a typed setting', () => {
     const {path} = setup();
     expect(resolveConfig<Config>(appConfig.fields, {}, {env: {}}).values.compactMode).toBe(false);

@@ -17,6 +17,14 @@ headless commands, without adding a separate UI framework dependency.
   Version 2 maps may declare external GitHub skills independently of the local manifest;
   references are mapped and deduplicated without fetching external skill files.
 - `src/data/skills-map.ts` contains built-in technology and skill mappings.
+- `src/lib/mcp.ts` parses recognized workspace JSON/JSONC MCP files and Codex
+  `.codex/config.toml` through the same bounded `ProjectTree`. It normalizes
+  package-runner identities and HTTP(S) endpoints without execution, interpolation,
+  environment-file reads, or endpoint requests. `detect.mcpServers` matches enabled
+  declarations through the existing technology, combination, and skill pipeline.
+  `Report.mcpServers` retains unknown and disabled declarations; transport availability
+  and client approval are not inferred. Syntax/shape failures add `invalid-config`
+  skipped inputs with no parser source excerpts. No global MCP config is read.
 - `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
 - `src/features/skills/install.ts` inspects project-local installations (lock provenance
   and agent folders) and generates copyable `skills add --yes --json` commands.

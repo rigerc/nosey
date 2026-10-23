@@ -84,6 +84,33 @@ function detectionSummary(detect) {
       const values = sorted(array(detect[key], key).map(pattern));
 
       if (values.length) summaries.push(`npm packages matching: ${values.join(', ')}`);
+    } else if (key === 'mcpServers') {
+      if (!Array.isArray(detect[key])) throw new Error('mcpServers must be an array');
+      const matchers = array(detect[key], key);
+
+      if (matchers.length > 64) throw new Error('mcpServers allows at most 64 matchers');
+
+      for (const matcher of matchers) {
+        const fields = ['packages', 'pythonPackages', 'endpoints'];
+
+        if (
+          !matcher ||
+          typeof matcher !== 'object' ||
+          Array.isArray(matcher) ||
+          !Object.keys(matcher).length
+        )
+          throw new Error('mcpServers matcher requires an identity');
+
+        for (const field of Object.keys(matcher).sort(compare)) {
+          if (!fields.includes(field))
+            throw new Error('Unknown mcpServers matcher field: ' + field);
+          const values = sorted(strings(matcher[field], 'mcpServers.' + field));
+
+          if (!values.length || matcher[field].length > 64)
+            throw new Error('mcpServers.' + field + ' requires 1 to 64 entries');
+          summaries.push(`configured MCP ${field}: ${values.join(', ')}`);
+        }
+      }
     } else if (key === 'configFileContent') {
       const blocks = Array.isArray(detect[key]) ? detect[key] : [detect[key]];
 

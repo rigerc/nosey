@@ -64,6 +64,11 @@ const inventoriedFields = [
   'technologies[].detect.rustCrates',
   'technologies[].detect.elixirPackages',
   'technologies[].detect.gems',
+  'technologies[].detect.mcpServers',
+  'technologies[].detect.mcpServers[]',
+  'technologies[].detect.mcpServers[].packages',
+  'technologies[].detect.mcpServers[].pythonPackages',
+  'technologies[].detect.mcpServers[].endpoints',
   'technologies[].detect.configFiles',
   'technologies[].detect.fileExtensions',
   'technologies[].detect.packagePatterns[]',
@@ -315,6 +320,43 @@ test('every registry schema fixture meets its declared expectations', async () =
 
     if (parseOutcome === 'ok')
       expect(schemaValid, label + ' parser-ok implies schema-valid').toBe(true);
+  }
+});
+
+test('MCP matcher schemas and parsers agree for both map versions', async () => {
+  const validate = await compileSchema('map');
+
+  const cases: Array<{value: JsonValue; valid: boolean}> = [
+    {value: [], valid: true},
+    {value: [{packages: ['@playwright/mcp']}], valid: true},
+    {
+      value: [{pythonPackages: ['example-mcp'], endpoints: ['https://example.com/mcp']}],
+      valid: true,
+    },
+    {value: null, valid: false},
+    {value: {}, valid: false},
+    {value: [{}], valid: false},
+    {value: [null], valid: false},
+    {value: [{names: ['context7']}], valid: false},
+    {value: [{packages: []}], valid: false},
+    {value: [{packages: null}], valid: false},
+    {value: [{packages: ['']}], valid: false},
+    {value: [{packages: [42]}], valid: false},
+    {value: Array.from({length: 65}, () => ({packages: ['example']})), valid: false},
+    {value: [{endpoints: Array.from({length: 65}, () => 'https://example.com/mcp')}], valid: false},
+  ];
+
+  for (const schemaVersion of [1, 2]) {
+    for (const {value, valid} of cases) {
+      const map = {
+        schemaVersion,
+        registryId: 'example/mcp',
+        technologies: [{id: 'custom', name: 'Custom', detect: {mcpServers: value}}],
+      };
+
+      expect(validate(map), JSON.stringify(value)).toBe(valid);
+      expect(parseDocument('map', map).outcome).toBe(valid ? 'ok' : 'throws');
+    }
   }
 });
 

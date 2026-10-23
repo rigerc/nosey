@@ -8,6 +8,7 @@ import {
 } from '../data/skills-map.js';
 
 import {builtInRegistry} from './registry/merge.js';
+import {indexMcpServers, matchesMcpServer, type McpServer} from './mcp.js';
 import type {MergedRegistry, RegistryWarning, SkillInstallSource} from './registry/types.js';
 import {
   matchesPath,
@@ -74,6 +75,7 @@ export type Report = {
   combinations: DetectedCombination[];
   frontendDetected: boolean;
   agents: DetectedAgentFolder[];
+  mcpServers?: McpServer[];
   inspectedAgents?: string[];
   skills: SuggestedSkill[];
   registryWarnings?: RegistryWarning[];
@@ -398,6 +400,7 @@ function webFrontend(
 export async function detectProject(root = '.', options: DetectOptions = {}): Promise<Report> {
   const tree = await scanProject(root, options);
   const manifests = await indexManifests(tree);
+  const mcpServers = await indexMcpServers(tree);
   const registry = options.registry ?? builtInRegistry();
 
   const technologies: DetectedTechnology[] = [];
@@ -410,6 +413,11 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
   for (const {technology, collector} of detections) {
     manifestEvidence(manifests, technology.detect, collector);
     pathEvidence(tree, technology.detect, collector);
+
+    for (const server of mcpServers) {
+      if (matchesMcpServer(server, technology.detect.mcpServers ?? []))
+        collector.add(`mcp: ${server.name} (${server.file})`);
+    }
   }
 
   await contentEvidence(tree, detections);
@@ -513,6 +521,7 @@ export async function detectProject(root = '.', options: DetectOptions = {}): Pr
     combinations,
     frontendDetected,
     agents,
+    mcpServers,
     skills,
     summary: {
       technologies: technologies.length,
