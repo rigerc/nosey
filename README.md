@@ -197,6 +197,10 @@ npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes 
 Registries may declare external skills in `skills-map.json` version 2 and map them to detected technologies without storing their `SKILL.md` files. The upstream source is retained for opt-in install command generation. Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
 For a GitHub registry, use `registry init ./team-skills --registry-id acme/team-skills --github --yes`.
+Interactive initialization prefills the owner from the signed-in `gh` account and
+the repository name from the destination folder. Edit the suggestion as needed;
+if `gh` is unavailable, enter the identity manually. An explicit `--registry-id`
+always takes precedence.
 Nosey checks Git, `gh` authentication, the template, and the destination repository,
 then creates a **private** repository using GitHub's template mechanism. Use
 `--visibility public` to publish publicly. It clones the generated repository,

@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {resolve} from 'node:path';
 import {Text} from 'ink';
 import {
@@ -17,6 +17,7 @@ import {
   type StepContext,
 } from '../components';
 import {useRegistryInitOptions} from '../features/registry/context';
+import {suggestRegistryId} from '../lib/registry/suggest';
 import {useScan} from '../features/skills/context';
 import {useScreenHints} from '../features/ui/context';
 import {useInputCapture, useKeymap, useRouter} from '../hooks';
@@ -37,6 +38,7 @@ export function RegistrySetupScreen() {
   );
 
   const [registryId, setRegistryId] = useState(original.registryId ?? '');
+  const suggestedId = useRef<string | undefined>(undefined);
   const [git, setGit] = useState(original.git ?? true);
   const [github, setGithub] = useState(original.github ?? false);
 
@@ -124,6 +126,13 @@ export function RegistrySetupScreen() {
                       const destination = resolve(config.root, value);
                       await validateRegistryDestination(destination);
                       setDirectory(destination);
+
+                      if (!registryId || registryId === suggestedId.current) {
+                        const suggestion = await suggestRegistryId(destination);
+                        suggestedId.current = suggestion;
+                        setRegistryId(suggestion ?? '');
+                      }
+
                       setError('');
                       await step.goNext();
                     } catch (reason) {

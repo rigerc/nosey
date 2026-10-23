@@ -260,11 +260,39 @@ test('interactive wizard creates a local Git repository without publishing', asy
     expect(result.gitInitialized).toBe(true);
     expect(result.githubCreated).toBe(false);
     expect(commands).toStrictEqual([
+      {command: 'gh', args: ['api', 'user', '--jq', '.login']},
       {
         command: 'git',
         args: ['init', '--initial-branch=main', result.directory],
       },
     ]);
+  });
+});
+
+test('interactive prompt accepts or overrides the GitHub identity suggestion', async () => {
+  await temporary(async (parent) => {
+    for (const answer of ['', 'my-org/custom']) {
+      const directory = path.join(parent, answer ? 'override' : 'team-skills');
+      const questions: string[] = [];
+
+      const result = await runRegistryInit(
+        {directory, git: false},
+        {
+          interactive: true,
+          ask: async (question) => {
+            questions.push(question);
+
+            return answer;
+          },
+          run: async () => 'signed-in\n',
+        },
+      );
+
+      expect(questions).toEqual([
+        `Registry ID (owner/repository) [signed-in/${path.basename(directory)}]: `,
+      ]);
+      expect(result.registryId).toBe(answer || 'signed-in/team-skills');
+    }
   });
 });
 
