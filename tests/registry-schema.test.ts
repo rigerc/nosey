@@ -70,6 +70,8 @@ const inventoriedFields = [
   'technologies[].detect.mcpServers[].packages',
   'technologies[].detect.mcpServers[].pythonPackages',
   'technologies[].detect.mcpServers[].endpoints',
+  'technologies[].detect.mcpServers[].serverNames',
+  'technologies[].detect.mcpServers[].configFiles',
   'technologies[].detect.configFiles',
   'technologies[].detect.fileExtensions',
   'technologies[].detect.packagePatterns[]',
@@ -533,4 +535,37 @@ test('generated schema guide covers every inventoried field', async () => {
   const guide = await fs.readFile(guideFile, 'utf8');
 
   for (const field of inventoriedFields) expect(guide, field).toContain('`' + field + '`');
+});
+
+test('MCP schema and parser support named server mappings with exact config paths', async () => {
+  const validate = await compileSchema('map');
+  const mapping = (matcher: Record<string, string[]>) => ({
+    schemaVersion: 2,
+    registryId: 'example/skills',
+    technologies: [
+      {id: 'custom-mcp', name: 'Custom MCP', detect: {mcpServers: [matcher]}},
+    ],
+  });
+
+  const valid = mapping({
+    serverNames: ['company-docs'],
+    configFiles: ['packages/api/.mcp.json'],
+  });
+  expect(validate(valid)).toBe(true);
+  expect(() => parseMap(valid)).not.toThrow();
+
+  const withoutIdentity = mapping({configFiles: ['.mcp.json']});
+  expect(validate(withoutIdentity)).toBe(false);
+  expect(() => parseMap(withoutIdentity)).toThrow(/requires an identity/);
+
+  const invalidPath = mapping({
+    serverNames: ['company-docs'],
+    configFiles: ['../.mcp.json'],
+  });
+  expect(validate(invalidPath)).toBe(true);
+  expect(() => parseMap(invalidPath)).toThrow(/normalized project-relative MCP config paths/);
+
+  const invalidField = mapping({serverNames: ['company-docs'], serverName: ['unrecognized']});
+  expect(validate(invalidField)).toBe(false);
+  expect(() => parseMap(invalidField)).toThrow(/Unknown mcpServers matcher field/);
 });

@@ -302,3 +302,94 @@ test('endpoint and package matcher fields are alternatives and cannot be supplie
     'custom',
   ]);
 });
+
+test('custom local MCP server names recommend skills only from the configured file', async () => {
+  await file('registry/skills/docs/SKILL.md', '# Documentation guidance');
+  await file('registry/skills-manifest.json', {
+    schemaVersion: 1,
+    registryId: 'example/team-skills',
+    skills: [{id: 'example/team-skills/docs', name: 'Docs', path: 'skills/docs/SKILL.md'}],
+  });
+  await file('registry/skills-map.json', {
+    schemaVersion: 2,
+    registryId: 'example/team-skills',
+    technologies: [
+      {
+        id: 'internal-docs-mcp',
+        name: 'Internal docs MCP',
+        detect: {
+          mcpServers: [
+            {serverNames: ['company-docs'], configFiles: ['packages/api/.mcp.json']},
+          ],
+        },
+      },
+    ],
+    technologySkills: [
+      {technologyId: 'internal-docs-mcp', skills: ['example/team-skills/docs']},
+    ],
+  });
+  const loaded = await loadLocalRegistry(join(root, 'registry'));
+  const {registry, warnings} = mergeRegistries([loaded]);
+  expect(warnings).toEqual([]);
+
+  await file('packages/api/.mcp.json', {
+    mcpServers: {'company-docs': {command: 'node', args: ['./local-server.js']}},
+  });
+  await file('.cursor/mcp.json', {
+    mcpServers: {'company-docs': {command: 'node', args: ['./another-server.js']}},
+  });
+  const report = await detectProject(root, {registry});
+  expect(report.technologies.find((tech) => tech.id === 'internal-docs-mcp')?.evidence).toEqual([
+    'mcp: company-docs (packages/api/.mcp.json)',
+  ]);
+  expect(report.skills.map((skill) => skill.id)).toContain('example/team-skills/docs');
+
+  await rm(join(root, 'packages/api/.mcp.json'));
+  expect((await detectProject(root, {registry})).skills).toEqual([]);
+
+  await file('packages/api/.mcp.json', {
+    mcpServers: {'Company-docs': {command: 'node', args: ['./local-server.js']}},
+  });
+  expect((await detectProject(root, {registry})).skills).toEqual([]);
+
+  await file('packages/api/.mcp.json', {
+    mcpServers: {
+      'company-docs': {command: 'node', args: ['./local-server.js'], disabled: true},
+    },
+  });
+  expect((await detectProject(root, {registry})).skills).toEqual([]);
+});
+
+test('MCP name matching is opt-in and config files scope package and endpoint identities', async () => {
+  const registry = builtInRegistry();
+  registry.technologies.push({
+    id: 'named-local',
+    name: 'Named local MCP',
+    detect: {mcpServers: [{serverNames: ['company-docs']}]},
+    skills: [],
+  });
+  registry.technologies.push({
+    id: 'scoped-package',
+    name: 'Scoped package MCP',
+    detect: {mcpServers: [
+      {packages: ['@playwright/mcp'], configFiles: ['.cursor/mcp.json']},
+    ]},
+    skills: [],
+  });
+
+  await file('.mcp.json', {
+    mcpServers: {
+      'company-docs': {command: 'node', args: ['./server.js']},
+      browser: {command: 'npx', args: ['@playwright/mcp']},
+    },
+  });
+  expect((await detectProject(root, {registry})).technologies.map((t) => t.id)).toEqual([
+    'named-local', 'mcp-playwright',
+  ]);
+  await file('.cursor/mcp.json', {
+    mcpServers: {browser: {command: 'npx', args: ['@playwright/mcp']}},
+  });
+  expect((await detectProject(root, {registry})).technologies.map((t) => t.id)).toEqual([
+    'named-local', 'mcp-playwright', 'scoped-package',
+  ]);
+});

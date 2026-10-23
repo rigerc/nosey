@@ -94,6 +94,38 @@ supplementary characters can be schema-valid and still fail the parser. Accepted
 `m`, `s`, `u`, and `v`, with `u` and `v` never combined. `g` and `y` are rejected because detection must
 be deterministic, `x` is not a Node flag, and any invalid expression fails at compile time.
 
+## User-defined MCP server mapping
+
+Custom registries can recommend skills for workspace MCP servers even when a server
+runs as a local script without a recognizable package or remote endpoint. Set
+`technologies[].detect.mcpServers[].serverNames` to the exact, case-sensitive
+server key in the MCP configuration. Add `configFiles` to restrict the match to
+an exact project-relative configuration path; this is recommended because server
+names are user-defined and may collide. Nested workspace paths are supported.
+
+```json
+{
+  "id": "team-docs-mcp",
+  "name": "Team docs MCP",
+  "detect": {
+    "mcpServers": [
+      {
+        "serverNames": ["company-docs"],
+        "configFiles": [".mcp.json"]
+      }
+    ]
+  }
+}
+```
+
+Bind the technology to a local or external skill with `technologySkills` in the
+same registry. MCP server matches are evaluated only for enabled declarations in
+the scanned workspace; Nosey does not start the server or verify availability.
+Matchers may also use `packages`, `pythonPackages`, or `endpoints`. With
+`configFiles`, **every identity in that matcher** is restricted to the listed
+configuration paths. Use a separate matcher for an unrestricted package or
+endpoint association. Only recognized MCP configuration filenames are accepted.
+
 ## Validation and continuous integration
 
 - `nosey registry validate <dir>` is the full validation entry point for authors who have Nosey. It
@@ -193,13 +225,17 @@ Structural contract for skills-map.json. The instance schemaVersion discriminate
 | `technologies[].detect.packagePatterns[].source` | string | yes | maxLength 512 (code points) | 1 and 2 | The pattern body. An empty string is accepted. The parser bounds this at 512 UTF-16 code units while maxLength counts code points, so a long astral pattern can pass here and fail the parser. |
 | `technologies[].detect.packagePatterns[].flags` | string | no | pattern `^[dimsuv]*$` | 1 and 2 | Optional flag string. g and y are rejected because detection must be deterministic; x is not a Node flag. |
 | `technologies[].detect.mcpServers` | array | no | maxItems 64 | 1 and 2 | Up to 64 identity matchers. Any matcher may match; an empty array disables this signal. Disabled servers never match. Existing schemaVersion 1 and 2 maps remain supported; older Nosey releases reject this new detection field. |
-| `technologies[].detect.mcpServers[]` | object | — | unknown keys rejected | 1 and 2 | Matches an enabled server declared in a supported workspace MCP configuration. Any identity in any matcher can match. Server names alone never identify a provider. |
+| `technologies[].detect.mcpServers[]` | object | — | unknown keys rejected | 1 and 2 | Matches an enabled server declared in a supported workspace MCP configuration. Package, endpoint, or explicit case-sensitive server-name identities may match. Optional configFiles restricts matching to exact project-relative configuration paths; name matching should be scoped to avoid collisions. |
 | `technologies[].detect.mcpServers[].packages` | array | no | minItems 1; maxItems 64 | 1 and 2 | Exact npm package identities without versions. Recognized package runners are parsed without execution. |
 | `technologies[].detect.mcpServers[].packages[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
 | `technologies[].detect.mcpServers[].pythonPackages` | array | no | minItems 1; maxItems 64 | 1 and 2 | Exact Python distribution identities from uvx or uv tool run. Compared case-insensitively with dots, underscores and hyphens normalized. |
 | `technologies[].detect.mcpServers[].pythonPackages[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
 | `technologies[].detect.mcpServers[].endpoints` | array | no | minItems 1; maxItems 64 | 1 and 2 | Exact HTTP(S) origin and path. URL credentials, query, fragment and trailing slashes are ignored; invalid URLs or interpolated origins/paths do not match. |
 | `technologies[].detect.mcpServers[].endpoints[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
+| `technologies[].detect.mcpServers[].serverNames` | array | no | minItems 1; maxItems 64 | 1 and 2 | Explicit case-sensitive names from workspace MCP configuration declarations. Unlike package or endpoint identities, names are user-defined and should be scoped with configFiles to avoid collisions. |
+| `technologies[].detect.mcpServers[].serverNames[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
+| `technologies[].detect.mcpServers[].configFiles` | array | no | minItems 1; maxItems 64 | 1 and 2 | Optional exact project-relative MCP configuration file paths (including nested workspace paths). Restricts all identities in this matcher; no globs or suffix matching. Valid recognized MCP config paths only. Parser-only: `parser-only:path-normalization`. |
+| `technologies[].detect.mcpServers[].configFiles[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
 | `technologies[].detect.configFileContent` | object \| array | no | — | 1 and 2 | One content block or an array of content blocks, including an empty array. |
 | `technologies[].detect.configFileContent.patterns` | array | yes | minItems 1; maxItems 64 | 1 and 2 | Between 1 and 64 entries. A string entry is accepted unconstrained, including the empty string, because strings() is not applied to it. |
 | `technologies[].detect.configFileContent.patterns[]` | string \| object | — | — | 1 and 2 | — |
