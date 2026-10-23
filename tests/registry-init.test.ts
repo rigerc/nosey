@@ -1,3 +1,4 @@
+import {githubClient} from '../src/lib/registry/github.js';
 import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -249,6 +250,7 @@ test('interactive wizard creates a local Git repository without publishing', asy
       {},
       {
         interactive: true,
+        github: githubClient('test-token', async () => Response.json({login: ''})),
         ask: async () => answers.shift() ?? '',
         async run(command, args) {
           commands.push({command, args});
@@ -260,7 +262,6 @@ test('interactive wizard creates a local Git repository without publishing', asy
     expect(result.gitInitialized).toBe(true);
     expect(result.githubCreated).toBe(false);
     expect(commands).toStrictEqual([
-      {command: 'gh', args: ['api', 'user', '--jq', '.login']},
       {
         command: 'git',
         args: ['init', '--initial-branch=main', result.directory],
@@ -284,7 +285,7 @@ test('interactive prompt accepts or overrides the GitHub identity suggestion', a
 
             return answer;
           },
-          run: async () => 'signed-in\n',
+          github: githubClient('test-token', async () => Response.json({login: 'signed-in'})),
         },
       );
 
@@ -314,7 +315,7 @@ test('interactive wizard preserves supplied destination and explicit opt-outs', 
           return 'n';
         },
         async run() {
-          assert.fail('Git and gh must not run');
+          assert.fail('Git must not run');
         },
       },
     );

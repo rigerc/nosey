@@ -197,15 +197,21 @@ npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes 
 Registries may declare external skills in `skills-map.json` version 2 and map them to detected technologies without storing their `SKILL.md` files. The upstream source is retained for opt-in install command generation. Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
 For a GitHub registry, use `registry init ./team-skills --registry-id acme/team-skills --github --yes`.
-Interactive initialization prefills the owner from the signed-in `gh` account and
-the repository name from the destination folder. Edit the suggestion as needed;
-if `gh` is unavailable, enter the identity manually. An explicit `--registry-id`
-always takes precedence.
-Nosey checks Git, `gh` authentication, the template, and the destination repository,
-then creates a **private** repository using GitHub's template mechanism. Use
-`--visibility public` to publish publicly. It clones the generated repository,
+GitHub operations use Octokit. Set `GITHUB_TOKEN` (preferred) or `GH_TOKEN`;
+otherwise Nosey reads the signed-in `gh` account token. GitHub CLI is optional
+when an environment token is set. The token needs permission to create the
+repository and push its contents, including the template workflows.
+Interactive initialization prefills the owner from the authenticated GitHub account
+and the repository name from the destination folder. Edit the suggestion as needed;
+if authentication is unavailable, enter the identity manually. An explicit
+`--registry-id` always takes precedence.
+Nosey checks Git, GitHub authentication, the template, and the destination repository,
+then creates a **private** repository using GitHub's template API. Use
+`--visibility public` to publish publicly. It uses Git to clone the generated repository,
 configures identity with Nosey's packaged tools, validates, commits, and pushes the
-current branch. Template history and `origin` are retained. Local creation instead
+current branch. Template history and `origin` are retained. HTTPS Git authentication is passed
+through temporary process configuration; tokens are never saved in the remote URL
+or repository configuration. Repository creation is not automatically retried. Local creation instead
 starts fresh Git history with no upstream remote; `--no-git` leaves no `.git`.
 
 **GitHub creates the remote before local setup finishes.** If cloning, configuration,

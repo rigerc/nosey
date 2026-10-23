@@ -19,7 +19,7 @@ it('processes rapid arrow keys and Enter in the order received', async () => {
   app.stdin.write('\u001b[B');
   app.stdin.write('\r');
   await settle();
-  expect(choose).toHaveBeenCalledExactlyOnceWith('three');
+  await vi.waitFor(() => expect(choose).toHaveBeenCalledExactlyOnceWith('three'));
 });
 
 it('processes rapid checkbox navigation, Space, and Enter without losing a toggle', async () => {

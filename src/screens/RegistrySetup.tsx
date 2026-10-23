@@ -183,7 +183,7 @@ export function RegistrySetupScreen() {
               <Step name="GitHub">
                 {(step: StepContext) => (
                   <WizardChoice
-                    message="Create a GitHub repository from the Nosey template via gh?"
+                    message="Create a GitHub repository from the Nosey template?"
                     value={github}
                     step={step}
                     change={setGithub}

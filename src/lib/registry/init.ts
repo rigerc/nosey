@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import type {Octokit} from 'octokit';
 import {errorCode} from '../values.js';
 
 import {execFile} from 'node:child_process';
@@ -9,6 +10,7 @@ import {createInterface} from 'node:readline/promises';
 import {setTimeout as delay} from 'node:timers/promises';
 import {promisify, stripVTControlCharacters} from 'node:util';
 import {validateRegistry} from './commands.js';
+import {authenticatedGithubClient, githubGitEnvironment} from './github.js';
 import {configureTool} from './tools.js';
 import {readRegistryFile} from './load.js';
 import {downloadTemplate, templateRepository, type TemplateTransport} from './template.js';
@@ -16,7 +18,7 @@ import {downloadTemplate, templateRepository, type TemplateTransport} from './te
 const execFileAsync = promisify(execFile);
 
 // Repository-local variables exported by Git must not redirect initialization,
-// staging, commits, or the Git commands gh runs into the caller's repository.
+// staging, commits, or cloning into the caller's repository.
 const repositoryEnvironmentVariables = new Set([
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',
   'GIT_CONFIG',
@@ -86,7 +88,11 @@ function commandFailureDetail(cause: unknown): string {
   ).trim();
 }
 
-export type CommandRunner = (command: string, args: string[]) => Promise<string | void>;
+export type CommandRunner = (
+  command: string,
+  args: string[],
+  environment?: NodeJS.ProcessEnv,
+) => Promise<string | void>;
 
 export type RegistryInitDependencies = {
   /** An injected question function for command-line tests. */
@@ -102,6 +108,8 @@ export type RegistryInitDependencies = {
   /** Offline fixture only; never selected from user data or environment. */
   templateDirectory?: string;
   transport?: TemplateTransport;
+  /** Inject an Octokit client for offline API tests. */
+  github?: Octokit;
 };
 
 /** Shared by the CLI service and the interactive wizards before a directory is written. */
@@ -129,7 +137,11 @@ function yesNo(value: string, fallback: boolean): boolean {
   throw new Error('Answer y or n');
 }
 
-export async function defaultRun(command: string, args: string[]): Promise<string> {
+export async function defaultRun(
+  command: string,
+  args: string[],
+  environment: NodeJS.ProcessEnv = {},
+): Promise<string> {
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
       ([name]) =>
@@ -139,8 +151,7 @@ export async function defaultRun(command: string, args: string[]): Promise<strin
   );
 
   env['GIT_TERMINAL_PROMPT'] = '0';
-  env['GH_PROMPT_DISABLED'] = '1';
-  env['GH_HOST'] = 'github.com';
+  Object.assign(env, environment);
 
   const {stdout} = await execFileAsync(command, args, {
     timeout: 60_000,
@@ -251,7 +262,7 @@ export async function scaffoldRegistry(
   return destination;
 }
 
-const isNotFound = (cause: unknown) => /(?:HTTP 404|\(404\))/.test(commandFailureDetail(cause));
+const isNotFound = (cause: unknown) => z.object({status: z.literal(404)}).safeParse(cause).success;
 
 async function releaseEmptyReservation(directory: string): Promise<void> {
   try {
@@ -262,7 +273,11 @@ async function releaseEmptyReservation(directory: string): Promise<void> {
   }
 }
 
-async function githubPreflight(registryId: string, runner: CommandRunner): Promise<void> {
+async function githubPreflight(
+  registryId: string,
+  runner: CommandRunner,
+  github: Octokit,
+): Promise<void> {
   const [owner, repository] = registryId.split('/');
 
   if (
@@ -273,21 +288,21 @@ async function githubPreflight(registryId: string, runner: CommandRunner): Promi
   )
     throw new Error('GitHub registry ID requires a valid GitHub owner and repository name');
   await runner('git', ['--version']);
-  await runner('gh', ['auth', 'status', '--hostname', 'github.com']);
-  await runner('gh', ['api', 'users/' + owner, '--jq', '.login']);
+  await github.rest.users.getAuthenticated();
+  await github.rest.users.getByUsername({username: owner});
 
-  const template = await runner('gh', [
-    'api',
-    'repos/' + templateRepository,
-    '--jq',
-    '.is_template',
-  ]);
+  const [templateOwner, templateRepo] = templateRepository.split('/');
 
-  if (template?.trim() !== 'true')
+  const {data: template} = await github.rest.repos.get({
+    owner: templateOwner!,
+    repo: templateRepo!,
+  });
+
+  if (!template.is_template)
     throw new Error('GitHub source repository is unavailable or is not a template');
 
   try {
-    await runner('gh', ['api', 'repos/' + registryId, '--jq', '.html_url']);
+    await github.rest.repos.get({owner, repo: repository});
   } catch (cause) {
     if (isNotFound(cause)) return;
     throw new Error(
@@ -367,6 +382,7 @@ async function createFromGithub(
   destination: string,
   registryId: string,
   visibility: string,
+  github: Octokit,
   runner: CommandRunner,
   wait: (milliseconds: number) => Promise<void>,
 ): Promise<RegistryInitResult> {
@@ -385,14 +401,16 @@ async function createFromGithub(
   };
 
   try {
-    await runner('gh', [
-      'repo',
-      'create',
-      registryId,
-      '--template',
-      templateRepository,
-      '--' + visibility,
-    ]);
+    const [templateOwner, templateRepo] = templateRepository.split('/');
+    const [owner, name] = registryId.split('/');
+    await github.rest.repos.createUsingTemplate({
+      template_owner: templateOwner!,
+      template_repo: templateRepo!,
+      owner,
+      name: name!,
+      private: visibility === 'private',
+      include_all_branches: false,
+    });
     result.githubCreated = true;
     result.creationStatus = 'created';
     result.remoteObserved = true;
@@ -401,7 +419,8 @@ async function createFromGithub(
     result.creationStatus = 'uncertain';
 
     try {
-      await runner('gh', ['api', 'repos/' + registryId, '--jq', '.html_url']);
+      const [owner, repo] = registryId.split('/');
+      await github.rest.repos.get({owner: owner!, repo: repo!});
       result.remoteObserved = true;
     } catch (inspection) {
       // A 404 cannot establish whether a timed-out create succeeded: permissions
@@ -411,7 +430,7 @@ async function createFromGithub(
 
     await releaseEmptyReservation(destination);
     throw new RegistryInitError(
-      `GitHub creation failed; creation status: ${result.creationStatus}. Inspect ${remoteUrl} with gh repo view ${registryId} before retrying. No existing remote was adopted or deleted.\n${commandFailureDetail(cause)}`,
+      `GitHub creation failed; creation status: ${result.creationStatus}. Inspect ${remoteUrl} before retrying. No existing remote was adopted or deleted.\n${commandFailureDetail(cause)}`,
       result,
       cause,
     );
@@ -420,7 +439,7 @@ async function createFromGithub(
   let stage = 'clone';
 
   try {
-    await runner('gh', ['repo', 'clone', registryId, destination]);
+    await runner('git', ['clone', '--', remoteUrl + '.git', destination]);
     result.cloneCompleted = true;
     result.gitInitialized = true;
     stage = 'template readiness';
@@ -446,7 +465,7 @@ async function createFromGithub(
 
     const recovery =
       stage === 'clone'
-        ? `Clone ${remoteUrl} into a new directory with gh repo clone ${registryId}, then configure its registry identity.`
+        ? `Clone ${remoteUrl} into a new directory with git clone ${remoteUrl}.git, then configure its registry identity.`
         : stage === 'template readiness'
           ? 'Once GitHub finishes generating the template, run git fetch origin in this clone and check out its default branch. Then configure the registry identity, validate, commit, and push.'
           : stage === 'configuration'
@@ -504,7 +523,7 @@ export async function runRegistryInit(
       const {suggestRegistryId} = await import('./suggest.js');
 
       const suggestion = await suggestRegistryId(directoryInput, {
-        run: async (command, args) => (await runner(command, args)) ?? '',
+        github: dependencies.github,
       });
 
       while (!registryId) {
@@ -543,7 +562,7 @@ export async function runRegistryInit(
     if (createGitHub === undefined) {
       createGitHub =
         interactive && initializeGit
-          ? yesNo(await ask('Create and push a GitHub repository using gh? [y/N]: '), false)
+          ? yesNo(await ask('Create and push a GitHub repository? [y/N]: '), false)
           : false;
     }
 
@@ -577,15 +596,37 @@ export async function runRegistryInit(
 
     await validateRegistryDestination(directoryInput);
 
-    if (createGitHub) await githubPreflight(registryId, runner);
+    const github = createGitHub
+      ? (dependencies.github ?? (await authenticatedGithubClient()))
+      : undefined;
+
+    let githubRunner = runner;
+
+    if (github) {
+      await githubPreflight(registryId, runner, github);
+      const environment = await githubGitEnvironment(github, registryId);
+      githubRunner = (command, args) => {
+        const operation = args[0] === '-C' ? args[2] : args[0];
+
+        return runner(
+          command,
+          args,
+          ['clone', 'fetch', 'push', 'ls-remote'].includes(operation ?? '')
+            ? environment
+            : undefined,
+        );
+      };
+    }
+
     const destination = await reserveDestination(directoryInput);
 
-    if (createGitHub)
+    if (github)
       return await createFromGithub(
         destination,
         registryId,
         visibility ?? 'private',
-        runner,
+        github,
+        githubRunner,
         dependencies.wait ?? delay,
       );
 

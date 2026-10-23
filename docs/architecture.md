@@ -32,8 +32,12 @@ headless commands, without adding a separate UI framework dependency.
   `--no-git` requires no Git or GitHub CLI. It never falls back to bundled scaffolding.
 - Registry JSON is validated by Nosey's parsers using document `schemaVersion` values
   before and after running its packaged configuration tools. The template ships no schema files or annotations; downloaded code is never executed during init.
-  GitHub creation uses `gh --template`, then clones, configures, commits and pushes
-  `HEAD`, preserving generated history. Partial results distinguish creation, clone,
+  GitHub API operations use the shared Octokit client in `src/lib/registry/github.ts`,
+  authenticated with `GITHUB_TOKEN`, `GH_TOKEN`, or an optional `gh auth token` fallback.
+  Requests are bounded and silent; automatic retries are disabled to avoid duplicate
+  creation. Git clones, configures, commits and pushes
+  `HEAD`, preserving generated history. HTTPS credentials use process-only Git configuration
+  for network commands. Partial results distinguish creation, clone,
   configuration, and push completion; the wizard prevents duplicate creation attempts.
 - `npm run registry:template:sync -- <directory>` copies current canonical tools,
   generators, notices, and canonical template JSON examples for review. It requires no release metadata or hashes
