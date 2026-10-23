@@ -50,6 +50,19 @@ export function formatReport(report: Report, explain = false, ascii = false): st
     }
   }
 
+  if (report.mcpServers?.length) {
+    lines.push('', `MCP servers (${report.mcpServers.length}; configuration only)`);
+
+    for (const server of report.mcpServers) {
+      lines.push(
+        `  ${bullet} ${server.name} [${server.status}, ${server.transport}] (${server.file})`,
+      );
+
+      if (explain && server.package)
+        lines.push(`      ${arrow} ${server.package.ecosystem}: ${server.package.name}`);
+    }
+  }
+
   if (report.agents.length > 0) {
     lines.push('', 'Detected agent folders');
 

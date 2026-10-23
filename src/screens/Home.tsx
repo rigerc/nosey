@@ -253,6 +253,13 @@ export function HomeScreen() {
           ...(report?.combinations.map((combo) => combo.name) ?? []),
         ].join(', ') || 'No technologies detected'}
       </Text>
+      {!!report?.mcpServers?.length && (
+        <Muted>
+          {report.mcpServers.length} MCP servers configured (
+          {report.mcpServers.filter((server) => server.status === 'disabled').length} disabled);
+          availability unchecked.
+        </Muted>
+      )}
       {report?.truncated && (
         <StatusMessage tone="warn">
           Limit reached. Detection may be incomplete; increase --depth or --max-files.

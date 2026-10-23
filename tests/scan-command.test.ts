@@ -1,5 +1,5 @@
 import {execFile} from 'node:child_process';
-import {mkdtemp, readFile, readdir, rm, writeFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, readdir, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -100,4 +100,27 @@ test('execution-enabled config leaves headless scans as reports without installa
   const json = await command('--json', '--config', config);
   expect(JSON.parse(json.stdout).skills.length).toBeGreaterThan(0);
   expect(await readdir(root)).toEqual(before);
+});
+
+test('Codex MCP config feeds JSON, plain evidence and skills-only output without starting servers', async () => {
+  await mkdir(join(root, '.codex'));
+
+  const toml =
+    '[mcp_servers.browser]\ncommand="npx"\nargs=["@playwright/mcp@latest"]\n[mcp_servers.browser.env]\nAPI_KEY="private-mcp-key"\n';
+
+  await writeFile(join(root, '.codex/config.toml'), toml);
+  const json = await command('scan', '--json');
+  // SAFETY: assertions verify the report produced by this controlled CLI fixture.
+  const report = JSON.parse(json.stdout) as Report;
+  expect(report.mcpServers).toContainEqual(
+    expect.objectContaining({file: '.codex/config.toml', name: 'browser', status: 'configured'}),
+  );
+  expect(json.stdout).not.toContain('private-mcp-key');
+  const plain = await command('scan', '--plain', '--explain', '--ascii');
+  expect(plain.stdout).toContain('MCP servers (1; configuration only)');
+  expect(plain.stdout).toContain('mcp: browser (.codex/config.toml)');
+  const skills = await command('scan', '--skills-only');
+  expect(skills.stdout).toContain('anthropics/skills/webapp-testing');
+  expect(await readFile(join(root, '.codex/config.toml'), 'utf8')).toBe(toml);
+  expect(json.stderr + plain.stderr + skills.stderr).toBe('');
 });

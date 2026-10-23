@@ -53,7 +53,7 @@ export type ScanOptions = {
 
 export type SkippedFile = {file: string} & (
   | {reason: 'too-large'; sizeBytes: number; limitBytes: number}
-  | {reason: 'unreadable' | 'missing'}
+  | {reason: 'unreadable' | 'missing' | 'invalid-config'}
 );
 
 /** A bounded, read-only view over a project directory. */

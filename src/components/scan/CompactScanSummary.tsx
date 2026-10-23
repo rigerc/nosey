@@ -29,6 +29,13 @@ export function CompactScanSummary({report}: {report: Report}) {
             (names.length > 5 ? ', +' + (names.length - 5) + ' more' : '')
           : 'No technologies detected'}
       </Text>
+      {!!report.mcpServers?.length && (
+        <Muted>
+          {report.mcpServers.length} MCP servers configured (
+          {report.mcpServers.filter((server) => server.status === 'disabled').length} disabled);
+          availability unchecked.
+        </Muted>
+      )}
       {report.truncated && (
         <StatusMessage tone="warn">
           Scan limit reached; increase --depth or --max-files.

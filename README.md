@@ -146,6 +146,66 @@ The explicit `scan` subcommand is always headless. A project path alone opens th
 
 Use `npm run dev -- --help` for the complete command and option reference.
 
+### MCP server detection
+
+Scans also read workspace MCP declarations from `.mcp.json`, `.cursor/mcp.json`,
+`.vscode/mcp.json` (including JSONC comments and trailing commas), and Codex's
+`.codex/config.toml`. Recognized files in nested workspaces count within the same
+depth, file-count, and file-size bounds. User/global configurations outside the
+scanned directory are not read.
+
+Nosey identifies servers from package identities or exact remote endpoint origins
+and paths, so renaming a server does not change its recommendations. Initial
+mappings cover Context7, Playwright, Chrome DevTools, and OpenAI Docs. Playwright
+MCP recommends `anthropics/skills/webapp-testing`; the other initial mappings have
+no bundled skill recommendation. The MCP SDK dependency remains a separate signal.
+
+JSON reports include `mcpServers` with configuration file, name, transport,
+`configured`/`disabled` status, and any recognized package or sanitized endpoint.
+Plain reports list declarations; both Scan interfaces show their count. Disabled
+declarations remain visible but do not trigger suggestions. A configured server
+has not been checked for availability or authorization.
+
+Supported package runners include `npx`, `npm exec`, `pnpm dlx`, `yarn dlx`, `bunx`,
+`bun x`, `uvx`, and `uv tool run`, with common direct-package arguments. Unknown
+runner flags, shell wrappers, and local scripts remain visible without a package
+identity. Nosey never starts servers, contacts endpoints, expands variables, or
+reads referenced environment files. Output excludes command arguments, environment
+values, headers, and URL credentials, query strings, and fragments. Malformed files
+or declarations produce `invalid-config` skipped-input warnings while scanning
+continues; parser source excerpts are never printed.
+
+Custom registries can add MCP technologies with `detect.mcpServers`:
+
+```json
+{
+  "id": "mcp-team-docs",
+  "name": "Team Docs MCP",
+  "detect": {
+    "mcpServers": [
+      {
+        "packages": ["@team/docs-mcp"],
+        "pythonPackages": ["team-docs-mcp"],
+        "endpoints": ["https://docs.example.com/mcp"]
+      }
+    ]
+  },
+  "skills": []
+}
+```
+
+Any identity in any matcher may match. npm identities omit versions; Python
+distribution names normalize case and dots/underscores/hyphens. Endpoint matching
+ignores URL credentials, query, fragment, and trailing slashes. Variables in an
+endpoint's origin or path remain unresolved and cannot identify a provider.
+This field works in map schema versions 1 and 2; maps using it require a Nosey
+release that supports MCP detection. Older maps need no migration.
+
+Configuration references: [Claude Code](https://code.claude.com/docs/en/mcp),
+[Cursor](https://cursor.com/docs/mcp),
+[VS Code](https://code.visualstudio.com/docs/agents/reference/mcp-configuration),
+and [Codex](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
 ### Skill registries
 
 Add local folders or Git repositories as sources of recommendations:

@@ -252,6 +252,36 @@
         }
       }
     },
+    "McpServerMatcher": {
+      "title": "MCP server identity matcher",
+      "description": "Matches an enabled server declared in a supported workspace MCP configuration. Any identity in any matcher can match. Server names alone never identify a provider.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "packages": {
+          "$ref": "#/$defs/StringList",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "Exact npm package identities without versions. Recognized package runners are parsed without execution."
+        },
+        "pythonPackages": {
+          "$ref": "#/$defs/StringList",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "Exact Python distribution identities from uvx or uv tool run. Compared case-insensitively with dots, underscores and hyphens normalized."
+        },
+        "endpoints": {
+          "$ref": "#/$defs/StringList",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "Exact HTTP(S) origin and path. URL credentials, query, fragment and trailing slashes are ignored; invalid URLs or interpolated origins/paths do not match."
+        }
+      }
+    },
     "DetectConfig": {
       "title": "Detection config",
       "description": "How a technology is detected. Unknown keys are rejected here, unlike every other object in this document.",
@@ -301,6 +331,13 @@
           "items": {
             "$ref": "#/$defs/JsonRegex"
           }
+        },
+        "mcpServers": {
+          "title": "Configured MCP servers",
+          "description": "Up to 64 identity matchers. Any matcher may match; an empty array disables this signal. Disabled servers never match. Existing schemaVersion 1 and 2 maps remain supported; older Nosey releases reject this new detection field.",
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/McpServerMatcher"}
         },
         "configFileContent": {
           "title": "Config file content rules",

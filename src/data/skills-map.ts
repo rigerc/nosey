@@ -11,6 +11,15 @@ export type ConfigFileContentBlock = {
   maskStrings?: boolean;
 };
 
+export type McpServerMatcher = {
+  /** Exact npm package names, without versions. */
+  packages?: string[];
+  /** Exact Python distribution names, normalized like manifest dependencies. */
+  pythonPackages?: string[];
+  /** HTTP(S) origin and path; credentials, query and fragment are ignored. */
+  endpoints?: string[];
+};
+
 export type DetectConfig = {
   packages?: string[];
   pythonPackages?: string[];
@@ -23,6 +32,8 @@ export type DetectConfig = {
   fileExtensions?: string[];
   gems?: string[];
   configFileContent?: ConfigFileContentBlock | ConfigFileContentBlock[];
+  /** Any matcher and any identity within a matcher may match a configured, enabled server. */
+  mcpServers?: McpServerMatcher[];
 };
 
 export type Technology = {
@@ -1388,6 +1399,34 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@modelcontextprotocol/sdk'],
       pythonPackages: ['mcp'],
     },
+    skills: [],
+  },
+  {
+    id: 'mcp-context7',
+    name: 'Context7 MCP',
+    detect: {
+      mcpServers: [
+        {packages: ['@upstash/context7-mcp'], endpoints: ['https://mcp.context7.com/mcp']},
+      ],
+    },
+    skills: [],
+  },
+  {
+    id: 'mcp-playwright',
+    name: 'Playwright MCP',
+    detect: {mcpServers: [{packages: ['@playwright/mcp']}]},
+    skills: ['anthropics/skills/webapp-testing'],
+  },
+  {
+    id: 'mcp-chrome-devtools',
+    name: 'Chrome DevTools MCP',
+    detect: {mcpServers: [{packages: ['chrome-devtools-mcp']}]},
+    skills: [],
+  },
+  {
+    id: 'mcp-openai-docs',
+    name: 'OpenAI Docs MCP',
+    detect: {mcpServers: [{endpoints: ['https://developers.openai.com/mcp']}]},
     skills: [],
   },
   {

@@ -85,6 +85,35 @@ afterEach(() => {
 });
 
 describe('Nosey scan interaction', () => {
+  it('shows MCP suggestions, configuration status and malformed-file warnings', async () => {
+    const mcpReport: Report = {
+      ...report,
+      skippedFiles: [{file: '.codex/config.toml', reason: 'invalid-config'}],
+      technologies: [
+        {
+          id: 'mcp-playwright',
+          name: 'Playwright MCP',
+          skills: ['anthropics/skills/webapp-testing'],
+          evidence: ['mcp: browser (.mcp.json)'],
+        },
+      ],
+      skills: [
+        {
+          id: 'anthropics/skills/webapp-testing',
+          sources: [{type: 'technology', id: 'mcp-playwright', name: 'Playwright MCP'}],
+        },
+      ],
+      mcpServers: [{file: '.mcp.json', name: 'browser', transport: 'stdio', status: 'configured'}],
+    };
+
+    const app = await mount(<App options={{...options, report: mcpReport}} />);
+    expect(app.lastFrame()).toContain('Playwright MCP');
+    expect(app.lastFrame()).toContain('MCP servers configured');
+    expect(app.lastFrame()).toContain('availability unchecked');
+    expect(app.lastFrame()).toContain('skipped inputs');
+    expect(app.lastFrame()).toContain('webapp-testing');
+  });
+
   it('suggests Skills CLI updates only when Git registries changed and Skills CLI is enabled', async () => {
     const updatedReport = {...report, updatedRegistries: ['https://example.com/skills.git#main']};
 

@@ -86,6 +86,38 @@ void test('renders all skills in stable order and preserves handwritten bytes an
   assert.equal(readdirSync(f.root).filter((name) => name.endsWith('.tmp')).length, 0);
 });
 
+void test('renders configured MCP identities without executing server commands', (t) => {
+  const f = fixture(t);
+  f.map.technologies = [
+    {
+      id: 'mcp-custom',
+      name: 'Custom MCP',
+      skills: [id('alpha')],
+      detect: {
+        mcpServers: [
+          {
+            packages: ['custom-mcp'],
+            pythonPackages: ['python-mcp'],
+            endpoints: ['https://example.com/mcp'],
+          },
+        ],
+      },
+    },
+  ];
+  f.save();
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(f.read().includes('configured MCP packages: custom-mcp'));
+  assert.ok(f.read().includes('configured MCP pythonPackages: python-mcp'));
+  assert.ok(f.read().includes('configured MCP endpoints: https://example.com/mcp'));
+  f.map.technologies[0].detect.mcpServers = [{names: ['custom']}];
+  f.save();
+  assert.notEqual(f.run().status, 0);
+  f.map.technologies[0].detect.mcpServers = null;
+  f.save();
+  assert.notEqual(f.run().status, 0);
+});
+
 void test('renders all recommendation types and additional frontend detection', (t) => {
   const f = fixture(t);
   f.map.alwaysRecommend = [id('alpha')];

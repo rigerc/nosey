@@ -1,7 +1,11 @@
 import {type JsonValue, type JsonObject, isRecord, isString, isBoolean} from '../values.js';
 
 import path from 'node:path';
-import type {ConfigFileContentBlock, DetectConfig} from '../../data/skills-map.js';
+import type {
+  ConfigFileContentBlock,
+  DetectConfig,
+  McpServerMatcher,
+} from '../../data/skills-map.js';
 import type {
   CombinationSkills,
   ExternalSkillRecord,
@@ -113,6 +117,30 @@ function contentBlock(value: JsonValue): ConfigFileContentBlock {
   return result;
 }
 
+function mcpMatcher(value: JsonValue): McpServerMatcher {
+  const input = object(value, 'mcpServers matcher');
+  const result: McpServerMatcher = {};
+  const keys = ['packages', 'pythonPackages', 'endpoints'] as const;
+
+  for (const key of Object.keys(input)) {
+    if (!keys.some((allowed) => allowed === key))
+      throw new Error('Unknown mcpServers matcher field: ' + key);
+  }
+
+  for (const key of keys) {
+    if (input[key] === undefined) continue;
+    const values = strings(input[key], 'mcpServers.' + key);
+
+    if (!values.length || values.length > 64)
+      throw new Error('mcpServers.' + key + ' requires 1 to 64 entries');
+    result[key] = values;
+  }
+
+  if (!Object.keys(result).length) throw new Error('mcpServers matcher requires an identity');
+
+  return result;
+}
+
 function detect(value: JsonValue): DetectConfig {
   const input = object(value, 'detect');
   const result: DetectConfig = {};
@@ -143,6 +171,12 @@ function detect(value: JsonValue): DetectConfig {
     result.configFileContent = Array.isArray(input['configFileContent'])
       ? input['configFileContent'].map((entry) => contentBlock(entry))
       : contentBlock(input['configFileContent']);
+  }
+
+  if (input['mcpServers'] !== undefined) {
+    if (!Array.isArray(input['mcpServers']) || input['mcpServers'].length > 64)
+      throw new Error('mcpServers must be an array with at most 64 matchers');
+    result.mcpServers = input['mcpServers'].map(mcpMatcher);
   }
 
   const allowed = new Set([...Object.keys(result), 'packagePatterns', 'configFileContent']);
