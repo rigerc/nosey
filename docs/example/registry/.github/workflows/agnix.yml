@@ -1,0 +1,56 @@
+# Standalone Agnix audit. The template runs this job inside registry-ci.yml and
+# uploads SARIF through the template's SARIF preparation script; that script is
+# not part of this example, so the audit runs in text format without the upload.
+name: agnix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agnix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate agent configs
+        id: agnix
+        uses: agent-sh/agnix@v0
+        with:
+          path: '.'
+          format: 'text'
+          version: 'v0.59.0'
+          fail-on-error: 'true'
+
+      - name: Summarize findings
+        if: always()
+        env:
+          RESULT: ${{ steps.agnix.outputs.result }}
+          ERRORS: ${{ steps.agnix.outputs.errors }}
+          WARNINGS: ${{ steps.agnix.outputs.warnings }}
+        run: |
+          {
+            echo "### agnix"
+            echo ""
+            if [[ -z "$RESULT" || -z "$ERRORS" || -z "$WARNINGS" ]]; then
+              echo "Validation did not complete or its results are unavailable. Check the job logs."
+            else
+              echo "| Severity | Count |"
+              echo "| --- | --- |"
+              echo "| Errors | $ERRORS |"
+              echo "| Warnings | $WARNINGS |"
+              echo ""
+              echo "See the validation step for diagnostics."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

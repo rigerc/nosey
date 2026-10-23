@@ -22,3 +22,7 @@ assets/**/tapes/
 # Retain hidden files in the offline template fixture.
 !tests/fixtures/registry-template/.agents/
 !tests/fixtures/registry-template/.agents/**
+
+# Keep the documented example registry's agent prompts tracked.
+!docs/example/registry/.agents/
+!docs/example/registry/.agents/**
