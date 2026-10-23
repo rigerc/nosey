@@ -34,10 +34,11 @@ async function registry(run, {schemas = true, manifestFile = true, mutate} = {})
       path.join(directory, 'registry.json'),
       JSON.stringify({schemaVersion: 1, registryId: 'example/agent-skills'}, null, 2) + '\n',
     );
-    await fs.writeFile(
-      path.join(directory, 'skills-manifest.json'),
-      JSON.stringify({schemaVersion: 1, registryId: 'example/agent-skills', skills: []}, null, 2) + '\n',
-    );
+    await writeManifest(directory, {
+      schemaVersion: 1,
+      registryId: 'example/agent-skills',
+      skills: [],
+    });
 
     if (schemas) {
       await fs.mkdir(path.join(directory, 'schemas'), {recursive: true});
