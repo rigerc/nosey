@@ -235,9 +235,10 @@ above 4 MiB or archives expanding beyond 64 MiB are refused as a zip-bomb guard.
 
 ### Test
 
+These tests can be run manually and are excluded from `npm test`:
+
 ```sh
-npm run test:opencode
-# same as: node --test scripts/opencodeskills.test.mjs
+node --test scripts/opencodeskills.test.mjs
 ```
 
 The tests build zips in memory and serve a fixture catalog from a loopback HTTP server, so they do
