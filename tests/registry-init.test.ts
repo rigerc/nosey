@@ -12,11 +12,11 @@ import {registryJson, setAlwaysRecommend, showRegistry} from '../src/lib/registr
 import {type JsonObject, isRecord} from '../src/lib/values.js';
 import {seedRegistrySkill} from './helpers/registry-fixture.js';
 import {configureRegistryIdentity, validateRegistryDestination} from '../src/lib/registry/init.js';
-import {runRegistryInit, scaffoldRegistry, fixturePreload} from './helpers/registry-template.js';
+import {runRegistryInit, scaffoldRegistry, fixturePreload, templateDirectory} from './helpers/registry-template.js';
 
 const execFileAsync = promisify(execFile);
 const cli = fileURLToPath(new URL('../src/cli.tsx', import.meta.url));
-const templateSource = fileURLToPath(new URL('./fixtures/registry-template/', import.meta.url));
+const templateSource = templateDirectory;
 const manifestAnnotation = './schemas/skills-manifest.schema.json';
 const mapAnnotation = './schemas/skills-map.schema.json';
 
