@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {z} from 'zod';
+import {githubClient} from './github.js';
 
 export const templateRepository = 'rigerc/nosey-registry-template';
 
@@ -207,27 +208,24 @@ export async function downloadTemplate(
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-template-'));
 
   try {
-    const metadata = await boundedResponse(
-      `https://api.github.com/repos/${templateRepository}`,
-      signal,
-      1024 * 1024,
-      transport,
-    );
+    // Preserve the metadata byte bound and shared deadline before Octokit parses JSON.
+    const github = githubClient(undefined, async (url) => {
+      const bytes = await boundedResponse(new Request(url).url, signal, 1024 * 1024, transport);
 
-    const {default_branch: branch} = z
-      .object({default_branch: z.string().min(1)})
-      .parse(JSON.parse(metadata.toString('utf8')));
+      return new Response(new Uint8Array(bytes), {headers: {'content-type': 'application/json'}});
+    });
 
-    const commit = await boundedResponse(
-      `https://api.github.com/repos/${templateRepository}/commits/${encodeURIComponent(branch)}`,
-      signal,
-      1024 * 1024,
-      transport,
-    );
+    const [owner, repo] = templateRepository.split('/');
+    const {data: metadata} = await github.rest.repos.get({owner: owner!, repo: repo!});
+    const {default_branch: branch} = z.object({default_branch: z.string().min(1)}).parse(metadata);
 
-    const {sha} = z
-      .object({sha: z.string().regex(/^[a-f\d]{40}$/)})
-      .parse(JSON.parse(commit.toString('utf8')));
+    const {data: commit} = await github.rest.repos.getCommit({
+      owner: owner!,
+      repo: repo!,
+      ref: branch,
+    });
+
+    const {sha} = z.object({sha: z.string().regex(/^[a-f\d]{40}$/)}).parse(commit);
 
     const archive = await boundedResponse(
       `https://codeload.github.com/${templateRepository}/tar.gz/${sha}`,

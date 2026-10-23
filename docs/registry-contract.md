@@ -46,7 +46,11 @@ with `--no-git`. That mode needs neither Git nor `gh`. Downloads and extraction
 remain bounded, unsafe archive entries are rejected, and failed local scaffolds
 are removed. Default local Git initialization starts without an upstream remote.
 
-GitHub initialization uses `gh --template`, clones the generated repository,
+GitHub initialization uses Octokit to call the template-generation API, then Git
+to clone the generated repository. Authentication uses `GITHUB_TOKEN`, `GH_TOKEN`,
+or the signed-in `gh` account token; GitHub CLI is optional with an environment
+token. Credentials are passed to Git through process-only configuration. Creation
+is never automatically retried. Initialization
 waits up to 30 seconds for template generation if the clone has no first commit,
 then fetches its default branch, configures identity, commits, and pushes the
 current branch. It preserves the

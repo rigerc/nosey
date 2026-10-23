@@ -8,6 +8,8 @@ import {
   runRegistryInit,
   type CommandRunner,
 } from '../src/lib/registry/init.js';
+import {githubClient} from '../src/lib/registry/github.js';
+import type {Octokit} from 'octokit';
 import {templateRepository} from '../src/lib/registry/template.js';
 import {templateDirectory} from './helpers/registry-template.js';
 
@@ -28,6 +30,8 @@ async function fixture(
     directory: string;
     calls: Call[];
     runner: CommandRunner;
+    github: Octokit;
+    transport: typeof fetch;
   }) => Promise<void>,
   fail = '',
 ) {
@@ -36,33 +40,53 @@ async function fixture(
   const calls: Call[] = [];
   let created = false;
 
+  const transport: typeof fetch = async (input, init) => {
+    const request = new Request(input, init);
+    const endpoint = new URL(request.url).pathname;
+    const body = await request.text();
+    calls.push({command: 'github', args: [request.method, endpoint, body]});
+
+    const operation =
+      request.method === 'POST' ? 'create' : endpoint === '/user' ? 'auth' : endpoint.slice(1);
+
+    if (operation === fail) throw new Error('stage failed: ' + fail);
+
+    if (endpoint === '/user' || endpoint === '/users/acme') return Response.json({login: 'acme'});
+
+    if (endpoint === '/repos/' + templateRepository) return Response.json({is_template: true});
+
+    if (request.method === 'POST') {
+      created = true;
+
+      return Response.json({html_url: 'https://github.com/acme/skills'}, {status: 201});
+    }
+
+    if (endpoint === '/repos/acme/skills') {
+      return created
+        ? Response.json({html_url: 'https://github.com/acme/skills'})
+        : Response.json({message: 'Not Found'}, {status: 404});
+    }
+
+    throw new Error('Unexpected request: ' + endpoint);
+  };
+
+  const github = githubClient('test-token', transport);
+
   const runner: CommandRunner = async (command, args) => {
     calls.push({command, args});
-    const operation = args[0] === 'repo' ? args[1] : args[2];
 
-    if (fail && (operation === fail || args[0] === fail || args.includes(fail)))
+    if (command !== 'git') throw new Error('Only Git subprocesses are expected');
+
+    if (fail && args.includes(fail))
       throw Object.assign(new Error('stage failed: ' + fail), {
         stderr: '\u001b[31mdiagnostic\u001b[0m',
       });
 
-    if (command === 'git') return git(args);
-
-    if (args[0] === 'api' && args[1] === 'repos/' + templateRepository) return 'true\n';
-
-    if (args[0] === 'api' && args[1] === 'repos/acme/skills') {
-      if (!created) throw new Error('gh: Not Found (HTTP 404)');
-
-      return 'https://github.com/acme/skills';
-    }
-
-    if (operation === 'create') {
-      created = true;
-
-      return '';
-    }
+    const operation = args[0];
 
     if (operation === 'clone') {
       expect(args[3]).toBe(directory);
+      expect(args[2]).toBe('https://github.com/acme/skills.git');
       expect(await fs.readdir(directory)).toEqual([]);
       await fs.cp(templateDirectory, directory, {recursive: true});
       await git(['init', '--initial-branch=trunk', directory]);
@@ -75,11 +99,11 @@ async function fixture(
       return '';
     }
 
-    return '';
+    return git(args);
   };
 
   try {
-    await run({root, directory, calls, runner});
+    await run({root, directory, calls, runner, github, transport});
   } finally {
     await fs.rm(root, {recursive: true, force: true});
   }
@@ -87,10 +111,10 @@ async function fixture(
 
 for (const visibility of ['private', 'public'] as const) {
   test(`GitHub ${visibility} creation preserves template history and pushes the current branch`, async () => {
-    await fixture(async ({directory, calls, runner}) => {
+    await fixture(async ({directory, calls, runner, github}) => {
       const result = await runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true, visibility},
-        {run: runner},
+        {run: runner, github},
       );
 
       expect(result).toMatchObject({
@@ -105,15 +129,25 @@ for (const visibility of ['private', 'public'] as const) {
 
       const mutations = calls.filter(
         (call) =>
-          call.args[0] === 'repo' ||
+          call.args[0] === 'POST' ||
+          call.args[0] === 'clone' ||
           call.args.includes('add') ||
           call.args.includes('commit') ||
           call.args.includes('push'),
       );
 
       expect(mutations.map((call) => call.args)).toEqual([
-        ['repo', 'create', 'acme/skills', '--template', templateRepository, '--' + visibility],
-        ['repo', 'clone', 'acme/skills', directory],
+        [
+          'POST',
+          '/repos/' + templateRepository + '/generate',
+          JSON.stringify({
+            owner: 'acme',
+            name: 'skills',
+            private: visibility === 'private',
+            include_all_branches: false,
+          }),
+        ],
+        ['clone', '--', 'https://github.com/acme/skills.git', directory],
         ['-C', directory, 'add', '--all'],
         [
           '-C',
@@ -141,13 +175,13 @@ for (const visibility of ['private', 'public'] as const) {
 }
 
 test('an initially empty clone waits for generated template history before configuring', async () => {
-  await fixture(async ({root, directory, calls, runner}) => {
+  await fixture(async ({root, directory, calls, runner, github}) => {
     const remote = path.join(root, 'generated.git');
     await git(['init', '--bare', '--initial-branch=trunk', remote]);
     let waits = 0;
 
     const wrapped: CommandRunner = async (command, args) => {
-      if (command === 'gh' && args[0] === 'repo' && args[1] === 'clone') {
+      if (command === 'git' && args[0] === 'clone') {
         calls.push({command, args});
         await git(['clone', '--', remote, directory]);
 
@@ -173,7 +207,7 @@ test('an initially empty clone waits for generated template history before confi
 
     const result = await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
-      {run: wrapped, wait},
+      {run: wrapped, wait, github},
     );
 
     expect(result).toMatchObject({cloneCompleted: true, configured: true, pushCompleted: true});
@@ -181,20 +215,18 @@ test('an initially empty clone waits for generated template history before confi
     expect((await git(['-C', directory, 'rev-list', '--count', 'HEAD'])).trim()).toBe('2');
     expect((await git(['-C', directory, 'branch', '--show-current'])).trim()).toBe('trunk');
     expect(waits).toBe(2);
-    expect(
-      calls.filter((call) => call.args[0] === 'repo' && call.args[1] === 'create'),
-    ).toHaveLength(1);
+    expect(calls.filter((call) => call.args[0] === 'POST')).toHaveLength(1);
   });
 });
 
 for (const failure of ['pending', 'network']) {
   test(`template readiness ${failure} preserves the clone without configuring or recreating`, async () => {
-    await fixture(async ({root, directory, calls, runner}) => {
+    await fixture(async ({root, directory, calls, runner, github}) => {
       const remote = path.join(root, 'empty.git');
       await git(['init', '--bare', '--initial-branch=main', remote]);
 
       const wrapped: CommandRunner = async (command, args) => {
-        if (command === 'gh' && args[0] === 'repo' && args[1] === 'clone') {
+        if (command === 'git' && args[0] === 'clone') {
           calls.push({command, args});
 
           return git(['clone', '--', remote, directory]);
@@ -211,7 +243,7 @@ for (const failure of ['pending', 'network']) {
 
       const error = await runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: wrapped, wait},
+        {run: wrapped, wait, github},
       ).catch((cause: unknown) => cause);
 
       expect(error).toBeInstanceOf(RegistryInitError);
@@ -232,7 +264,7 @@ for (const failure of ['pending', 'network']) {
       );
       expect(wait).toHaveBeenCalledTimes(failure === 'pending' ? 10 : 0);
       expect(await fs.readdir(directory)).toEqual(['.git']);
-      expect(calls.filter((call) => call.args[1] === 'create')).toHaveLength(1);
+      expect(calls.filter((call) => call.args[0] === 'POST')).toHaveLength(1);
       expect(calls.some((call) => call.args.includes('commit') || call.args.includes('push'))).toBe(
         false,
       );
@@ -242,10 +274,10 @@ for (const failure of ['pending', 'network']) {
 
 for (const stage of ['clone', 'commit', 'push']) {
   test(`${stage} failure retains remote creation and reports independent completion states`, async () => {
-    await fixture(async ({directory, calls, runner}) => {
+    await fixture(async ({directory, calls, runner, github}) => {
       const error = await runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: runner},
+        {run: runner, github},
       ).catch((cause: unknown) => cause);
 
       expect(error).toBeInstanceOf(RegistryInitError);
@@ -266,17 +298,17 @@ for (const stage of ['clone', 'commit', 'push']) {
       if (stage === 'clone')
         await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
       else expect((await fs.stat(path.join(directory, '.git'))).isDirectory()).toBe(true);
-      expect(calls.filter((call) => call.args[1] === 'create')).toHaveLength(1);
+      expect(calls.filter((call) => call.args[0] === 'POST')).toHaveLength(1);
     }, stage);
   });
 }
 
 test('unsupported clone is retained unchanged and never staged or pushed', async () => {
-  await fixture(async ({directory, calls, runner}) => {
+  await fixture(async ({directory, calls, runner, github}) => {
     const wrapped: CommandRunner = async (command, args) => {
       const output = await runner(command, args);
 
-      if (args[0] === 'repo' && args[1] === 'clone') {
+      if (args[0] === 'clone') {
         const filename = path.join(directory, 'skills-map.json');
         const map = JSON.parse(await fs.readFile(filename, 'utf8'));
         await fs.writeFile(filename, JSON.stringify({...map, schemaVersion: 999}));
@@ -288,7 +320,7 @@ test('unsupported clone is retained unchanged and never staged or pushed', async
     await expect(
       runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: wrapped},
+        {run: wrapped, github},
       ),
     ).rejects.toMatchObject({
       result: {githubCreated: true, cloneCompleted: true, configured: false, pushCompleted: false},
@@ -304,11 +336,11 @@ test('unsupported clone is retained unchanged and never staged or pushed', async
 });
 
 test('GitHub initialization works without schemas or scripts in the template clone', async () => {
-  await fixture(async ({directory, runner}) => {
+  await fixture(async ({directory, runner, github}) => {
     const wrapped: CommandRunner = async (command, args) => {
       const output = await runner(command, args);
 
-      if (args[0] === 'repo' && args[1] === 'clone') {
+      if (args[0] === 'clone') {
         await fs.rm(path.join(directory, 'schemas'), {recursive: true, force: true});
         await fs.rm(path.join(directory, 'scripts'), {recursive: true});
       }
@@ -318,7 +350,7 @@ test('GitHub initialization works without schemas or scripts in the template clo
 
     const result = await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
-      {run: wrapped},
+      {run: wrapped, github},
     );
 
     expect(result).toMatchObject({githubCreated: true, configured: true, pushCompleted: true});
@@ -326,10 +358,10 @@ test('GitHub initialization works without schemas or scripts in the template clo
   });
 });
 
-test('a clone failure keeps useful files already written by gh', async () => {
-  await fixture(async ({directory, runner}) => {
+test('a clone failure keeps useful files already written by Git', async () => {
+  await fixture(async ({directory, runner, github}) => {
     const wrapped: CommandRunner = async (command, args) => {
-      if (args[0] === 'repo' && args[1] === 'clone') {
+      if (args[0] === 'clone') {
         await fs.writeFile(path.join(directory, 'recovery.txt'), 'partial work');
         throw new Error('clone interrupted');
       }
@@ -340,7 +372,7 @@ test('a clone failure keeps useful files already written by gh', async () => {
     await expect(
       runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: wrapped},
+        {run: wrapped, github},
       ),
     ).rejects.toMatchObject({
       result: {githubCreated: true, cloneCompleted: false, configured: false, pushCompleted: false},
@@ -350,46 +382,47 @@ test('a clone failure keeps useful files already written by gh', async () => {
 });
 
 test('concurrent initializers cannot create two remotes for one local destination', async () => {
-  await fixture(async ({directory, calls, runner}) => {
+  await fixture(async ({directory, calls, runner, github}) => {
     const options = {directory, registryId: 'acme/skills', github: true, yes: true};
 
     const attempts = await Promise.allSettled([
-      runRegistryInit(options, {run: runner}),
-      runRegistryInit(options, {run: runner}),
+      runRegistryInit(options, {run: runner, github}),
+      runRegistryInit(options, {run: runner, github}),
     ]);
 
     expect(attempts.filter((attempt) => attempt.status === 'fulfilled')).toHaveLength(1);
     expect(attempts.filter((attempt) => attempt.status === 'rejected')).toHaveLength(1);
-    expect(
-      calls.filter((call) => call.args[0] === 'repo' && call.args[1] === 'create'),
-    ).toHaveLength(1);
+    expect(calls.filter((call) => call.args[0] === 'POST')).toHaveLength(1);
   });
 });
 
 for (const observed of [true, false]) {
   test(`failed creation remains uncertain when remote observed=${observed}`, async () => {
-    await fixture(async ({directory, calls, runner}) => {
+    await fixture(async ({directory, calls, runner, transport}) => {
       let attempted = false;
 
-      const wrapped: CommandRunner = async (command, args) => {
-        if (args[0] === 'repo' && args[1] === 'create') {
+      const github = githubClient('test-token', async (input, init) => {
+        const request = new Request(input, init);
+
+        if (request.method === 'POST') {
+          calls.push({command: 'github', args: ['POST', new URL(request.url).pathname]});
           attempted = true;
           throw new Error('request timed out');
         }
 
-        if (attempted && args[0] === 'api') {
-          if (!observed) throw new Error('Not Found (HTTP 404)');
-
-          return 'https://github.com/acme/skills';
+        if (attempted) {
+          return observed
+            ? Response.json({html_url: 'https://github.com/acme/skills'})
+            : Response.json({message: 'Not Found'}, {status: 404});
         }
 
-        return runner(command, args);
-      };
+        return transport(input, init);
+      });
 
       await expect(
         runRegistryInit(
           {directory, registryId: 'acme/skills', github: true, yes: true},
-          {run: wrapped},
+          {run: runner, github},
         ),
       ).rejects.toMatchObject({
         result: {
@@ -400,7 +433,8 @@ for (const observed of [true, false]) {
           pushCompleted: false,
         },
       });
-      expect(calls.some((call) => call.args[1] === 'clone' || call.args[1] === 'delete')).toBe(
+      expect(calls.filter((call) => call.args[0] === 'POST')).toHaveLength(1);
+      expect(calls.some((call) => call.args[0] === 'clone' || call.args[0] === 'DELETE')).toBe(
         false,
       );
       await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
@@ -416,37 +450,39 @@ for (const failure of [
   'repos/acme/skills',
 ]) {
   test(`preflight failure at ${failure} does not create local or remote state`, async () => {
-    await fixture(async ({directory, calls, runner}) => {
+    await fixture(async ({directory, calls, runner, github}) => {
       await expect(
         runRegistryInit(
           {directory, registryId: 'acme/skills', github: true, yes: true},
-          {run: runner},
+          {run: runner, github},
         ),
       ).rejects.toThrow();
       await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
-      expect(calls.some((call) => call.args[1] === 'create')).toBe(false);
+      expect(calls.some((call) => call.args[0] === 'POST')).toBe(false);
     }, failure);
   });
 }
 
 test('existing remotes and invalid --github --no-git fail before reserving a destination', async () => {
-  await fixture(async ({directory, runner}) => {
+  await fixture(async ({directory, runner, github, transport}) => {
     await expect(
       runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, git: false, yes: true},
-        {run: runner},
+        {run: runner, github},
       ),
     ).rejects.toThrow(/requires Git/);
 
-    const collision: CommandRunner = (command, args) =>
-      args[1] === 'repos/acme/skills'
-        ? Promise.resolve('https://github.com/acme/skills')
-        : runner(command, args);
+    const collision = githubClient('test-token', async (input, init) => {
+      if (new URL(new Request(input, init).url).pathname === '/repos/acme/skills')
+        return Response.json({html_url: 'https://github.com/acme/skills'});
+
+      return transport(input, init);
+    });
 
     await expect(
       runRegistryInit(
         {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: collision},
+        {run: runner, github: collision},
       ),
     ).rejects.toThrow(/already exists/);
     await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
@@ -469,5 +505,54 @@ test('default command runner isolates caller repository variables', async () => 
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+for (const status of [401, 403, 429]) {
+  test(`destination HTTP ${status} is not treated as an available repository`, async () => {
+    await fixture(async ({directory, calls, runner, transport}) => {
+      const github = githubClient('test-token', async (input, init) => {
+        if (new URL(new Request(input, init).url).pathname === '/repos/acme/skills') {
+          return Response.json({message: 'Denied (HTTP 404)'}, {status});
+        }
+
+        return transport(input, init);
+      });
+
+      await expect(
+        runRegistryInit(
+          {directory, registryId: 'acme/skills', github: true, yes: true},
+          {run: runner, github},
+        ),
+      ).rejects.toThrow(/Could not check the destination/);
+      expect(calls.some((call) => call.args[0] === 'POST')).toBe(false);
+      await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
+    });
+  });
+}
+
+test('only Git network commands receive credentials and they never appear in arguments or local config', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    const network: string[] = [];
+
+    const wrapped: CommandRunner = async (command, args, environment) => {
+      const operation = args[0] === '-C' ? args[2] : args[0];
+
+      if (operation === 'clone' || operation === 'push') {
+        expect(environment?.['GIT_CONFIG_VALUE_1']).toMatch(/^AUTHORIZATION: basic /);
+        network.push(operation);
+      } else expect(environment).toBeUndefined();
+
+      return runner(command, args);
+    };
+
+    await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    );
+    expect(network).toEqual(['clone', 'push']);
+    expect(JSON.stringify(calls)).not.toContain('test-token');
+    const config = await fs.readFile(path.join(directory, '.git/config'), 'utf8');
+    expect(config).not.toMatch(/test-token|extraheader|AUTHORIZATION/i);
   });
 });
