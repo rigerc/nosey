@@ -203,8 +203,8 @@ describe('Nosey scan interaction', () => {
   it.each([false, true])(
     'preselects verified installations after loading and rescanning (compact=%s)',
     async (compactMode) => {
-      const name = 'react-best-practices';
-      const id = 'vercel-labs/agent-skills/' + name;
+      const name = 'vercel-react-best-practices';
+      const id = 'vercel-labs/agent-skills/react-best-practices';
       const directory = join(root, '.agents', 'skills', name);
       mkdirSync(directory, {recursive: true});
       writeFileSync(join(directory, 'SKILL.md'), '---\nname: ' + name + '\n---\n');
@@ -214,7 +214,10 @@ describe('Nosey scan interaction', () => {
         JSON.stringify({
           version: 1,
           skills: {
-            [name]: {source: 'vercel-labs/agent-skills', skillPath: 'skills/' + name + '/SKILL.md'},
+            [name]: {
+              source: 'vercel-labs/agent-skills',
+              skillPath: 'skills/react-best-practices/SKILL.md',
+            },
           },
         }),
       );
@@ -780,7 +783,8 @@ describe('Registry UI writes', () => {
     await press(app, '\r');
     await settle();
     expect(app.lastFrame()).toContain('Destination already exists');
-    expect(app.lastFrame()).toContain('Choose a new directory');
+    expect(app.lastFrame()).toContain('Choose a');
+    expect(app.lastFrame()).toContain('new directory.');
     expect(app.lastFrame()).toContain('Directory:');
     expect(app.lastFrame()).not.toContain('Owner/repository');
     await press(app, '\u0015'); // clear and choose a fresh relative destination

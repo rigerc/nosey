@@ -187,7 +187,7 @@ export function mergeRegistries(registries: LoadedRegistry[]): RegistryMerge {
       registry.skillIds.add(item.id);
       registry.skillInstallSources?.set(item.id, {
         source: incoming.source.replace(/#HEAD$/, ''),
-        name: item.path.split('/').at(-2) ?? item.name,
+        name: item.name,
       });
     }
 

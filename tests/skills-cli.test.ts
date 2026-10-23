@@ -72,7 +72,9 @@ test('groups selected skills and prints nonexecuting project-only JSON commands'
   expect(result.commands[0]).toContain(
     'cd ' + root + ' && npx skills add vercel-labs/agent-skills',
   );
-  expect(result.commands[0]).toContain('--skill react-best-practices --skill composition-patterns');
+  expect(result.commands[0]).toContain(
+    '--skill vercel-react-best-practices --skill vercel-composition-patterns',
+  );
   expect(result.commands[0]).toContain('--agent claude-code --agent codex --yes --json');
   expect(result.commands.join('\n')).not.toMatch(/--global| -g |--all/);
 });
@@ -271,4 +273,41 @@ test('rejects sources and skill names that could be interpreted as options', () 
     expect(plan.commands).toEqual([]);
     expect(plan.invocations).toEqual([]);
   }
+});
+
+test('recognizes installed built-ins whose declared names differ from source folders', async () => {
+  const root = fixture();
+  const id = 'vercel-labs/agent-skills/react-best-practices';
+  const name = 'vercel-react-best-practices';
+  skillFile(root, '.agents/skills', name);
+  writeFileSync(
+    path.join(root, 'skills-lock.json'),
+    JSON.stringify({
+      version: 1,
+      skills: {
+        [name]: {
+          source: 'vercel-labs/agent-skills',
+          skillPath: 'skills/react-best-practices/SKILL.md',
+        },
+      },
+    }),
+  );
+
+  const installed = await inspectInstalledSkills(root, [{id}], ['codex']);
+  const installation = installed.get(id);
+  expect(installation?.installedAgents).toEqual(['codex']);
+  expect(generateInstallCommands([id], [{id, installation}], ['codex'], root).commands).toEqual([]);
+});
+
+test('explicit registry install names take precedence over built-in aliases', () => {
+  const id = 'vercel-labs/agent-skills/react-best-practices';
+  const result = generateInstallCommands(
+    [id],
+    [{id, installSource: {source: 'acme/fork', name: 'custom-react'}}],
+    ['codex'],
+    fixture(),
+  );
+
+  expect(result.errors).toEqual([]);
+  expect(result.commands[0]).toContain('skills add acme/fork --skill custom-react');
 });
