@@ -38,6 +38,8 @@
     "test:registry": "node --test registry-tools/*.test.mjs",
     "docs:schema": "node scripts/build-schema-docs.mjs",
     "docs:schema:check": "node scripts/build-schema-docs.mjs --check",
+    "schema:technologies": "node --experimental-strip-types scripts/build-schema-technologies.ts",
+    "schema:technologies:check": "node --experimental-strip-types scripts/build-schema-technologies.ts --check",
     "registry:package:check": "node --import=tsx scripts/check-registry-package.ts"
   },
   "dependencies": {
