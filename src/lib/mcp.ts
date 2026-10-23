@@ -209,6 +209,7 @@ export function matchesMcpServer(server: McpServer, matchers: McpServerMatcher[]
 
   return matchers.some((matcher) => {
     if (matcher.configFiles && !matcher.configFiles.includes(server.file)) return false;
+
     if (matcher.serverNames?.includes(server.name)) return true;
 
     if (
