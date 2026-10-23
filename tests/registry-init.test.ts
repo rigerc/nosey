@@ -85,11 +85,13 @@ test('scaffold starts empty with current generated files and registry maintenanc
     ) as {registryId: string};
 
     expect(settings.registryId).toBe('acme/team-skills');
-    const workflow = await fs.stat(path.join(destination, '.github/workflows/update-manifest.yml'));
+    const workflow = await fs.stat(path.join(destination, '.github/workflows/registry-ci.yml'));
     expect(workflow.isFile()).toBe(true);
 
     for (const name of [
-      '.github/workflows/agnix.yml',
+      '.github/workflows/template-sync.yml',
+      'scripts/validate-registry.mjs',
+      'scripts/template-update.mjs',
       '.agents/prompts/fix-skills-using-agnix.md',
       'scripts/generate-readme.mjs',
       'scripts/generate-readme.test.mjs',

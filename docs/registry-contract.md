@@ -1,64 +1,46 @@
-# Registry template maintenance
+# Registry contracts and template ownership
 
-Nosey owns the registry parsers, configuration tools, generators, and schemas.
-The template owns its README, workflows, Makefile, skills, and example registry data.
+The standalone [registry template](https://github.com/rigerc/nosey-registry-template)
+owns its generator, integrity validator, Agnix policy, GitHub Actions, tests,
+and upstream template synchronization. Generated registries own their skills,
+registry identity, skill mappings, and README. Template upgrades are reviewed
+infrastructure PRs, not copies of one registry's content into another.
 
-## Quick how-to
+Nosey owns the schema and parsing contracts it consumes:
+`schemas/registry/skills-manifest.schema.json`,
+`schemas/registry/skills-map.schema.json`, and
+`src/lib/registry/validate.ts`. The supported document versions are manifest v1
+and mapping v1/v2. Breaking document changes require new `schemaVersion` values.
 
-From the Nosey checkout, copy the current canonical files into a template checkout:
+## Contract tests
 
-```bash
-npm run registry:template:sync -- ../nosey-registry-template
-npm run dev -- registry validate ../nosey-registry-template
-```
+The representative template fixture is `tests/fixtures/registry-template/`.
+`tests/registry-standalone-template.integration.test.ts` exercises its
+manifest generator and integrity checker against Nosey's actual loader,
+validator, and local initialization. The existing
+`tests/registry-github-init.test.ts` covers GitHub template generation
+using mocked GitHub calls and local Git, without creating remote repositories.
 
-Run the template's own checks, review the diff, and open a PR. The sync command
-copies configuration tools, generators, attribution, and the three template JSON
-examples. It checks those JSON files for freshness too. Sync only accepts the
-`example/agent-skills` template identity, so it cannot overwrite configured registries.
-Template skills, README, and workflows stay untouched. No release, commit
-hash, contract manifest, or GitHub access is required to sync local files.
-Existing copies of those maintained files are overwritten, including local edits.
+When the template changes, update the fixture from an approved upstream
+commit and open a reviewed Nosey PR for the compatibility changes.
+Do not use Nosey's internal generator as the template's source of truth.
+The historical `registry:template:sync` copying path is legacy; it is
+not part of the standalone template's publishing or downstream update model.
 
-## Validation
+## Initialization and recovery
 
-The template ships no JSON Schema files, schema reference, or `$schema` annotations.
-Schemas and their reference documentation stay in Nosey under `schemas/registry/`
-and `docs/registry-schema.md`.
+Local initialization downloads an immutable template commit, configures the
+registry ID, then verifies the Nosey contract. GitHub initialization invokes
+GitHub's template generation API, clones the created repository, configures it
+and pushes the first configured commit. Initialization does not execute scripts
+from the downloaded template.
 
-Nosey validates registry JSON through its parsers using `schemaVersion`, before and
-after configuration. Initialization runs only Nosey's packaged tools. The template
-needs registry JSON, referenced skill files, and a README with catalog markers.
-Use a new document `schemaVersion` for incompatible format changes.
+Template provenance in `.template/state.json` is preserved during registry
+identity configuration. The template's own update workflow later proposes
+three-way-merged infrastructure updates. Workflow updates require an authorized
+`TEMPLATE_SYNC_TOKEN`; see the template's `TEMPLATE_UPDATES.md`.
 
-Canonical source changes can be checked against the offline fixture with
-`npm run registry:template:check`. Refresh that fixture using the same sync command:
-
-```bash
-npm run registry:template:sync -- tests/fixtures/registry-template
-```
-
-## Creation and recovery
-
-Local initialization downloads the template's default branch at one resolved
-commit, then configures and validates it. Network access is required, including
-with `--no-git`. That mode needs neither Git nor `gh`. Downloads and extraction
-remain bounded, unsafe archive entries are rejected, and failed local scaffolds
-are removed. Default local Git initialization starts without an upstream remote.
-
-GitHub initialization uses Octokit to call the template-generation API, then Git
-to clone the generated repository. Authentication uses `GITHUB_TOKEN`, `GH_TOKEN`,
-or the signed-in `gh` account token; GitHub CLI is optional with an environment
-token. Credentials are passed to Git through process-only configuration. Creation
-is never automatically retried. Initialization
-waits up to 30 seconds for template generation if the clone has no first commit,
-then fetches its default branch, configures identity, commits, and pushes the
-current branch. It preserves the
-clone's history and origin. A remote may exist before local setup finishes;
-errors report completed stages and recovery instructions. Useful clones are kept.
-Do not repeat creation after a partial failure; follow those recovery instructions.
-
-The template's existing monthly sync workflow proposes reviewed updates for
-registries. Enable Actions and permission for Actions to create PRs. Its exclusions
-protect registry identity, mappings, generated output, skills, and workflows;
-review those separately and regenerate output after accepting tool updates.
+Legacy `nosey registry build` remains available for older registries during
+migration. It must never execute registry-provided scripts. Maintainers of
+standalone repositories should run their own `make generate && make check`,
+with Agnix as a separate required CI job.

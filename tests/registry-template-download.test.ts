@@ -53,7 +53,7 @@ test('local download pins the default branch once and needs neither Git nor gh',
       'https://codeload.github.com/rigerc/nosey-registry-template/tar.gz/' + templateCommit,
     ]);
     expect(
-      (await fs.stat(path.join(directory, '.github/workflows/update-manifest.yml'))).isFile(),
+      (await fs.stat(path.join(directory, '.github/workflows/registry-ci.yml'))).isFile(),
     ).toBe(true);
     await expect(fs.stat(path.join(directory, '.git'))).rejects.toMatchObject({code: 'ENOENT'});
     await expect(fs.stat(path.join(directory, 'template'))).rejects.toMatchObject({code: 'ENOENT'});
