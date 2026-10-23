@@ -74,9 +74,7 @@ test('standalone template generator and Nosey agree on nested skills', async () 
       },
     ]);
     expect(validated.manifest.skills).toEqual(local.manifest.skills);
-    expect(local.map.technologySkills[0]?.skills).toEqual([
-      'example/agent-skills/nested/review',
-    ]);
+    expect(local.map.technologySkills[0]?.skills).toEqual(['example/agent-skills/nested/review']);
     expect(await fs.readFile(path.join(root, 'README.md'), 'utf8')).toContain(
       'Review project code for correctness.',
     );
