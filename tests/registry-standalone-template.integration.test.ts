@@ -110,7 +110,7 @@ test('template validator and Nosey both reject unknown recommendations', async (
     await fs.writeFile(filename, JSON.stringify(map, null, 2) + '\n');
 
     await expect(templateCommand(root, 'validate-registry.mjs')).rejects.toThrow();
-    await expect(validateRegistry(root)).rejects.toThrow(/unknown skill/i);
+    await expect(validateRegistry(root)).rejects.toThrow(/unknown skill|not declared in registry/i);
   });
 });
 
