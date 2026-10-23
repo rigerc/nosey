@@ -22,10 +22,22 @@ headless commands, without adding a separate UI framework dependency.
   and agent folders) and generates copyable `skills add --yes --json` commands.
   Execution is separately opt-in: after selection confirmation and Ink exit,
   `src/features/skills/execute.ts` runs the structured plan sequentially in the scanned directory.
-- `templates/registry/` is the packaged registry template and trusted manifest generator.
-  `templates/registry/schemas/` publishes the hand-authored JSON Schema contracts for the two
-  registry documents, and `scripts/build-schema-docs.mjs` generates
-  [the schema reference](registry-schema.md) from their annotations.
+- `schemas/registry/` contains Nosey's canonical JSON Schemas; their published `$id`
+  values remain stable. `registry-tools/` contains the dependency-free trusted
+  configuration and generation code shipped in the package and copied to the template.
+  `scripts/build-schema-docs.mjs` generates [the schema reference](registry-schema.md).
+- `src/lib/registry/template.ts` resolves the upstream default branch to a commit,
+  bounds HTTP and tar extraction, rejects unsafe entries, and copies an ephemeral
+  download into the exclusively reserved destination. Local init requires network;
+  `--no-git` requires no Git or GitHub CLI. It never falls back to bundled scaffolding.
+- Registry JSON is validated by Nosey's parsers using document `schemaVersion` values
+  before and after running its packaged configuration tools. The template ships no schema files or annotations; downloaded code is never executed during init.
+  GitHub creation uses `gh --template`, then clones, configures, commits and pushes
+  `HEAD`, preserving generated history. Partial results distinguish creation, clone,
+  configuration, and push completion; the wizard prevents duplicate creation attempts.
+- `npm run registry:template:sync -- <directory>` copies current canonical tools,
+  generators, notices, and canonical template JSON examples for review. It requires no release metadata or hashes
+  and protects configured registries from being overwritten with examples. See [template maintenance](registry-contract.md).
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
 - `assets/nosey-brand-kit/` retains Nosey's original asset exports; runtime semantic
@@ -66,7 +78,7 @@ legacy project-scoped references remain readable and removable.
 
 Node.js 24+ matches the imported application's runtime requirement. `npm test`
 runs both the runtime/UI tests and the catalog and mapping tool tests. The package
-ships the registry template, brand assets, and third-party license notices.
+ships registry tools, canonical schemas, brand assets, and third-party license notices.
 
 ## UI framework
 

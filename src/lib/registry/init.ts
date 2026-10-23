@@ -1,21 +1,18 @@
 import {z} from 'zod';
-import {parseManifest, parseMap} from './validate.js';
-import {errorCode, isRecord, type JsonValue} from '../values.js';
+import {errorCode} from '../values.js';
 
 import {execFile} from 'node:child_process';
-import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import {createInterface} from 'node:readline/promises';
-import {fileURLToPath} from 'node:url';
 import {promisify, stripVTControlCharacters} from 'node:util';
-import {loadLocalRegistry} from './load.js';
+import {validateRegistry} from './commands.js';
+import {configureTool} from './tools.js';
+import {readRegistryFile} from './load.js';
+import {downloadTemplate, templateRepository, type TemplateTransport} from './template.js';
 
 const execFileAsync = promisify(execFile);
-const sourceTemplate = fileURLToPath(new URL('../../../templates/registry/', import.meta.url));
-const bundledTemplate = fileURLToPath(new URL('../templates/registry/', import.meta.url));
-const templateRoot = existsSync(sourceTemplate) ? sourceTemplate : bundledTemplate;
 
 // Repository-local variables exported by Git must not redirect initialization,
 // staging, commits, or the Git commands gh runs into the caller's repository.
@@ -52,6 +49,14 @@ export type RegistryInitResult = {
   registryId: string;
   gitInitialized: boolean;
   githubCreated: boolean;
+  creationStatus?: 'not-requested' | 'not-created' | 'created' | 'uncertain';
+  remoteUrl?: string;
+  remoteObserved?: boolean;
+  cloneCompleted?: boolean;
+  configured?: boolean;
+  pushCompleted?: boolean;
+  templateCommit?: string;
+  initialCommit?: string;
 };
 
 /** A scaffold exists and must not be created again after a later setup failure. */
@@ -80,7 +85,7 @@ function commandFailureDetail(cause: unknown): string {
   ).trim();
 }
 
-type CommandRunner = (command: string, args: string[]) => Promise<void>;
+export type CommandRunner = (command: string, args: string[]) => Promise<string | void>;
 
 export type RegistryInitDependencies = {
   /** An injected question function for command-line tests. */
@@ -91,8 +96,9 @@ export type RegistryInitDependencies = {
   run?: CommandRunner;
   /** Override TTY detection in tests. */
   interactive?: boolean;
-  /** Override the packaged template location in tests. */
+  /** Offline fixture only; never selected from user data or environment. */
   templateDirectory?: string;
+  transport?: TemplateTransport;
 };
 
 /** Shared by the CLI service and the interactive wizards before a directory is written. */
@@ -120,7 +126,7 @@ function yesNo(value: string, fallback: boolean): boolean {
   throw new Error('Answer y or n');
 }
 
-async function defaultRun(command: string, args: string[]): Promise<void> {
+export async function defaultRun(command: string, args: string[]): Promise<string> {
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
       ([name]) =>
@@ -130,102 +136,32 @@ async function defaultRun(command: string, args: string[]): Promise<void> {
   );
 
   env['GIT_TERMINAL_PROMPT'] = '0';
-  await execFileAsync(command, args, {
+  env['GH_PROMPT_DISABLED'] = '1';
+  env['GH_HOST'] = 'github.com';
+
+  const {stdout} = await execFileAsync(command, args, {
     timeout: 60_000,
     maxBuffer: 1024 * 1024,
     env,
   });
+
+  return stdout;
 }
 
-function remapId(id: string, from: string, to: string): string {
-  return id.startsWith(from + '/') ? to + id.slice(from.length) : id;
-}
-
-/** Read a preserved editor annotation without constraining or normalizing its value. */
-function annotationOf(raw: JsonValue): JsonValue {
-  if (!isRecord(raw) || !Object.hasOwn(raw, '$schema')) return undefined;
-
-  return raw['$schema'];
-}
-
-async function rewriteRegistryIdentity(directory: string, registryId: string): Promise<void> {
-  const settingsPath = path.join(directory, 'registry.json');
-  const manifestPath = path.join(directory, 'skills-manifest.json');
-  const mapPath = path.join(directory, 'skills-map.json');
-
-  const [settingsText, manifestText, mapText] = await Promise.all([
-    fs.readFile(settingsPath, 'utf8'),
-    fs.readFile(manifestPath, 'utf8'),
-    fs.readFile(mapPath, 'utf8'),
-  ]);
-
-  const settings = z
-    .object({schemaVersion: z.literal(1), registryId: z.string()})
-    .parse(JSON.parse(settingsText));
-
-  const manifest = parseManifest(JSON.parse(manifestText));
-  const mapping = parseMap(JSON.parse(mapText));
-  // SAFETY: parseManifest/parseMap above validate both raw documents before these reads.
-  const rawManifest = JSON.parse(manifestText) as JsonValue;
-  // SAFETY: parseManifest/parseMap above validate both raw documents before these reads.
-  const rawMap = JSON.parse(mapText) as JsonValue;
-  const formerId = settings.registryId;
-
-  if (manifest.registryId !== formerId || mapping.registryId !== formerId) {
-    throw new Error('Template registry IDs do not match');
-  }
-
-  settings.registryId = registryId;
-  manifest.registryId = registryId;
-  mapping.registryId = registryId;
-
-  for (const skill of manifest.skills) {
-    skill.id = remapId(skill.id, formerId, registryId);
-  }
-
-  for (const technology of mapping.technologies ?? []) {
-    technology.skills = technology.skills.map((id) => remapId(id, formerId, registryId));
-  }
-
-  for (const association of mapping.technologySkills ?? []) {
-    association.skills = association.skills.map((id) => remapId(id, formerId, registryId));
-  }
-
-  for (const combo of mapping.combinations ?? []) {
-    combo.skills = combo.skills.map((id) => remapId(id, formerId, registryId));
-  }
-
-  for (const association of mapping.combinationSkills ?? []) {
-    association.skills = association.skills.map((id) => remapId(id, formerId, registryId));
-  }
-
-  mapping.frontendBonusSkills = (mapping.frontendBonusSkills ?? []).map((id) =>
-    remapId(id, formerId, registryId),
-  );
-
-  // The editor annotation is not part of the typed model, so it is carried over from the
-  // raw document verbatim; a legacy template without one stays unannotated.
-  const manifestAnnotation = annotationOf(rawManifest);
-  const mapAnnotation = annotationOf(rawMap);
-
-  const manifestDocument =
-    manifestAnnotation === undefined ? manifest : {$schema: manifestAnnotation, ...manifest};
-
-  const mapDocument = mapAnnotation === undefined ? mapping : {$schema: mapAnnotation, ...mapping};
-
-  await Promise.all([
-    fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n'),
-    fs.writeFile(manifestPath, JSON.stringify(manifestDocument, null, 2) + '\n'),
-    fs.writeFile(
-      mapPath,
-      JSON.stringify(
-        mapDocument,
-        (_key, value) =>
-          value instanceof RegExp ? {source: value.source, flags: value.flags} : value,
-        2,
-      ) + '\n',
-    ),
-  ]);
+/** Validate with Nosey's parsers and execute only packaged first-party tools. */
+export async function configureRegistryIdentity(
+  directory: string,
+  registryId: string,
+): Promise<void> {
+  validateRegistryId(registryId);
+  await readRegistryFile(directory, 'registry.json');
+  await readRegistryFile(directory, 'README.md');
+  await validateRegistry(directory);
+  await execFileAsync(process.execPath, [configureTool, registryId, '--root', directory], {
+    timeout: 60_000,
+    maxBuffer: 1024 * 1024,
+  });
+  await validateRegistry(directory);
 }
 
 function destinationExistsError(destination: string): Error {
@@ -251,17 +187,10 @@ export async function validateRegistryDestination(directory: string): Promise<vo
   throw destinationExistsError(destination);
 }
 
-/** Copy the bundled repository template into a new directory, never overwriting user files. */
-export async function scaffoldRegistry(
-  directory: string,
-  registryId: string,
-  templateDirectory = templateRoot,
-): Promise<string> {
-  validateRegistryId(registryId);
+async function reserveDestination(directory: string): Promise<string> {
   const destination = path.resolve(directory);
   await fs.mkdir(path.dirname(destination), {recursive: true});
 
-  // Atomic exclusive creation prevents replacing even an existing empty directory.
   try {
     await fs.mkdir(destination);
   } catch (error) {
@@ -269,36 +198,202 @@ export async function scaffoldRegistry(
     throw error;
   }
 
-  try {
-    // Copy entries into the reserved root, preserving exclusive creation for
-    // each entry without treating the root itself as a collision.
-    for (const name of await fs.readdir(templateDirectory)) {
+  return destination;
+}
+
+async function populateLocal(
+  destination: string,
+  registryId: string,
+  dependencies: RegistryInitDependencies,
+): Promise<string | undefined> {
+  let commit: string | undefined;
+
+  if (dependencies.templateDirectory) {
+    // Tests use representative fixtures. Production always resolves and downloads an exact commit.
+    for (const name of await fs.readdir(dependencies.templateDirectory)) {
+      if (name.toLowerCase() === '.git') continue;
       // eslint-disable-next-line no-await-in-loop
-      await fs.cp(path.join(templateDirectory, name), path.join(destination, name), {
+      await fs.cp(path.join(dependencies.templateDirectory, name), path.join(destination, name), {
         recursive: true,
         errorOnExist: true,
         force: false,
       });
     }
+  } else {
+    commit = await downloadTemplate(destination, dependencies.transport);
+  }
 
-    await rewriteRegistryIdentity(destination, registryId);
-    await loadLocalRegistry(destination);
-    // Render with the bundled generator, never a script supplied by the destination.
-    await execFileAsync(
-      process.execPath,
-      [path.join(templateRoot, 'scripts/generate-readme.mjs')],
-      {
-        cwd: destination,
-        timeout: 60_000,
-        maxBuffer: 1024 * 1024,
-      },
-    );
-  } catch (error: unknown) {
+  await configureRegistryIdentity(destination, registryId);
+
+  return commit;
+}
+
+/** Fetch the template into an exclusively created local destination. */
+export async function scaffoldRegistry(
+  directory: string,
+  registryId: string,
+  templateDirectory?: string,
+  transport?: TemplateTransport,
+): Promise<string> {
+  validateRegistryId(registryId);
+  const destination = await reserveDestination(directory);
+
+  try {
+    await populateLocal(destination, registryId, {templateDirectory, transport});
+  } catch (error) {
     await fs.rm(destination, {recursive: true, force: true});
     throw error;
   }
 
   return destination;
+}
+
+const isNotFound = (cause: unknown) => /(?:HTTP 404|\(404\))/.test(commandFailureDetail(cause));
+
+async function releaseEmptyReservation(directory: string): Promise<void> {
+  try {
+    if ((await fs.readdir(directory)).length === 0) await fs.rmdir(directory);
+  } catch {
+    // Cleanup must never hide a remote creation result or remove a useful clone.
+    return;
+  }
+}
+
+async function githubPreflight(registryId: string, runner: CommandRunner): Promise<void> {
+  const [owner, repository] = registryId.split('/');
+
+  if (
+    !owner ||
+    !/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(owner) ||
+    !repository ||
+    repository.length > 100
+  )
+    throw new Error('GitHub registry ID requires a valid GitHub owner and repository name');
+  await runner('git', ['--version']);
+  await runner('gh', ['auth', 'status', '--hostname', 'github.com']);
+  await runner('gh', ['api', 'users/' + owner, '--jq', '.login']);
+
+  const template = await runner('gh', [
+    'api',
+    'repos/' + templateRepository,
+    '--jq',
+    '.is_template',
+  ]);
+
+  if (template?.trim() !== 'true')
+    throw new Error('GitHub source repository is unavailable or is not a template');
+
+  try {
+    await runner('gh', ['api', 'repos/' + registryId, '--jq', '.html_url']);
+  } catch (cause) {
+    if (isNotFound(cause)) return;
+    throw new Error(
+      'Could not check the destination GitHub repository: ' + commandFailureDetail(cause),
+      {cause},
+    );
+  }
+
+  throw new Error(
+    'GitHub repository already exists: ' + registryId + '. It was not adopted or changed.',
+  );
+}
+
+async function createFromGithub(
+  destination: string,
+  registryId: string,
+  visibility: string,
+  runner: CommandRunner,
+): Promise<RegistryInitResult> {
+  const remoteUrl = 'https://github.com/' + registryId;
+
+  const result: RegistryInitResult = {
+    directory: destination,
+    registryId,
+    gitInitialized: false,
+    githubCreated: false,
+    creationStatus: 'not-created',
+    remoteUrl,
+    cloneCompleted: false,
+    configured: false,
+    pushCompleted: false,
+  };
+
+  try {
+    await runner('gh', [
+      'repo',
+      'create',
+      registryId,
+      '--template',
+      templateRepository,
+      '--' + visibility,
+    ]);
+    result.githubCreated = true;
+    result.creationStatus = 'created';
+    result.remoteObserved = true;
+  } catch (cause) {
+    // Even an observed remote may belong to a concurrent run. Never adopt it.
+    result.creationStatus = 'uncertain';
+
+    try {
+      await runner('gh', ['api', 'repos/' + registryId, '--jq', '.html_url']);
+      result.remoteObserved = true;
+    } catch (inspection) {
+      // A 404 cannot establish whether a timed-out create succeeded: permissions
+      // and delayed visibility can hide a newly created repository.
+      if (isNotFound(inspection)) result.remoteObserved = false;
+    }
+
+    await releaseEmptyReservation(destination);
+    throw new RegistryInitError(
+      `GitHub creation failed; creation status: ${result.creationStatus}. Inspect ${remoteUrl} with gh repo view ${registryId} before retrying. No existing remote was adopted or deleted.\n${commandFailureDetail(cause)}`,
+      result,
+      cause,
+    );
+  }
+
+  let stage = 'clone';
+
+  try {
+    await runner('gh', ['repo', 'clone', registryId, destination]);
+    result.cloneCompleted = true;
+    result.gitInitialized = true;
+    result.initialCommit = (await runner('git', ['-C', destination, 'rev-parse', 'HEAD']))?.trim();
+    stage = 'configuration';
+    await configureRegistryIdentity(destination, registryId);
+    result.configured = true;
+    stage = 'commit';
+    await runner('git', ['-C', destination, 'add', '--all']);
+    await runner('git', [
+      '-C',
+      destination,
+      'commit',
+      '--allow-empty',
+      '-m',
+      'chore(registry): configure registry identity',
+    ]);
+    stage = 'push';
+    await runner('git', ['-C', destination, 'push', 'origin', 'HEAD']);
+    result.pushCompleted = true;
+  } catch (cause) {
+    await releaseEmptyReservation(destination);
+
+    const recovery =
+      stage === 'clone'
+        ? `Clone ${remoteUrl} into a new directory with gh repo clone ${registryId}, then configure it with a compatible Nosey release.`
+        : stage === 'configuration'
+          ? 'Correct the registry data or use a Nosey version that supports its schemaVersion, then run the packaged registry-tools/configure-registry.mjs with --root pointing at this clone. Validate before committing and pushing.'
+          : stage === 'commit'
+            ? 'Check Git identity and commit hooks, commit the configured files, then push origin HEAD from this directory.'
+            : 'Retry git push origin HEAD from this directory.';
+
+    throw new RegistryInitError(
+      `GitHub repository created at ${remoteUrl}, but ${stage} failed. Local work at ${destination} was preserved when present. ${recovery} Do not repeat registry init --github.\n${commandFailureDetail(cause)}`,
+      result,
+      cause,
+    );
+  }
+
+  return result;
 }
 
 /** Run the interactive wizard, optionally initializing Git and creating a GitHub remote. */
@@ -402,75 +497,44 @@ export async function runRegistryInit(
       visibility = answer === 'public' ? 'public' : 'private';
     }
 
-    const destination = await scaffoldRegistry(
-      directoryInput,
-      registryId,
-      dependencies.templateDirectory,
-    );
+    await validateRegistryDestination(directoryInput);
+
+    if (createGitHub) await githubPreflight(registryId, runner);
+    const destination = await reserveDestination(directoryInput);
+
+    if (createGitHub)
+      return await createFromGithub(destination, registryId, visibility ?? 'private', runner);
 
     const result: RegistryInitResult = {
       directory: destination,
       registryId,
       gitInitialized: false,
       githubCreated: false,
+      creationStatus: 'not-requested',
+      cloneCompleted: false,
+      configured: false,
+      pushCompleted: false,
     };
+
+    try {
+      result.templateCommit = await populateLocal(destination, registryId, dependencies);
+      result.configured = true;
+    } catch (cause) {
+      await fs.rm(destination, {recursive: true, force: true});
+      throw cause;
+    }
 
     if (initializeGit) {
       try {
         await runner('git', ['init', '--initial-branch=main', destination]);
-      } catch (error: unknown) {
+        result.gitInitialized = true;
+      } catch (cause) {
         throw new RegistryInitError(
-          'Registry created at ' +
-            destination +
-            ', but Git initialization failed: ' +
-            commandFailureDetail(error),
+          `Registry created at ${destination}, but Git initialization failed. Run git init in this directory.\n${commandFailureDetail(cause)}`,
           result,
-          error,
+          cause,
         );
       }
-
-      result.gitInitialized = true;
-    }
-
-    if (createGitHub) {
-      try {
-        await runner('git', ['-C', destination, 'add', '--all']);
-        await runner('git', [
-          '-C',
-          destination,
-          'commit',
-          '-m',
-          'chore(registry): initialize Nosey registry',
-        ]);
-      } catch (error: unknown) {
-        throw new RegistryInitError(
-          `Local registry created at ${destination}, but preparing the initial Git commit failed. Check Git identity and commit hooks, then commit and publish from this directory. GitHub was not contacted.\n${commandFailureDetail(error)}`,
-          result,
-          error,
-        );
-      }
-
-      try {
-        await runner('gh', [
-          'repo',
-          'create',
-          registryId,
-          '--source',
-          destination,
-          '--remote',
-          'origin',
-          '--push',
-          '--' + (visibility ?? 'private'),
-        ]);
-      } catch (error: unknown) {
-        throw new RegistryInitError(
-          `Local registry created at ${destination}, but GitHub creation failed or the initial push failed. Run gh auth status and check whether ${registryId} already exists before publishing from this directory.\n${commandFailureDetail(error)}`,
-          result,
-          error,
-        );
-      }
-
-      result.githubCreated = true;
     }
 
     return result;

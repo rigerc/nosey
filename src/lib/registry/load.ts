@@ -9,22 +9,27 @@ function within(root: string, candidate: string): boolean {
   return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
 }
 
+/** Only fixed root files are read; registry data cannot select another path. */
+export async function readRegistryFile(
+  directory: string,
+  name: 'registry.json' | 'skills-manifest.json' | 'skills-map.json' | 'README.md',
+): Promise<string> {
+  const filename = path.join(directory, name);
+  const info = await fs.lstat(filename);
+
+  if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) {
+    throw new Error('Invalid registry file: ' + name);
+  }
+
+  return fs.readFile(filename, 'utf8');
+}
+
 export async function loadLocalRegistry(directory: string): Promise<LoadedRegistry> {
   const root = await fs.realpath(path.resolve(directory));
 
-  for (const name of ['skills-manifest.json', 'skills-map.json']) {
-    // Registry metadata must be regular files and reasonably sized.
-    // eslint-disable-next-line no-await-in-loop
-    const info = await fs.lstat(path.join(root, name));
-
-    if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) {
-      throw new Error('Invalid registry file: ' + name);
-    }
-  }
-
   const [manifestText, mapText] = await Promise.all([
-    fs.readFile(path.join(root, 'skills-manifest.json'), 'utf8'),
-    fs.readFile(path.join(root, 'skills-map.json'), 'utf8'),
+    readRegistryFile(root, 'skills-manifest.json'),
+    readRegistryFile(root, 'skills-map.json'),
   ]);
 
   const manifest = parseManifest(JSON.parse(manifestText));

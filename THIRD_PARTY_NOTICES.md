@@ -24,3 +24,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Registry configuration behavior
+
+The identity remapping in registry-tools/configure-registry.mjs incorporates
+behavior from https://github.com/rigerc/nosey-registry-template at commit
+fe4dee484484daf373b58d4922de6a9e4f702d3c, distributed under the Apache License 2.0.
+Nosey's version adds explicit registry/tool roots, packaged generator execution,
+regular-file checks, and a reusable configuration interface. The Apache license
+is included at registry-tools/LICENSE-APACHE-2.0 in Nosey and exported as
+NOSEY_LICENSE_APACHE_2_0 in registries.

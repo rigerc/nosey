@@ -8,7 +8,7 @@ import process from 'node:process';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {test, expect} from 'vite-plus/test';
-import {scaffoldRegistry} from '../src/lib/registry/init.js';
+import {scaffoldRegistry} from './helpers/registry-template.js';
 import {
   buildRegistry,
   editRegistry,

@@ -6,8 +6,8 @@ import Ajv2020, {type ValidateFunction} from 'ajv/dist/2020.js';
 import {type JsonObject, type JsonValue, isBoolean, isRecord, isString} from '../src/lib/values.js';
 import {parseManifest, parseMap} from '../src/lib/registry/validate.js';
 
-const schemaDirectory = fileURLToPath(new URL('../templates/registry/schemas/', import.meta.url));
-const templateDirectory = fileURLToPath(new URL('../templates/registry/', import.meta.url));
+const schemaDirectory = fileURLToPath(new URL('../schemas/registry/', import.meta.url));
+const templateDirectory = fileURLToPath(new URL('./fixtures/registry-template/', import.meta.url));
 const fixtureDirectory = fileURLToPath(new URL('./fixtures/registry-schema/', import.meta.url));
 const guideFile = fileURLToPath(new URL('../docs/registry-schema.md', import.meta.url));
 
@@ -455,13 +455,10 @@ test('schemas only reference local definitions', async () => {
   for (const reference of references) expect(reference).toMatch(/^#\/\$defs\//);
 });
 
-test('template documents validate against their schemas and parsers', async () => {
-  const documents = [
-    {file: 'skills-manifest.json', annotation: './schemas/skills-manifest.schema.json'},
-    {file: 'skills-map.json', annotation: './schemas/skills-map.schema.json'},
-  ];
+test('unannotated template documents validate against Nosey schemas and parsers', async () => {
+  const documents = ['skills-manifest.json', 'skills-map.json'];
 
-  for (const {file, annotation} of documents) {
+  for (const file of documents) {
     const data = await readJson(path.join(templateDirectory, file));
     const name: DocumentName = file === 'skills-manifest.json' ? 'manifest' : 'map';
     const validate = await compileSchema(name);
@@ -471,7 +468,7 @@ test('template documents validate against their schemas and parsers', async () =
 
     if (!isRecord(data)) throw new Error(file + ' is not an object');
 
-    expect(data['$schema']).toBe(annotation);
+    expect(Object.hasOwn(data, '$schema')).toBe(false);
   }
 });
 
