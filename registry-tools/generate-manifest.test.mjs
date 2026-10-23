@@ -10,9 +10,21 @@ import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const template = fileURLToPath(new URL('..', import.meta.url));
+const template = fileURLToPath(new URL('../tests/fixtures/registry-template/', import.meta.url));
 const generator = fileURLToPath(new URL('./generate-manifest.mjs', import.meta.url));
 const annotation = './schemas/skills-manifest.schema.json';
+
+void test('rejects a symlink at the skills root before generating a manifest', async () => {
+  await registry(async (directory) => {
+    const outside = path.join(directory, 'outside');
+    await fs.mkdir(outside);
+    await fs.rm(path.join(directory, 'skills'), {recursive: true, force: true});
+    await fs.symlink(outside, path.join(directory, 'skills'));
+    const before = await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8');
+    await assert.rejects(generate(directory), /regular directory/);
+    assert.equal(await fs.readFile(path.join(directory, 'skills-manifest.json'), 'utf8'), before);
+  });
+});
 
 async function registry(run, {schemas = true, manifestFile = true, mutate} = {}) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-generator-'));
@@ -20,7 +32,10 @@ async function registry(run, {schemas = true, manifestFile = true, mutate} = {})
   try {
     await fs.cp(template, directory, {recursive: true});
 
-    if (!schemas) await fs.rm(path.join(directory, 'schemas'), {recursive: true, force: true});
+    if (schemas) {
+      await fs.mkdir(path.join(directory, 'schemas'), {recursive: true});
+      await fs.writeFile(path.join(directory, 'schemas/skills-manifest.schema.json'), '{}\n');
+    }
 
     if (!manifestFile) await fs.rm(path.join(directory, 'skills-manifest.json'), {force: true});
 

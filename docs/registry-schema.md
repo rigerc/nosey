@@ -16,8 +16,8 @@ validate registry documents.
 
 | Document               | Schema                                                                                     | Instance `schemaVersion` |
 | ---------------------- | ------------------------------------------------------------------------------------------ | ------------------------ |
-| `skills-manifest.json` | [`skills-manifest.schema.json`](../templates/registry/schemas/skills-manifest.schema.json) | `1`                      |
-| `skills-map.json`      | [`skills-map.schema.json`](../templates/registry/schemas/skills-map.schema.json)           | `1` or `2`               |
+| `skills-manifest.json` | [`skills-manifest.schema.json`](../schemas/registry/skills-manifest.schema.json) | `1`                      |
+| `skills-map.json`      | [`skills-map.schema.json`](../schemas/registry/skills-map.schema.json)           | `1` or `2`               |
 | `registry.json`        | No schema: the initializer validates it with an internal object schema                     | `1`                      |
 
 Both schemas are hand-authored JSON Schema 2020-12 documents. Each declares an absolute `$id` and
@@ -25,15 +25,14 @@ references only fragments of its own `$defs`, so validation never fetches anythi
 
 ## Editor annotations
 
-The template documents start with a relative annotation, for example
-`"$schema": "./schemas/skills-manifest.schema.json"`. It is an editor convention, not contract data:
+The template does not distribute schemas or `$schema` annotations. Schemas and this
+reference stay in Nosey. Existing registries may still use editor annotations such
+as `"$schema": "./schemas/skills-manifest.schema.json"` when they maintain their own
+schema copy.
 
-- Parsers ignore every unknown document-root key, including `$schema`, and do not constrain its value.
-  A non-string annotation is accepted.
-- Writers preserve an existing annotation verbatim, including a custom URL, and keep its absence for
-  legacy templates that ship no `schemas/` directory.
-- `nosey registry init` copies `schemas/` into the new registry, so the relative reference resolves
-  inside a copied registry and never points back into a Nosey checkout.
+- Parsers ignore `$schema` and do not constrain its value.
+- Writers preserve existing annotations verbatim, including custom URLs. A registry
+  without schemas remains unannotated.
 - No Nosey command reads, dereferences, or downloads an annotation target.
 
 ## Compatibility rules

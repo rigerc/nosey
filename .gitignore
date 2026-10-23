@@ -19,6 +19,6 @@ skills-catalog.json
 # Capture replay scaffolding beside tracked captures
 assets/**/tapes/
 
-# Bundle the registry maintenance prompt with the starter.
-!templates/registry/.agents/
-!templates/registry/.agents/**
+# Retain hidden files in the offline template fixture.
+!tests/fixtures/registry-template/.agents/
+!tests/fixtures/registry-template/.agents/**

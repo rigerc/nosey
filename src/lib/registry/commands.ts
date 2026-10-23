@@ -1,3 +1,4 @@
+import {registryToolsDirectory} from './tools.js';
 import {
   jsonValueSchema,
   errorCode,
@@ -9,12 +10,10 @@ import {
 import {z} from 'zod';
 
 import {randomUUID} from 'node:crypto';
-import {existsSync} from 'node:fs';
 import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {setTimeout as delay} from 'node:timers/promises';
 import {
@@ -33,15 +32,7 @@ import type {LoadedRegistry} from './types.js';
 
 const run = promisify(execFile);
 
-const sourceGenerator = fileURLToPath(
-  new URL('../../../templates/registry/scripts/generate-manifest.mjs', import.meta.url),
-);
-
-const bundledGenerator = fileURLToPath(
-  new URL('../templates/registry/scripts/generate-manifest.mjs', import.meta.url),
-);
-
-const generator = existsSync(sourceGenerator) ? sourceGenerator : bundledGenerator;
+const generator = path.join(registryToolsDirectory, 'generate-manifest.mjs');
 
 type ConfigDocument = JsonObject & {registries: JsonValue[]};
 

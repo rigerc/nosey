@@ -76,11 +76,7 @@ export function RegistrySetupScreen() {
     >
       <Panel
         title={
-          created?.warning
-            ? 'Registry created locally'
-            : created
-              ? 'Registry created'
-              : 'New registry'
+          created?.warning ? 'Setup incomplete' : created ? 'Registry created' : 'New registry'
         }
       >
         {error && <StatusMessage tone="danger">{error}</StatusMessage>}
@@ -178,7 +174,7 @@ export function RegistrySetupScreen() {
               <Step name="GitHub">
                 {(step: StepContext) => (
                   <WizardChoice
-                    message="Create and push a GitHub repository via gh?"
+                    message="Create a GitHub repository from the Nosey template via gh?"
                     value={github}
                     step={step}
                     change={setGithub}
@@ -220,15 +216,14 @@ export function RegistrySetupScreen() {
                   );
 
                   setCreated({
-                    message: `Created ${result.registryId} at ${result.directory}. Git: ${result.gitInitialized ? 'initialized' : 'not requested'}. GitHub: ${result.githubCreated ? 'created' : 'not requested'}.`,
+                    message: `Created ${result.registryId} at ${result.directory}. Git: ${result.gitInitialized ? 'initialized' : 'not requested'}. GitHub: ${result.githubCreated ? 'created; identity pushed' : 'not requested'}.${result.templateCommit ? ' Template commit: ' + result.templateCommit : ''}`,
                   });
 
                   return true;
                 } catch (reason) {
                   if (reason instanceof RegistryInitError) {
                     setCreated({
-                      message:
-                        'Your local registry files have been preserved. Add the registry from Registries to use it.',
+                      message: `GitHub: ${reason.result.creationStatus ?? (reason.result.githubCreated ? 'created' : 'not requested')}. Clone: ${reason.result.cloneCompleted ? 'complete' : 'incomplete'}. Configuration: ${reason.result.configured ? 'complete' : 'incomplete'}. Push: ${reason.result.pushCompleted ? 'complete' : 'incomplete'}. Follow the recovery instructions above.`,
                       warning: reason.message,
                     });
 
@@ -250,8 +245,9 @@ export function RegistrySetupScreen() {
                   <Text>Local Git: {git ? 'yes' : 'no'}</Text>
                   <Text>GitHub: {git && github ? visibility : 'no'}</Text>
                   <Muted>
-                    Creates registry files. GitHub is created and pushed only when explicitly
-                    enabled above.
+                    Downloads the Nosey registry template and requires network access, including
+                    without Git. With GitHub enabled, the remote is created before local setup; a
+                    later failure keeps the remote and any useful clone for recovery.
                   </Muted>
                   <Confirm
                     message="Create this registry?"

@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vite-plus/test';
 import {App, type AppOptions} from '../src/app';
 import {defaultScan} from '../src/features/skills/context';
 import type {Report} from '../src/lib/detect';
-import {scaffoldRegistry} from '../src/lib/registry/init';
+import {scaffoldRegistry, fixtureTransport} from './helpers/registry-template';
 import * as registryInit from '../src/lib/registry/init';
 import {themeNames} from '../src/theme/tokens';
 import {mount, press, settle} from './helpers/terminal';
@@ -56,7 +56,14 @@ const report: Report = {
 let root: string;
 let options: AppOptions;
 
-beforeEach(() => {
+beforeEach(async () => {
+  const transport = await fixtureTransport();
+  vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) =>
+    transport(
+      url instanceof Request ? url.url : url.toString(),
+      options?.signal ?? AbortSignal.timeout(30_000),
+    ),
+  );
   root = mkdtempSync(join(tmpdir(), 'nosey-ui-'));
   vi.stubEnv('XDG_CONFIG_HOME', join(root, 'config'));
   options = {
@@ -73,6 +80,7 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(root, {recursive: true, force: true});
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe('Nosey scan interaction', () => {
@@ -705,7 +713,7 @@ describe('Registry UI writes', () => {
       await press(app, 'y');
       await press(app, '\r');
       await settle();
-      await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created locally'));
+      await vi.waitFor(() => expect(app.lastFrame()).toContain('Setup incomplete'));
       expect(app.lastFrame()).toContain('Invalid commit message format');
       expect(app.lastFrame()).toContain('Expected: <type>(<scope>): <subject>');
       expect(app.lastFrame()).not.toContain('Create this registry?');

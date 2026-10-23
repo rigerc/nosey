@@ -30,12 +30,4 @@ jobs:
       - run: node dist/cli.js scan . --json
       - run: npm run docs:schema:check
       - run: npm run registry:template:check
-      - run: node dist/cli.js registry validate templates/registry --json | node scripts/assert-registry-valid.mjs
-      - name: Packaged template resolves from the built CLI
-        run: |
-          node dist/cli.js registry init "$RUNNER_TEMP/reg" --registry-id acme/x --yes --no-git
-          test -f "$RUNNER_TEMP/reg/schemas/skills-manifest.schema.json"
-          test -f "$RUNNER_TEMP/reg/schemas/skills-map.schema.json"
-          cd "$RUNNER_TEMP/reg"
-          node scripts/generate-manifest.mjs --check
-          node scripts/generate-readme.mjs --check
+      - run: npm run registry:package:check

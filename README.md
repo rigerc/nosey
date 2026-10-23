@@ -185,7 +185,10 @@ changed, Nosey displays the affected sources. With **Skills CLI** enabled, it
 also suggests running `npx skills update` yourself. The startup check and update suggestion remain advisory, including when Skills CLI execution is enabled; run the update command yourself. Ordinary
 headless scans continue to use the configured registry TTL.
 
-To create a registry in a **new** directory:
+To create a registry in a **new** directory, Nosey downloads the default branch of
+[rigerc/nosey-registry-template](https://github.com/rigerc/nosey-registry-template)
+at one resolved commit. Network access is required, including with `--no-git`
+(which needs neither Git nor `gh`):
 
 ```bash
 npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
@@ -193,7 +196,35 @@ npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes 
 
 Registries may declare external skills in `skills-map.json` version 2 and map them to detected technologies without storing their `SKILL.md` files. The upstream source is retained for opt-in install command generation. Registry changes are separate from scanning and skill selection. Added registry references are saved globally (under your user config directory), so they are available when scanning any project. Existing project-scoped references remain supported for compatibility; remove a legacy reference with `registry remove <source> --project`. The interactive manager shows write targets and requests confirmation. Git registries are read through Git objects without executing remote code. See `npm run dev -- registry --help` for available subcommands, or `npm run dev -- --help` for the main CLI help.
 
-Registry documents are published as JSON Schemas under `templates/registry/schemas/`, and every new registry ships them. See the [registry schema reference](docs/registry-schema.md) for each field, the separate local and external ID rules, and the parser-only rules a schema cannot express.
+For a GitHub registry, use `registry init ./team-skills --registry-id acme/team-skills --github --yes`.
+Nosey checks Git, `gh` authentication, the template, and the destination repository,
+then creates a **private** repository using GitHub's template mechanism. Use
+`--visibility public` to publish publicly. It clones the generated repository,
+configures identity with Nosey's packaged tools, validates, commits, and pushes the
+current branch. Template history and `origin` are retained. Local creation instead
+starts fresh Git history with no upstream remote; `--no-git` leaves no `.git`.
+
+**GitHub creates the remote before local setup finishes.** If cloning, configuration,
+commit, or push fails, the error reports completed stages and recovery commands.
+Keep the remote and useful clone; follow those instructions instead of repeating
+`registry init --github`. An uncertain creation response is never treated as permission
+to adopt an existing repository. Initializing never runs downloaded registry scripts.
+
+Nosey validates registry JSON using its supported `schemaVersion` values before
+and after configuration. Existing registries and offline `registry build` do not
+need a template download.
+
+JSON Schemas stay in Nosey under `schemas/registry/`; the template does not include
+them or `$schema` annotations. See the
+[registry schema reference](docs/registry-schema.md) for the document fields and
+parser-only rules.
+
+The template's existing monthly sync workflow proposes maintenance updates through
+reviewed PRs. Enable Actions and allow Actions to create pull requests in repository
+settings. Sync excludes registry identity, mappings, generated output, skills, and
+workflows; review those separately and regenerate output after accepting tool updates.
+See [template maintenance](docs/registry-contract.md) for the single-command tools
+sync workflow.
 
 ## Appearance
 

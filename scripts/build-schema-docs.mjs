@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const guideFile = path.join(root, 'docs/registry-schema.md');
-const schemaDirectory = path.join(root, 'templates/registry/schemas');
+const schemaDirectory = path.join(root, 'schemas/registry');
 const beginMarker = '<!-- BEGIN GENERATED SCHEMA TABLES -->';
 const endMarker = '<!-- END GENERATED SCHEMA TABLES -->';
 const check = process.argv.includes('--check');

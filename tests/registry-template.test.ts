@@ -6,12 +6,15 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {test, expect} from 'vite-plus/test';
-import {type JsonObject, isRecord, isString} from '../src/lib/values.js';
 
 const run = promisify(execFile);
-const source = fileURLToPath(new URL('../templates/registry/', import.meta.url));
+const source = fileURLToPath(new URL('./fixtures/registry-template/', import.meta.url));
 const packageFile = fileURLToPath(new URL('../package.json', import.meta.url));
-const generator = path.join(source, 'scripts/generate-manifest.mjs');
+
+const generator = fileURLToPath(
+  new URL('../registry-tools/generate-manifest.mjs', import.meta.url),
+);
+
 const documents = ['skills-manifest.json', 'skills-map.json'];
 
 test('template generator is deterministic and leaves the skill map untouched', async () => {
@@ -132,28 +135,16 @@ test('generator supports registries containing only external skills', async () =
   }
 });
 
-test('the packaged template ships schemas and self-resolving annotations', async () => {
+test('Nosey owns the schemas and the template ships no schema files or annotations', async () => {
   // SAFETY: the owned package manifest is JSON; the assertions below verify the field used here.
   const packageJson = JSON.parse(await fs.readFile(packageFile, 'utf8')) as {files: string[]};
-
-  expect(packageJson.files).toContain('templates/registry');
-
-  for (const file of ['schemas/skills-manifest.schema.json', 'schemas/skills-map.schema.json'])
-    expect((await fs.stat(path.join(source, file))).isFile()).toBe(true);
+  expect(packageJson.files).toContain('registry-tools');
+  expect(packageJson.files).toContain('schemas/registry');
+  await expect(fs.stat(path.join(source, 'schemas'))).rejects.toMatchObject({code: 'ENOENT'});
 
   for (const name of documents) {
-    // SAFETY: template documents are owned JSON; the annotation assertions below verify the shape.
-    const document = JSON.parse(await fs.readFile(path.join(source, name), 'utf8')) as JsonObject;
-    const annotation = document['$schema'];
-
-    expect(isString(annotation)).toBe(true);
-
-    if (!isString(annotation)) throw new Error(name + ' annotation must be a string');
-
-    // A relative annotation must resolve inside a copied registry, not in the Nosey checkout.
-    expect(annotation.startsWith('./')).toBe(true);
-    expect((await fs.stat(path.resolve(source, annotation))).isFile()).toBe(true);
-    expect(isRecord(document)).toBe(true);
+    const document = JSON.parse(await fs.readFile(path.join(source, name), 'utf8'));
+    expect(Object.hasOwn(document, '$schema')).toBe(false);
   }
 });
 

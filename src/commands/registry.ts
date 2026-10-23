@@ -50,6 +50,11 @@ export async function runRegistry(args: string[], options: RegistryCommandOption
   );
 
   process.stdout.write(`Created registry ${result.registryId} at ${result.directory}\n`);
+
+  if (result.templateCommit) process.stdout.write(`Template commit: ${result.templateCommit}\n`);
+
+  if (result.remoteUrl)
+    process.stdout.write(`GitHub: ${result.remoteUrl}; identity push complete\n`);
 }
 
 export function validateRegistryInit(args: string[], options: RegistryCommandOptions): void {

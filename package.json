@@ -7,9 +7,10 @@
   },
   "files": [
     "dist",
-    "templates/registry",
     "assets/nosey-brand-kit",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "schemas/registry",
+    "registry-tools"
   ],
   "type": "module",
   "scripts": {
@@ -32,10 +33,12 @@
     "theme:token": "node scripts/theme.mjs token",
     "theme:default": "node scripts/theme.mjs default",
     "record": "node --import tsx scripts/screenshot.tsx --video",
-    "test:registry": "node --test templates/registry/scripts/*.test.mjs",
+    "test:registry": "node --test registry-tools/*.test.mjs scripts/sync-registry-template.test.mjs",
     "docs:schema": "node scripts/build-schema-docs.mjs",
     "docs:schema:check": "node scripts/build-schema-docs.mjs --check",
-    "registry:template:check": "cd templates/registry && node scripts/generate-manifest.mjs --check && node scripts/generate-readme.mjs --check && node --test scripts/generate-*.test.mjs scripts/prepare-agnix-sarif.test.mjs"
+    "registry:template:sync": "node scripts/sync-registry-template.mjs",
+    "registry:package:check": "node --import=tsx scripts/check-registry-package.ts",
+    "registry:template:check": "node scripts/sync-registry-template.mjs --check tests/fixtures/registry-template"
   },
   "dependencies": {
     "ink": "^8.0.0",

@@ -45,7 +45,7 @@ const cli = meow(
     --registry-id <id> owner/repository for registry init
     --yes            Noninteractive registry initialization
     --no-git         Skip Git initialization for a registry
-    --github         Create a GitHub registry repository with gh
+    --github         Generate a GitHub template repository, clone, configure and push
     --visibility <level> private | public for GitHub creation
     --debug          Write logs to a file and show stack traces
 
