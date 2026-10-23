@@ -528,20 +528,9 @@
           "x-parserOnly": ["parser-only:path-normalization"]
         }
       },
-      "anyOf": [
-        {
-          "required": ["packages"]
-        },
-        {
-          "required": ["pythonPackages"]
-        },
-        {
-          "required": ["endpoints"]
-        },
-        {
-          "required": ["serverNames"]
-        }
-      ]
+      "dependentSchemas": {
+        "configFiles": {"minProperties": 2}
+      }
     },
     "DetectConfig": {
       "title": "Detection config",
