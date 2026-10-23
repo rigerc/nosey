@@ -108,7 +108,9 @@ be deterministic, `x` is not a Node flag, and any invalid expression fails at co
 
 The tables below are generated from the schemas themselves, including their descriptions, constraints,
 examples, and `x-parserOnly`/`x-normalization` annotations. Run `npm run docs:schema` after changing a
-schema; CI runs `npm run docs:schema:check` and fails when the tables are stale.
+schema; CI runs `npm run docs:schema:check` and fails when the tables are stale. Run
+`npm run schema:technologies` after changing `src/data/skills-map.ts`; CI runs
+`npm run schema:technologies:check` and fails when the schema's `x-builtInTechnologies` list is stale.
 
 <!-- BEGIN GENERATED SCHEMA TABLES -->
 ### `skills-manifest.json` (Nosey skills manifest (schemaVersion 1))
@@ -147,7 +149,7 @@ Example:
 
 ### `skills-map.json` (Nosey skills map (schemaVersion 1 and 2))
 
-Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded.
+Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded. x-builtInTechnologies mirrors Nosey's built-in technology IDs and names; it is informational and constrains neither technologies nor technologySkills, which may reference declared or built-in technologies.
 
 | Field | Type | Required | Constraints | Version | Description and rules |
 | --- | --- | --- | --- | --- | --- |

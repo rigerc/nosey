@@ -29,4 +29,5 @@ jobs:
       - run: node dist/cli.js doctor --json
       - run: node dist/cli.js scan . --json
       - run: npm run docs:schema:check
+      - run: npm run schema:technologies:check
       - run: npm run registry:package:check
