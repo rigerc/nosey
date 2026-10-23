@@ -6,9 +6,10 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {test, expect} from 'vite-plus/test';
+import {templateDirectory} from './helpers/registry-template.js';
 
 const run = promisify(execFile);
-const source = fileURLToPath(new URL('./fixtures/registry-template/', import.meta.url));
+const source = templateDirectory;
 const packageFile = fileURLToPath(new URL('../package.json', import.meta.url));
 
 const generator = fileURLToPath(

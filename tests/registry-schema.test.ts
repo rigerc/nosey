@@ -5,9 +5,10 @@ import {test, expect} from 'vite-plus/test';
 import Ajv2020, {type ValidateFunction} from 'ajv/dist/2020.js';
 import {type JsonObject, type JsonValue, isBoolean, isRecord, isString} from '../src/lib/values.js';
 import {parseManifest, parseMap} from '../src/lib/registry/validate.js';
+import {templateDirectory} from './helpers/registry-template.js';
 
 const schemaDirectory = fileURLToPath(new URL('../schemas/registry/', import.meta.url));
-const templateDirectory = fileURLToPath(new URL('./fixtures/registry-template/', import.meta.url));
+
 const fixtureDirectory = fileURLToPath(new URL('./fixtures/registry-schema/', import.meta.url));
 const guideFile = fileURLToPath(new URL('../docs/registry-schema.md', import.meta.url));
 

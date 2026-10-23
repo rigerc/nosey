@@ -10,7 +10,6 @@ import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const template = fileURLToPath(new URL('../tests/fixtures/registry-template/', import.meta.url));
 const generator = fileURLToPath(new URL('./generate-manifest.mjs', import.meta.url));
 const annotation = './schemas/skills-manifest.schema.json';
 
@@ -30,7 +29,16 @@ async function registry(run, {schemas = true, manifestFile = true, mutate} = {})
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-generator-'));
 
   try {
-    await fs.cp(template, directory, {recursive: true});
+    await fs.mkdir(path.join(directory, 'skills'));
+    await fs.writeFile(
+      path.join(directory, 'registry.json'),
+      JSON.stringify({schemaVersion: 1, registryId: 'example/agent-skills'}, null, 2) + '\n',
+    );
+    await writeManifest(directory, {
+      schemaVersion: 1,
+      registryId: 'example/agent-skills',
+      skills: [],
+    });
 
     if (schemas) {
       await fs.mkdir(path.join(directory, 'schemas'), {recursive: true});
