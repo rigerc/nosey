@@ -1,0 +1,26 @@
+name: Temporary MCP PR formatting check
+on:
+  push:
+    branches:
+      - feat/mcp-configured-server-skill-mapping
+    paths:
+      - .github/workflows/format-mcp-pr.yml
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Format changes and print patch
+        shell: bash
+        run: |
+          npm run check -- --fix || true
+          echo '=== FORMATTING DIFF START ==='
+          git diff -- README.md schemas/registry/skills-map.schema.json tests/mcp.test.ts tests/registry-schema.test.ts
+          echo '=== FORMATTING DIFF END ==='
