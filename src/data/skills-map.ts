@@ -324,7 +324,7 @@ export const SKILLS_MAP: Technology[] = [
         '@react-router/serve',
       ],
     },
-    skills: [],
+    skills: ['remix-run/react-router/react-router'],
   },
   {
     id: 'tanstack-start',
@@ -606,7 +606,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['@react-three/fiber'],
     },
-    skills: [],
+    skills: ['cloudai-x/threejs-skills/threejs-react-three-fiber'],
   },
   {
     id: 'bun',
@@ -1172,7 +1172,7 @@ export const SKILLS_MAP: Technology[] = [
         'compose.yaml',
       ],
     },
-    skills: [],
+    skills: ['docker/skills/docker-project-foundations'],
   },
   {
     id: 'github-actions',
@@ -1203,7 +1203,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['mongodb', 'mongoose'],
       pythonPackages: ['pymongo', 'motor'],
     },
-    skills: [],
+    skills: ['hoodini/ai-agents-skills/mongodb'],
   },
   {
     id: 'firebase',
@@ -1212,13 +1212,13 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['firebase', 'firebase-admin', 'firebase-functions'],
       configFiles: ['firebase.json'],
     },
-    skills: [],
+    skills: ['firebase/agent-skills/firebase-auth-basics'],
   },
   {
     id: 'convex',
     name: 'Convex',
     detect: {packages: ['convex'], configFiles: ['convex']},
-    skills: [],
+    skills: ['convex/agent-skills/convex'],
   },
   {
     id: 'redis',
@@ -1235,7 +1235,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['graphql', 'graphql-request', 'graphql-yoga', '@apollo/server'],
     },
-    skills: [],
+    skills: ['apollographql/skills/graphql-operations'],
   },
   {
     id: 'trpc',
@@ -1265,7 +1265,7 @@ export const SKILLS_MAP: Technology[] = [
         '@tanstack/query-core',
       ],
     },
-    skills: [],
+    skills: ['deckardger/tanstack-agent-skills/tanstack-query'],
   },
   {
     id: 'zustand',
@@ -1360,7 +1360,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@anthropic-ai/sdk'],
       pythonPackages: ['anthropic'],
     },
-    skills: [],
+    skills: ['anthropics/skills/claude-api'],
   },
   {
     id: 'openai',
@@ -1379,7 +1379,7 @@ export const SKILLS_MAP: Technology[] = [
       packagePatterns: [/^@langchain\//],
       pythonPackages: ['langchain', 'langchain-core', 'langchain-openai', 'langchain-anthropic'],
     },
-    skills: [],
+    skills: ['langchain-ai/langchain-skills/langchain-rag'],
   },
   {
     id: 'mcp-sdk',
@@ -1426,7 +1426,7 @@ export const SKILLS_MAP: Technology[] = [
         ],
       },
     },
-    skills: [],
+    skills: ['kotlin/kotlin-agent-skills/kotlin-tooling-java-to-kotlin'],
   },
   {
     id: 'swift',
@@ -1438,13 +1438,13 @@ export const SKILLS_MAP: Technology[] = [
     id: 'elixir',
     name: 'Elixir',
     detect: {configFiles: ['mix.exs']},
-    skills: [],
+    skills: ['georgeguimaraes/elixir-agent-tools/elixir'],
   },
   {
     id: 'cpp',
     name: 'C++',
     detect: {fileExtensions: ['.cpp', '.cxx', '.cc', '.hpp', '.hxx', '.hh']},
-    skills: [],
+    skills: ['jeffallan/claude-skills/cpp-pro'],
   },
   // Developer tooling — task runners and local environments
   {
@@ -1470,7 +1470,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['justfile', 'Justfile', 'JUSTFILE', '.justfile'],
     },
-    skills: [],
+    skills: ['paulrberg/agent-skills/cli-just'],
   },
   {
     id: 'taskfile',
@@ -1495,7 +1495,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['Makefile', 'makefile', 'GNUmakefile', 'BSDmakefile'],
     },
-    skills: [],
+    skills: ['akin-ozer/cc-devops-skills/makefile-generator'],
   },
   {
     id: 'mise',
@@ -1587,7 +1587,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@changesets/cli'],
       configFiles: ['.changeset/config.json'],
     },
-    skills: [],
+    skills: ['pingdotgg/t3code/changesets'],
   },
   {
     id: 'semantic-release',
@@ -1639,7 +1639,7 @@ export const SKILLS_MAP: Technology[] = [
         '.github/renovate.json5',
       ],
     },
-    skills: [],
+    skills: ['backnotprop/plannotator/review-renovate'],
   },
   {
     id: 'dependabot',
@@ -1647,7 +1647,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['.github/dependabot.yml', '.github/dependabot.yaml'],
     },
-    skills: [],
+    skills: ['cli/cli/dependabot-triager'],
   },
 
   // Developer tooling — monorepos, bundlers, and formatters
@@ -1810,16 +1810,17 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['MODULE.bazel', 'WORKSPACE.bazel', 'WORKSPACE', '.bazelrc', 'BUILD.bazel'],
     },
-    skills: [],
+    skills: ['ccheney/robust-skills/bazel'],
   },
-  // Additional ecosystem detections. Skills remain unmapped until vetted.
+  // Additional ecosystem detections. Each entry keeps an empty skills list until a
+  // specific skill has been vetted for it.
   {
     id: 'preact',
     name: 'Preact',
     detect: {
       packages: ['preact', 'preact-render-to-string'],
     },
-    skills: [],
+    skills: ['av/skills/preact-buildless-frontend'],
   },
   {
     id: 'lit',
@@ -1843,7 +1844,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['@sveltejs/kit'],
     },
-    skills: [],
+    skills: ['spences10/svelte-skills-kit/sveltekit-structure'],
   },
   {
     id: 'tanstack-form',
@@ -1878,7 +1879,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['unocss', '@unocss/vite'],
       configFiles: ['uno.config.ts', 'uno.config.js', 'uno.config.mjs'],
     },
-    skills: [],
+    skills: ['antfu/skills/unocss'],
   },
   {
     id: 'chakra-ui',
@@ -1894,7 +1895,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['fastify'],
     },
-    skills: [],
+    skills: ['mcollina/skills/fastify'],
   },
   {
     id: 'adonisjs',
@@ -1928,7 +1929,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['deno.json', 'deno.jsonc'],
     },
-    skills: [],
+    skills: ['denoland/skills/deno'],
   },
   {
     id: 'pulumi',
@@ -1938,7 +1939,7 @@ export const SKILLS_MAP: Technology[] = [
       pythonPackages: ['pulumi'],
       configFiles: ['Pulumi.yaml', 'Pulumi.yml'],
     },
-    skills: [],
+    skills: ['pulumi/agent-skills/pulumi-component'],
   },
   {
     id: 'sst',
@@ -1947,7 +1948,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['sst'],
       configFiles: ['sst.config.ts', 'sst.config.js'],
     },
-    skills: [],
+    skills: ['zxkane/aws-skills/aws-sst-development'],
   },
   {
     id: 'gitlab-ci',
@@ -1955,7 +1956,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['.gitlab-ci.yml', '.gitlab-ci.yaml'],
     },
-    skills: [],
+    skills: ['akin-ozer/cc-devops-skills/gitlab-ci-generator'],
   },
   {
     id: 'google-cloud',
@@ -1969,7 +1970,7 @@ export const SKILLS_MAP: Technology[] = [
       ],
       packagePatterns: [/^@google-cloud\//],
     },
-    skills: [],
+    skills: ['rominirani/antigravity-skills/always-verify-gcp'],
   },
   {
     id: 'capacitor',
@@ -1996,7 +1997,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['mysql2', 'mysql'],
       pythonPackages: ['pymysql', 'mysql-connector-python', 'aiomysql'],
     },
-    skills: [],
+    skills: ['planetscale/database-skills/mysql'],
   },
   {
     id: 'duckdb',
@@ -2014,7 +2015,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['nodejs-polars'],
       pythonPackages: ['polars'],
     },
-    skills: [],
+    skills: ['yonesuke/skills/polars'],
   },
   {
     id: 'clickhouse',
@@ -2023,7 +2024,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@clickhouse/client'],
       pythonPackages: ['clickhouse-connect', 'clickhouse-driver'],
     },
-    skills: [],
+    skills: ['clickhouse/agent-skills/clickhouse-architecture-advisor'],
   },
   {
     id: 'qdrant',
@@ -2049,7 +2050,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@temporalio/client', '@temporalio/worker', '@temporalio/workflow'],
       pythonPackages: ['temporalio'],
     },
-    skills: [],
+    skills: ['temporalio/skill-temporal-developer/skill-temporal-developer'],
   },
   {
     id: 'inngest',
@@ -2065,7 +2066,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['@trigger.dev/sdk'],
     },
-    skills: [],
+    skills: ['triggerdotdev/skills/trigger-setup'],
   },
   {
     id: 'langgraph',
@@ -2074,7 +2075,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@langchain/langgraph'],
       pythonPackages: ['langgraph'],
     },
-    skills: [],
+    skills: ['langchain-ai/deepagents/langgraph-docs'],
   },
   {
     id: 'pydantic-ai',
@@ -2099,7 +2100,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['@mastra/core'],
     },
-    skills: [],
+    skills: ['mastra-ai/skills/mastra'],
   },
   {
     id: 'llamaindex',
@@ -2125,7 +2126,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@opentelemetry/api', '@opentelemetry/sdk-node', '@opentelemetry/sdk-trace-node'],
       pythonPackages: ['opentelemetry-api', 'opentelemetry-sdk'],
     },
-    skills: [],
+    skills: ['confident-ai/deepeval/deepeval-otel'],
   },
   {
     id: 'langfuse',
@@ -2134,7 +2135,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['langfuse', '@langfuse/tracing'],
       pythonPackages: ['langfuse'],
     },
-    skills: [],
+    skills: ['langfuse/skills/langfuse'],
   },
   {
     id: 'msw',
@@ -2142,7 +2143,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       packages: ['msw'],
     },
-    skills: [],
+    skills: ['pymodel/react-frontend-skills/msw'],
   },
   // UI, tooling, platform, and manifest-based ecosystem coverage.
   {
@@ -2217,7 +2218,7 @@ export const SKILLS_MAP: Technology[] = [
     id: 'google-genai',
     name: 'Google Gen AI',
     detect: {packages: ['@google/genai'], pythonPackages: ['google-genai']},
-    skills: [],
+    skills: ['google-gemini/gemini-skills/gemini-api-dev'],
   },
   {
     id: 'firecrawl',
@@ -2226,7 +2227,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@mendable/firecrawl-js'],
       pythonPackages: ['firecrawl-py'],
     },
-    skills: [],
+    skills: ['firecrawl/cli/firecrawl'],
   },
   {
     id: 'ava',
@@ -2305,7 +2306,7 @@ export const SKILLS_MAP: Technology[] = [
         '.knip.jsonc',
       ],
     },
-    skills: [],
+    skills: ['webpro/skills/configure-knip'],
   },
   {
     id: 'typedoc',
@@ -2326,7 +2327,7 @@ export const SKILLS_MAP: Technology[] = [
     id: 'nix',
     name: 'Nix',
     detect: {fileExtensions: ['.nix']},
-    skills: [],
+    skills: ['devon-systems/hoenn/nix'],
   },
   {
     id: 'qml',
@@ -2409,7 +2410,7 @@ export const SKILLS_MAP: Technology[] = [
     id: 'obsidian',
     name: 'Obsidian',
     detect: {packages: ['obsidian', 'obsidian-plugin-cli']},
-    skills: [],
+    skills: ['laude-institute/headlong/obsidian'],
   },
   {
     id: 'userscripts',
@@ -2440,13 +2441,13 @@ export const SKILLS_MAP: Technology[] = [
     id: 'phoenix',
     name: 'Phoenix',
     detect: {elixirPackages: ['phoenix']},
-    skills: [],
+    skills: ['georgeguimaraes/elixir-agent-tools/phoenix'],
   },
   {
     id: 'symfony',
     name: 'Symfony',
     detect: {composerPackages: ['symfony/framework-bundle', 'symfony/symfony']},
-    skills: [],
+    skills: ['smnandre/symfony-ux-skills/symfony-ux'],
   },
   {
     id: 'gin',
