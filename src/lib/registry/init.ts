@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import {createInterface} from 'node:readline/promises';
+import {setTimeout as delay} from 'node:timers/promises';
 import {promisify, stripVTControlCharacters} from 'node:util';
 import {validateRegistry} from './commands.js';
 import {configureTool} from './tools.js';
@@ -94,6 +95,8 @@ export type RegistryInitDependencies = {
   onValidationError?: (message: string) => void;
   /** An injected command executor for command-line tests. */
   run?: CommandRunner;
+  /** Override template-generation retry delays in tests. */
+  wait?: (milliseconds: number) => Promise<void>;
   /** Override TTY detection in tests. */
   interactive?: boolean;
   /** Offline fixture only; never selected from user data or environment. */
@@ -298,11 +301,74 @@ async function githubPreflight(registryId: string, runner: CommandRunner): Promi
   );
 }
 
+/** GitHub can accept a template creation before its first commit is available. */
+async function readGeneratedHead(
+  destination: string,
+  runner: CommandRunner,
+  wait: (milliseconds: number) => Promise<void>,
+): Promise<string | undefined> {
+  try {
+    return (await runner('git', ['-C', destination, 'rev-parse', '--verify', 'HEAD']))?.trim();
+  } catch {
+    // Confirm this is a valid clone before waiting on the remote's generation.
+    await runner('git', ['-C', destination, 'symbolic-ref', 'HEAD']);
+  }
+
+  for (let attempt = 0; attempt < 11; attempt++) {
+    if (attempt > 0) {
+      // eslint-disable-next-line no-await-in-loop
+      await wait(3000);
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const refs = await runner('git', [
+      '-C',
+      destination,
+      'ls-remote',
+      '--symref',
+      'origin',
+      'HEAD',
+    ]);
+
+    const branch = refs?.match(/^ref: refs\/heads\/(.+)\tHEAD$/m)?.[1];
+
+    if (branch && /^[a-f\d]{40,64}\tHEAD$/m.test(refs ?? '')) {
+      // eslint-disable-next-line no-await-in-loop
+      await runner('git', ['check-ref-format', '--branch', branch]);
+      // eslint-disable-next-line no-await-in-loop
+      await runner('git', [
+        '-C',
+        destination,
+        'fetch',
+        'origin',
+        `refs/heads/${branch}:refs/remotes/origin/${branch}`,
+      ]);
+      // eslint-disable-next-line no-await-in-loop
+      await runner('git', [
+        '-C',
+        destination,
+        'checkout',
+        '-b',
+        branch,
+        '--track',
+        `origin/${branch}`,
+      ]);
+
+      return (await runner('git', ['-C', destination, 'rev-parse', '--verify', 'HEAD']))?.trim();
+    }
+  }
+
+  throw new Error(
+    'GitHub template generation has not provided a default-branch commit after 30 seconds.',
+  );
+}
+
 async function createFromGithub(
   destination: string,
   registryId: string,
   visibility: string,
   runner: CommandRunner,
+  wait: (milliseconds: number) => Promise<void>,
 ): Promise<RegistryInitResult> {
   const remoteUrl = 'https://github.com/' + registryId;
 
@@ -357,7 +423,8 @@ async function createFromGithub(
     await runner('gh', ['repo', 'clone', registryId, destination]);
     result.cloneCompleted = true;
     result.gitInitialized = true;
-    result.initialCommit = (await runner('git', ['-C', destination, 'rev-parse', 'HEAD']))?.trim();
+    stage = 'template readiness';
+    result.initialCommit = await readGeneratedHead(destination, runner, wait);
     stage = 'configuration';
     await configureRegistryIdentity(destination, registryId);
     result.configured = true;
@@ -379,12 +446,14 @@ async function createFromGithub(
 
     const recovery =
       stage === 'clone'
-        ? `Clone ${remoteUrl} into a new directory with gh repo clone ${registryId}, then configure it with a compatible Nosey release.`
-        : stage === 'configuration'
-          ? 'Correct the registry data or use a Nosey version that supports its schemaVersion, then run the packaged registry-tools/configure-registry.mjs with --root pointing at this clone. Validate before committing and pushing.'
-          : stage === 'commit'
-            ? 'Check Git identity and commit hooks, commit the configured files, then push origin HEAD from this directory.'
-            : 'Retry git push origin HEAD from this directory.';
+        ? `Clone ${remoteUrl} into a new directory with gh repo clone ${registryId}, then configure its registry identity.`
+        : stage === 'template readiness'
+          ? 'Once GitHub finishes generating the template, run git fetch origin in this clone and check out its default branch. Then configure the registry identity, validate, commit, and push.'
+          : stage === 'configuration'
+            ? 'Correct the registry data or use a Nosey version that supports its schemaVersion, then run the packaged registry-tools/configure-registry.mjs with --root pointing at this clone. Validate before committing and pushing.'
+            : stage === 'commit'
+              ? 'Check Git identity and commit hooks, commit the configured files, then push origin HEAD from this directory.'
+              : 'Retry git push origin HEAD from this directory.';
 
     throw new RegistryInitError(
       `GitHub repository created at ${remoteUrl}, but ${stage} failed. Local work at ${destination} was preserved when present. ${recovery} Do not repeat registry init --github.\n${commandFailureDetail(cause)}`,
@@ -503,7 +572,13 @@ export async function runRegistryInit(
     const destination = await reserveDestination(directoryInput);
 
     if (createGitHub)
-      return await createFromGithub(destination, registryId, visibility ?? 'private', runner);
+      return await createFromGithub(
+        destination,
+        registryId,
+        visibility ?? 'private',
+        runner,
+        dependencies.wait ?? delay,
+      );
 
     const result: RegistryInitResult = {
       directory: destination,

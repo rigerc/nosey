@@ -140,6 +140,106 @@ for (const visibility of ['private', 'public'] as const) {
   });
 }
 
+test('an initially empty clone waits for generated template history before configuring', async () => {
+  await fixture(async ({root, directory, calls, runner}) => {
+    const remote = path.join(root, 'generated.git');
+    await git(['init', '--bare', '--initial-branch=trunk', remote]);
+    let waits = 0;
+
+    const wrapped: CommandRunner = async (command, args) => {
+      if (command === 'gh' && args[0] === 'repo' && args[1] === 'clone') {
+        calls.push({command, args});
+        await git(['clone', '--', remote, directory]);
+
+        return '';
+      }
+
+      return runner(command, args);
+    };
+
+    const wait = async () => {
+      waits++;
+
+      if (waits === 2) {
+        // Model GitHub completing generation after two readiness checks found no commit.
+        const seed = path.join(root, 'template-seed');
+        await fs.cp(templateDirectory, seed, {recursive: true});
+        await git(['init', '--initial-branch=trunk', seed]);
+        await git(['-C', seed, 'add', '--all']);
+        await git(['-C', seed, 'commit', '-m', 'chore(registry): generate template']);
+        await git(['-C', seed, 'push', remote, 'HEAD']);
+      }
+    };
+
+    const result = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, wait},
+    );
+
+    expect(result).toMatchObject({cloneCompleted: true, configured: true, pushCompleted: true});
+    expect(result.initialCommit).toMatch(/^[a-f\d]{40}$/);
+    expect((await git(['-C', directory, 'rev-list', '--count', 'HEAD'])).trim()).toBe('2');
+    expect((await git(['-C', directory, 'branch', '--show-current'])).trim()).toBe('trunk');
+    expect(waits).toBe(2);
+    expect(
+      calls.filter((call) => call.args[0] === 'repo' && call.args[1] === 'create'),
+    ).toHaveLength(1);
+  });
+});
+
+for (const failure of ['pending', 'network']) {
+  test(`template readiness ${failure} preserves the clone without configuring or recreating`, async () => {
+    await fixture(async ({root, directory, calls, runner}) => {
+      const remote = path.join(root, 'empty.git');
+      await git(['init', '--bare', '--initial-branch=main', remote]);
+
+      const wrapped: CommandRunner = async (command, args) => {
+        if (command === 'gh' && args[0] === 'repo' && args[1] === 'clone') {
+          calls.push({command, args});
+
+          return git(['clone', '--', remote, directory]);
+        }
+
+        if (failure === 'network' && args.includes('ls-remote')) {
+          throw new Error('Could not resolve host');
+        }
+
+        return runner(command, args);
+      };
+
+      const wait = vi.fn(async () => {});
+
+      const error = await runRegistryInit(
+        {directory, registryId: 'acme/skills', github: true, yes: true},
+        {run: wrapped, wait},
+      ).catch((cause: unknown) => cause);
+
+      expect(error).toBeInstanceOf(RegistryInitError);
+
+      if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+      expect(error.result).toMatchObject({
+        githubCreated: true,
+        cloneCompleted: true,
+        gitInitialized: true,
+        configured: false,
+        pushCompleted: false,
+      });
+      expect(error.message).toContain('template readiness failed');
+      expect(error.message).not.toContain('clone failed');
+      expect(error.message).toContain('Do not repeat registry init --github');
+      expect(error.message).toContain(
+        failure === 'pending' ? 'after 30 seconds' : 'Could not resolve host',
+      );
+      expect(wait).toHaveBeenCalledTimes(failure === 'pending' ? 10 : 0);
+      expect(await fs.readdir(directory)).toEqual(['.git']);
+      expect(calls.filter((call) => call.args[1] === 'create')).toHaveLength(1);
+      expect(calls.some((call) => call.args.includes('commit') || call.args.includes('push'))).toBe(
+        false,
+      );
+    });
+  });
+}
+
 for (const stage of ['clone', 'commit', 'push']) {
   test(`${stage} failure retains remote creation and reports independent completion states`, async () => {
     await fixture(async ({directory, calls, runner}) => {

@@ -47,7 +47,9 @@ remain bounded, unsafe archive entries are rejected, and failed local scaffolds
 are removed. Default local Git initialization starts without an upstream remote.
 
 GitHub initialization uses `gh --template`, clones the generated repository,
-configures identity, commits, and pushes the current branch. It preserves the
+waits up to 30 seconds for template generation if the clone has no first commit,
+then fetches its default branch, configures identity, commits, and pushes the
+current branch. It preserves the
 clone's history and origin. A remote may exist before local setup finishes;
 errors report completed stages and recovery instructions. Useful clones are kept.
 Do not repeat creation after a partial failure; follow those recovery instructions.
