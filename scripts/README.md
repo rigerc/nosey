@@ -176,3 +176,66 @@ This PR does not automatically edit TypeScript mappings, install skills, or
 fine-tune Kev. Calibrate on human-reviewed positive and negative
 skill-to-technology edges before applying proposals. The normal SkillSense
 runtime remains deterministic and read-only.
+
+## Export and unpack the OpenCode Skills catalog
+
+[`opencodeskills.mjs`](./opencodeskills.mjs) is the dependency-free exporter for
+[opencodeskills.dev](https://opencodeskills.dev): it merges the `llms-full.txt` catalog with the
+`llms.txt` summary, the `/skills/` HTML pages and the sitemap, then writes JSON and CSV.
+
+`--download DIR` additionally fetches every skill's zip, unpacks it, and writes a manifest that
+records what landed on disk.
+
+```sh
+# Catalog only (JSON + CSV in the current directory).
+npm run skills:opencode -- --list
+
+# Download and unpack every skill, keeping a copy of each archive.
+npm run skills:opencode -- --download out/opencode-skills --keep-zips
+
+# Re-fetch, ignore what is already on disk, and only take the first 20 skills.
+npm run skills:opencode -- --download out/opencode-skills --force --limit 20
+
+# A different base URL (used for local fixtures and tests).
+npm run skills:opencode -- --base http://127.0.0.1:8080 --download out/opencode-skills
+```
+
+### Layout and manifest
+
+Each archive is unpacked into `DIR/<category_slug>/<slug>/`. When every entry in an archive
+shares one top-level directory, that directory is stripped so `SKILL.md` sits at the skill root;
+`--no-strip-root` preserves the original layout. `--keep-zips` copies archives to
+`DIR/zips/<category_slug>/<slug>.zip`.
+
+The manifest is written to `DIR/manifest.json`; `--manifest FILE` moves it:
+
+- `catalog`: how many skills the export produced (`skills`), the advertised total (`advertised`),
+  and `complete` (`null` when no total is published).
+- `summary`: `downloaded`, `cached`, `failed`, `files`, `bytes`.
+- `skills[]`: `number`, `title`, `slug`, `category`, `category_slug`, `url`, `download_url`,
+  `status` (`downloaded`, `cached`, `failed`), `extract_dir`, `archive` (`bytes`, `sha256`),
+  `files` (relative paths), `bytes`, and `error` for failures.
+
+A skill whose directory already exists is reported as `cached` and is not fetched again; its
+previous manifest entry (archive hash, file list) is reused when available. `--force` re-downloads
+everything. A failed skill is recorded and the run continues: it exits `1` unless
+`--allow-partial` is passed. `--concurrency` (1-16, default 4) bounds parallel downloads, and
+`--limit N` caps how many skills are downloaded (the catalog files stay complete).
+
+### Archive safety
+
+The zip reader is dependency-free: it parses the central directory, supports stored and deflate
+entries, honours zip64 headers, and verifies every CRC before writing. Absolute paths, drive
+letters, `..` segments and entries that resolve outside the target directory are rejected, and a
+rejected archive leaves no partial tree behind. Symlink entries are skipped and reported. Entries
+above 4 MiB or archives expanding beyond 64 MiB are refused as a zip-bomb guard.
+
+### Test
+
+```sh
+npm run test:opencode
+# same as: node --test scripts/opencodeskills.test.mjs
+```
+
+The tests build zips in memory and serve a fixture catalog from a loopback HTTP server, so they do
+not touch the real catalog or download every upstream skill.
