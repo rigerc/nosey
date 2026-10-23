@@ -125,7 +125,10 @@ The script writes the JSON proposal file atomically **after each skill**,
 recording `completed`, `total`, and `reused`. On rerun with the same output
 path it reuses only fully evaluated skills (or fully enumerated no-model
 skills) whose fingerprint matches. Failed/partially evaluated skills are
-re-evaluated in full. The fingerprint and output metadata include the
+re-evaluated in full. With `--fetch-docs`, eligible skills whose documents
+could not be fetched or validated are also retried, even if their metadata-only
+model evaluation completed. Skills without a catalog-verified document remain
+eligible for metadata-only checkpoint reuse. The fingerprint and output metadata include the
 model name, endpoint, question specification, registry hash, document
 verification metadata, fetch mode, batch size, and skill metadata.
 

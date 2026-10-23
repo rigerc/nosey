@@ -6,7 +6,7 @@ import {
   type JsonObject,
   type JsonValue,
   isString,
-} from '../src/lib/values';
+} from '../src/lib/values.ts';
 
 /**
  * Propose mappings for previously unmapped skills in build-skills-catalog output.
@@ -166,11 +166,25 @@ export function parseOptions(argv: string[]): MapperOptions {
     throw new Error('Invalid options: batch-size 1..64, limit >= 0, and HTTP(S) URL required');
   }
 
-  if (options.reviewOutput && resolve(options.reviewOutput) === resolve(options.output)) {
-    throw new Error('Review and proposal output paths must differ');
-  }
+  validateOutputPaths(options);
 
   return options;
+}
+
+function validateOutputPaths(options: Pick<MapperOptions, 'input' | 'output' | 'reviewOutput'>) {
+  if (resolve(options.input) === resolve(options.output)) {
+    throw new Error('Input and proposal output paths must differ');
+  }
+
+  if (options.reviewOutput) {
+    if (resolve(options.reviewOutput) === resolve(options.input)) {
+      throw new Error('Input and review output paths must differ');
+    }
+
+    if (resolve(options.reviewOutput) === resolve(options.output)) {
+      throw new Error('Review and proposal output paths must differ');
+    }
+  }
 }
 
 const strings = (values: (string | null | undefined)[]) =>
@@ -554,6 +568,8 @@ export async function evaluateSkill(
 }
 
 export async function run(options: MapperOptions, fetcher: typeof fetch = fetch) {
+  validateOutputPaths(options);
+
   if (options.reviewOutput) {
     try {
       await readFile(options.reviewOutput, 'utf8');
@@ -651,9 +667,13 @@ export async function run(options: MapperOptions, fetcher: typeof fetch = fetch)
     const fingerprint = skillFingerprint(skill, registrySha, options);
     const previous = prior.get(skill.id);
 
+    const documentRequired =
+      options.fetchDocs && isVerified(skill) && Boolean(skill.skill_md?.path && skill.repository);
+
     if (
       previous &&
       previous.fingerprint === fingerprint &&
+      (!documentRequired || previous.document_status === 'fetched') &&
       (previous.evaluation === 'evaluated' ||
         (options.noModel && previous.evaluation === 'not_evaluated'))
     ) {

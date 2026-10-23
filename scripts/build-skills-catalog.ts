@@ -7,7 +7,7 @@ import {
   isString,
   isRecord,
   isBoolean,
-} from '../src/lib/values';
+} from '../src/lib/values.ts';
 
 /**
  * Build a merged, de-duplicated skills catalogue from officialskills.sh and
