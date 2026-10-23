@@ -2,6 +2,7 @@ import {AppError} from '../lib/errors';
 import {inspectEnvironment} from './doctor';
 import {runScan, type ScanCommandOptions} from './scan';
 import {registryInitOptions, runRegistry, type RegistryCommandOptions} from './registry';
+import {runSchema} from './schema';
 
 export interface CommandOptions extends ScanCommandOptions, RegistryCommandOptions {
   configFile?: string;
@@ -29,6 +30,12 @@ export async function runCommand(
 
   if (name === 'registry') {
     await runRegistry(args, options);
+
+    return true;
+  }
+
+  if (name === 'schema') {
+    runSchema(args);
 
     return true;
   }

@@ -45,6 +45,7 @@ try {
     'registry-tools/configure-registry.mjs',
     'registry-tools/generate-manifest.mjs',
     'schemas/registry/skills-map.schema.json',
+    'schemas/registry/skills-manifest.schema.json',
   ])
     assert.ok(packed.files.some((entry) => entry.path === file));
   const installation = path.join(temporary, 'install');
@@ -63,6 +64,21 @@ try {
   );
   const packageRoot = path.join(installation, 'node_modules/nosey');
   const cli = path.join(packageRoot, 'dist/cli.js');
+
+  for (const [name, filename] of [
+    ['skills-map', 'skills-map.schema.json'],
+    ['manifest', 'skills-manifest.schema.json'],
+  ] as const) {
+    const result = await exec(process.execPath, [cli, 'schema', name], {cwd: temporary});
+
+    const expected = JSON.parse(
+      await fs.readFile(path.join(packageRoot, 'schemas/registry', filename), 'utf8'),
+    );
+
+    assert.deepEqual(JSON.parse(result.stdout), expected);
+    assert.equal(result.stderr, '');
+  }
+
   const preload = await fixturePreload(temporary);
   const registry = path.join(temporary, 'registry');
 
