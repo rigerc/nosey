@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {execFile} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {promisify} from 'node:util';
 
 import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.ts';
 import {RemoteSource} from './build-skills-catalog.ts';
@@ -20,6 +23,8 @@ import {
   run,
   scopeQuestion,
 } from './propose-skill-mappings.ts';
+
+const execFileAsync = promisify(execFile);
 
 const fixture = (name = 'React performance', extra = {}) => ({
   id: 'example/skills/react-performance',
@@ -64,6 +69,62 @@ void test('validates batch-size, restart and other CLI options', () => {
   assert.throws(() => parseOptions(['--batch-size', '65']), /Invalid options/);
   assert.throws(() => parseOptions(['--limit', '-1']), /Invalid options/);
   assert.throws(() => parseOptions(['--output', 'a', '--review-output', 'a']), /must differ/);
+  assert.throws(() => parseOptions(['--input', 'a', '--output', './a']), /must differ/);
+  assert.throws(() => parseOptions(['--input', 'a', '--review-output', './a']), /must differ/);
+});
+
+void test('native Node CLI writes proposals without a TypeScript loader', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'skills-map-cli-'));
+
+  try {
+    const input = join(dir, 'catalog.json');
+    const output = join(dir, 'proposals.json');
+    await writeFile(input, JSON.stringify({skills: [fixture()]}));
+
+    const {stdout} = await execFileAsync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        fileURLToPath(new URL('./propose-skill-mappings.ts', import.meta.url)),
+        '--input',
+        input,
+        '--output',
+        output,
+        '--no-model',
+      ],
+      {env: {...process.env, NODE_OPTIONS: ''}},
+    );
+
+    assert.match(stdout, /Wrote 1 mapping proposals/);
+    const saved = JSON.parse(await readFile(output, 'utf8'));
+    assert.equal(saved.proposals[0].skill_id, fixture().id);
+    assert.equal(saved.proposals[0].evaluation, 'not_evaluated');
+  } finally {
+    await rm(dir, {recursive: true, force: true});
+  }
+});
+
+void test('run rejects input/output collisions before changing the catalog', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'skills-map-paths-'));
+
+  try {
+    const input = join(dir, 'catalog.json');
+    const catalog = JSON.stringify({skills: [fixture()]});
+    await writeFile(input, catalog);
+
+    const opts = parseOptions([
+      '--input',
+      input,
+      '--output',
+      join(dir, 'proposals.json'),
+      '--no-model',
+    ]);
+
+    await assert.rejects(() => run({...opts, output: input}), /must differ/);
+    assert.equal(await readFile(input, 'utf8'), catalog);
+  } finally {
+    await rm(dir, {recursive: true, force: true});
+  }
 });
 
 void test('exhaustive candidates include technologies never mentioned by a skill', () => {
@@ -290,7 +351,7 @@ void test('offline run writes all technology decisions as unscored, plus manual 
   }
 });
 
-void test('resume reuses completed skills and processes newly appended skills', async () => {
+void test('resume reuses unverified metadata-only skills and processes newly appended skills', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'skills-resume-'));
 
   try {
@@ -303,7 +364,7 @@ void test('resume reuses completed skills and processes newly appended skills', 
       description: 'Upgrade Vue applications',
     });
 
-    const opts = parseOptions(['--input', input, '--output', output, '--no-model']);
+    const opts = parseOptions(['--input', input, '--output', output, '--no-model', '--fetch-docs']);
     await writeFile(input, JSON.stringify({generated_at: 'first', skills: [skillA]}));
     const first = await run(opts);
     assert.equal(first.reused, 0);
@@ -345,3 +406,69 @@ void test('partial Kev evaluation retries the skill on resume and removes old er
     await rm(dir, {recursive: true, force: true});
   }
 });
+
+for (const noModel of [false, true]) {
+  for (const failure of ['fetch_error', 'unavailable']) {
+    void test(`resume retries ${failure} documents with noModel=${noModel}`, async (t) => {
+      const dir = await mkdtemp(join(tmpdir(), 'skills-doc-retry-'));
+
+      try {
+        const input = join(dir, 'catalog.json');
+        const output = join(dir, 'proposals.json');
+        const document = '---\nname: React performance\n---\nOptimize React rendering.';
+
+        const skill = fixture('React performance', {
+          skill_md: {
+            exists: true,
+            has_frontmatter: true,
+            name_mismatch: false,
+            reason: 'ok',
+            source_cache: 'miss',
+            path: 'skills/react-performance/SKILL.md',
+            sha256: createHash('sha256').update(document).digest('hex'),
+          },
+        });
+
+        await writeFile(input, JSON.stringify({skills: [skill]}));
+
+        const opts = {
+          ...parseOptions(['--input', input, '--output', output, '--fetch-docs']),
+          noModel,
+        };
+
+        let documentAvailable = false;
+
+        const resource = t.mock.method(RemoteSource.prototype, 'resource', async () => {
+          if (!documentAvailable && failure === 'fetch_error') throw new Error('Offline');
+
+          return {ok: documentAvailable, cache: 'off', body: documentAvailable ? document : ''};
+        });
+
+        const calls = [];
+        const fetcher = fakeResponse(calls);
+        const first = await run(opts, fetcher);
+        assert.equal(first.proposals[0].document_status, failure);
+        assert.equal(first.proposals[0].evaluation, noModel ? 'not_evaluated' : 'evaluated');
+        documentAvailable = true;
+        calls.length = 0;
+        const second = await run(opts, fetcher);
+        assert.equal(second.reused, 0);
+        assert.equal(second.proposals[0].document_status, 'fetched');
+        assert.equal(resource.mock.callCount(), 2);
+
+        if (!noModel) {
+          assert.ok(calls.length > 0);
+          assert.equal(calls[0].state.skill.skill_md_excerpt, document);
+        }
+
+        calls.length = 0;
+        const third = await run(opts, fetcher);
+        assert.equal(third.reused, 1);
+        assert.equal(resource.mock.callCount(), 2);
+        assert.equal(calls.length, 0);
+      } finally {
+        await rm(dir, {recursive: true, force: true});
+      }
+    });
+  }
+}
