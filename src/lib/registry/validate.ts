@@ -120,7 +120,7 @@ function contentBlock(value: JsonValue): ConfigFileContentBlock {
 function mcpMatcher(value: JsonValue): McpServerMatcher {
   const input = object(value, 'mcpServers matcher');
   const result: McpServerMatcher = {};
-  const keys = ['packages', 'pythonPackages', 'endpoints'] as const;
+  const keys = ['packages', 'pythonPackages', 'endpoints', 'serverNames', 'configFiles'] as const;
 
   for (const key of Object.keys(input)) {
     if (!keys.some((allowed) => allowed === key))
@@ -136,7 +136,29 @@ function mcpMatcher(value: JsonValue): McpServerMatcher {
     result[key] = values;
   }
 
-  if (!Object.keys(result).length) throw new Error('mcpServers matcher requires an identity');
+  if (
+    result.configFiles?.some(
+      (file) =>
+        file.includes('\\') ||
+        path.posix.isAbsolute(file) ||
+        path.posix.normalize(file) !== file ||
+        file.split('/').some((part) => part === '.' || part === '..') ||
+        !['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', '.codex/config.toml'].some(
+          (location) => file === location || file.endsWith('/' + location),
+        ),
+    )
+  ) {
+    throw new Error('mcpServers.configFiles requires normalized project-relative MCP config paths');
+  }
+
+  if (
+    !result.packages?.length &&
+    !result.pythonPackages?.length &&
+    !result.endpoints?.length &&
+    !result.serverNames?.length
+  ) {
+    throw new Error('mcpServers matcher requires an identity');
+  }
 
   return result;
 }

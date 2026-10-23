@@ -201,6 +201,27 @@ endpoint's origin or path remain unresolved and cannot identify a provider.
 This field works in map schema versions 1 and 2; maps using it require a Nosey
 release that supports MCP detection. Older maps need no migration.
 
+Custom registries can also map skills to explicitly named workspace MCP servers,
+including local script-based servers without recognizable packages or endpoints.
+Use a case-sensitive `serverNames` matcher, optionally scoped to exact project-relative
+`configFiles` to avoid collisions between similarly named servers:
+
+```json
+{
+  "id": "company-docs-mcp",
+  "name": "Company Docs MCP",
+  "detect": {
+    "mcpServers": [{"serverNames": ["company-docs"], "configFiles": [".mcp.json"]}]
+  },
+  "skills": ["acme/team-skills/company-docs"]
+}
+```
+
+Declare the local skill in `skills-manifest.json` (or in `externalSkills` for
+external sources). Matchers with `configFiles` only apply to the specified files;
+without it, a server name matches any supported workspace MCP config. Existing
+package and endpoint identity matching remains unchanged.
+
 Configuration references: [Claude Code](https://code.claude.com/docs/en/mcp),
 [Cursor](https://cursor.com/docs/mcp),
 [VS Code](https://code.visualstudio.com/docs/agents/reference/mcp-configuration),

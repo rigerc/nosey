@@ -208,6 +208,10 @@ export function matchesMcpServer(server: McpServer, matchers: McpServerMatcher[]
   if (server.status === 'disabled') return false;
 
   return matchers.some((matcher) => {
+    if (matcher.configFiles && !matcher.configFiles.includes(server.file)) return false;
+
+    if (matcher.serverNames?.includes(server.name)) return true;
+
     if (
       server.endpoint &&
       matcher.endpoints?.some((value) => mcpEndpoint(value) === server.endpoint)

@@ -486,7 +486,7 @@
     },
     "McpServerMatcher": {
       "title": "MCP server identity matcher",
-      "description": "Matches an enabled server declared in a supported workspace MCP configuration. Any identity in any matcher can match. Server names alone never identify a provider.",
+      "description": "Matches an enabled server declared in a supported workspace MCP configuration. Package, endpoint, or explicit case-sensitive server-name identities may match. Optional configFiles restricts matching to exact project-relative configuration paths; name matching should be scoped to avoid collisions.",
       "type": "object",
       "minProperties": 1,
       "additionalProperties": false,
@@ -511,7 +511,25 @@
           "minItems": 1,
           "maxItems": 64,
           "description": "Exact HTTP(S) origin and path. URL credentials, query, fragment and trailing slashes are ignored; invalid URLs or interpolated origins/paths do not match."
+        },
+        "serverNames": {
+          "$ref": "#/$defs/StringList",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "Explicit case-sensitive names from workspace MCP configuration declarations. Unlike package or endpoint identities, names are user-defined and should be scoped with configFiles to avoid collisions."
+        },
+        "configFiles": {
+          "$ref": "#/$defs/StringList",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "Optional exact project-relative MCP configuration file paths (including nested workspace paths). Restricts all identities in this matcher; no globs or suffix matching. Valid recognized MCP config paths only.",
+          "x-parserOnly": ["parser-only:path-normalization"]
         }
+      },
+      "dependentSchemas": {
+        "configFiles": {"minProperties": 2}
       }
     },
     "DetectConfig": {

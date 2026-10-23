@@ -18,6 +18,10 @@ export type McpServerMatcher = {
   pythonPackages?: string[];
   /** HTTP(S) origin and path; credentials, query and fragment are ignored. */
   endpoints?: string[];
+  /** Explicit, case-sensitive server names from workspace MCP configs. */
+  serverNames?: string[];
+  /** Optional exact project-relative config paths restricting this matcher. */
+  configFiles?: string[];
 };
 
 export type DetectConfig = {
