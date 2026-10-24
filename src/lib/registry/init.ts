@@ -3,6 +3,7 @@ import type {Octokit} from 'octokit';
 import {errorCode} from '../values.js';
 
 import {execFile} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs/promises';
 import {constants as fsConstants} from 'node:fs';
 import path from 'node:path';
@@ -173,7 +174,7 @@ export async function defaultRun(
 export async function configureRegistryIdentity(
   directory: string,
   registryId: string,
-): Promise<void> {
+): Promise<string[]> {
   validateRegistryId(registryId);
   await readRegistryFile(directory, 'README.md');
   await validateRegistry(directory);
@@ -271,8 +272,51 @@ export async function configureRegistryIdentity(
     }
   }
 
-  await configureRegistryIdentityFiles(directory, registryId, {guidePolicy});
+  const {changedFiles} = await configureRegistryIdentityFiles(directory, registryId, {guidePolicy});
   await validateRegistry(directory);
+
+  return changedFiles;
+}
+
+const identityFiles = new Set([
+  'skills-map.json',
+  'skills-manifest.json',
+  'README.md',
+  'AGENTS.md',
+]);
+
+function changedStatusPaths(status: string): string[] {
+  return status
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.slice(3));
+}
+
+async function assertOnlyExpectedIdentityChanges(
+  directory: string,
+  runner: CommandRunner,
+  expected: Map<string, string>,
+): Promise<void> {
+  const status =
+    (await runner('git', ['-C', directory, 'status', '--porcelain=v1', '--untracked-files=all'])) ??
+    '';
+
+  const paths = changedStatusPaths(status);
+  const unexpected = paths.filter((file) => !expected.has(file));
+
+  if (unexpected.length)
+    throw new Error(
+      `Unexpected changes in generated registry clone; preserved for recovery: ${unexpected.join(', ')}`,
+    );
+
+  for (const [file, digest] of expected) {
+    const contents = await fs.readFile(path.join(directory, file));
+
+    if (createHash('sha256').update(contents).digest('hex') !== digest)
+      throw new Error(
+        `Configured identity file changed before staging: ${file}; preserved for recovery`,
+      );
+  }
 }
 
 function destinationExistsError(destination: string): Error {
@@ -545,10 +589,46 @@ async function createFromGithub(
     result.initialCommit = await readGeneratedHead(destination, runner, wait);
     await assertGeneratedTemplateTree(destination, runner, trustedTemplateRevision);
     stage = 'configuration';
-    await configureRegistryIdentity(destination, registryId);
+    const changedFiles = await configureRegistryIdentity(destination, registryId);
     result.configured = true;
+    const configuredOutputs = new Map<string, string>();
+
+    for (const file of changedFiles) {
+      if (!identityFiles.has(file))
+        throw new Error(`Configurator reported an unexpected identity output: ${file}`);
+      const bytes = await fs.readFile(path.join(destination, file));
+      configuredOutputs.set(file, createHash('sha256').update(bytes).digest('hex'));
+    }
+
+    await assertOnlyExpectedIdentityChanges(destination, runner, configuredOutputs);
     stage = 'commit';
-    await runner('git', ['-C', destination, 'add', '--all']);
+
+    if (changedFiles.length) await runner('git', ['-C', destination, 'add', '--', ...changedFiles]);
+
+    const stagedPaths = (
+      (await runner('git', ['-C', destination, 'diff', '--cached', '--name-only'])) ?? ''
+    )
+      .split('\n')
+      .filter(Boolean);
+
+    if (
+      stagedPaths.some((file) => !configuredOutputs.has(file)) ||
+      stagedPaths.length !== configuredOutputs.size
+    )
+      throw new Error(
+        'Git index contains unexpected or missing configured identity files; preserved for recovery',
+      );
+
+    for (const [file, digest] of configuredOutputs) {
+      const staged = await runner('git', ['-C', destination, 'show', `:${file}`]);
+
+      if (staged === undefined || createHash('sha256').update(staged).digest('hex') !== digest)
+        throw new Error(
+          `Staged identity file differs from its verified output: ${file}; preserved for recovery`,
+        );
+    }
+
+    await assertOnlyExpectedIdentityChanges(destination, runner, configuredOutputs);
     await runner('git', [
       '-C',
       destination,

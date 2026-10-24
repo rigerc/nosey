@@ -161,7 +161,16 @@ for (const visibility of ['private', 'public'] as const) {
           }),
         ],
         ['clone', '--', 'https://github.com/acme/skills.git', directory],
-        ['-C', directory, 'add', '--all'],
+        [
+          '-C',
+          directory,
+          'add',
+          '--',
+          'skills-map.json',
+          'skills-manifest.json',
+          'README.md',
+          'AGENTS.md',
+        ],
         [
           '-C',
           directory,
@@ -413,6 +422,76 @@ test('GitHub initialization rejects changes made before its approved tree check'
         {run: wrapped, github},
       ),
     ).rejects.toBeInstanceOf(RegistryInitError);
+  });
+});
+
+test('worktree change between clean status and tree read is preserved before any identity write or staging', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    let injected = false;
+
+    const wrapped: CommandRunner = async (command, args) => {
+      const output = await runner(command, args);
+
+      if (!injected && args.includes('status')) {
+        injected = true;
+        await fs.writeFile(path.join(directory, 'race.txt'), 'preserve me');
+      }
+
+      return output;
+    };
+
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({configured: false, pushCompleted: false});
+    expect(error.message).toContain('changed during template verification');
+    expect(await fs.readFile(path.join(directory, 'race.txt'), 'utf8')).toBe('preserve me');
+    expect(
+      JSON.parse(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).registryId,
+    ).toBe('example/agent-skills');
+    expect(
+      calls.some((call) => ['add', 'commit', 'push'].some((op) => call.args.includes(op))),
+    ).toBe(false);
+  });
+});
+
+test('unrelated file arriving at staging is never staged or pushed', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    let injected = false;
+
+    const wrapped: CommandRunner = async (command, args) => {
+      if (!injected && args.includes('add')) {
+        injected = true;
+        await fs.writeFile(path.join(directory, 'late-user-file.txt'), 'preserve me');
+      }
+
+      return runner(command, args);
+    };
+
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({configured: true, pushCompleted: false});
+    expect(error.message).toContain('Unexpected changes');
+    expect(await fs.readFile(path.join(directory, 'late-user-file.txt'), 'utf8')).toBe(
+      'preserve me',
+    );
+    expect(
+      (await git(['-C', directory, 'diff', '--cached', '--name-only'])).trim().split('\n'),
+    ).toEqual(['AGENTS.md', 'README.md', 'skills-manifest.json', 'skills-map.json']);
+    expect(calls.some((call) => call.args.includes('commit') || call.args.includes('push'))).toBe(
+      false,
+    );
   });
 });
 

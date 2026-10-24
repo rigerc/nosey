@@ -124,5 +124,14 @@ export async function assertGeneratedTemplateTree(
       `Generated registry content tree ${tree} does not match approved ${trusted.tree}; preserve the clone and remote for recovery; no configuration or push was performed`,
     );
 
+  const finalStatus =
+    (await runner('git', ['-C', directory, 'status', '--porcelain=v1', '--untracked-files=all'])) ??
+    '';
+
+  if (finalStatus.trim())
+    throw new Error(
+      'Generated registry clone changed during template verification; preserve it for recovery and do not configure or push it',
+    );
+
   return tree;
 }

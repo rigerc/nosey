@@ -101,7 +101,11 @@ test('generated clone gate accepts matching clean tree, including unrelated comm
   };
 
   await expect(assertGeneratedTemplateTree('/clone', runner, revision)).resolves.toBe(tree);
-  expect(calls.map((args) => args.at(-1))).toEqual(['--untracked-files=all', 'HEAD^{tree}']);
+  expect(calls.map((args) => args.at(-1))).toEqual([
+    '--untracked-files=all',
+    'HEAD^{tree}',
+    '--untracked-files=all',
+  ]);
 });
 
 test('generated clone gate rejects dirty and wrong-tree clones before subsequent work', async () => {
@@ -114,4 +118,56 @@ test('generated clone gate rejects dirty and wrong-tree clones before subsequent
   await expect(assertGeneratedTemplateTree('/clone', wrongTree, revision)).rejects.toThrow(
     /does not match approved/,
   );
+});
+
+test('generated clone gate rechecks actual worktree status after reading HEAD tree', async () => {
+  const root = await import('node:fs/promises').then(({mkdtemp}) =>
+    mkdtemp(path.join(process.env['TMPDIR'] ?? '/tmp', 'nosey-tree-race-')),
+  );
+
+  const {defaultRun} = await import('../src/lib/registry/init.js');
+  const directory = path.join(root, 'clone');
+
+  try {
+    await import('node:fs/promises').then(({mkdir}) => mkdir(directory));
+    await defaultRun('git', ['init', directory]);
+    await defaultRun('git', [
+      '-C',
+      directory,
+      '-c',
+      'core.hooksPath=/dev/null',
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'test: seed',
+    ]);
+    let injected = false;
+
+    const runner: CommandRunner = async (command, args) => {
+      const result = await defaultRun(command, args);
+
+      if (!injected && args.includes('rev-parse')) {
+        injected = true;
+        await import('node:fs/promises').then(({writeFile}) =>
+          writeFile(path.join(directory, 'surprise.txt'), 'race'),
+        );
+      }
+
+      return result;
+    };
+
+    await expect(
+      assertGeneratedTemplateTree(directory, runner, {
+        ...revision,
+        tree: (await defaultRun('git', ['-C', directory, 'rev-parse', 'HEAD^{tree}'])).trim(),
+      }),
+    ).rejects.toThrow(/changed during template verification/);
+    expect(injected).toBe(true);
+  } finally {
+    await import('node:fs/promises').then(({rm}) => rm(root, {recursive: true, force: true}));
+  }
 });
