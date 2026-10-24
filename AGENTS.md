@@ -23,3 +23,21 @@ This application uses **Vite+** for building and running tests. Run package.json
 - For screenshots or recordings, follow [the recording guide](docs/recording.md) for VHS setup and editable interaction tapes.
 - The generated CI workflow lives in `.github/workflows/ci.yml`.
 - Confirm `node dist/cli.js --plain` prints output after a build.
+
+## Registry template and schema contract
+
+The registry template is maintained in `rigerc/nosey-registry-template`; do not
+edit template content through a Nosey submodule. The planned `template/registry/`
+checkout is a pinned submodule: clone with `--recurse-submodules`, make template
+changes upstream, and update Nosey's gitlink only after that change merges. Check
+the pinned commit and tree against the trusted Nosey provenance values before
+accepting an integration change.
+
+Nosey owns `schemas/registry/` and its offline schema commands. The template
+references Nosey's public latest schemas and owns its generators, bounded
+fail-closed live-schema validator, and Agnix skill linting. Nosey remains on
+Node 24+ with npm; template tooling uses Node 22 built-ins and no package
+installation. Schema changes must pass the template compatibility gate before
+schema merge; keep template-before-schema merge order. Candidate release and
+initialization behavior is specified in
+[`docs/plans/registry-template-rebuild.md`](docs/plans/registry-template-rebuild.md).

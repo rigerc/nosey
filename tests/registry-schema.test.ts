@@ -5,7 +5,7 @@ import {test, expect} from 'vite-plus/test';
 import Ajv2020, {type ValidateFunction} from 'ajv/dist/2020.js';
 import {type JsonObject, type JsonValue, isBoolean, isRecord, isString} from '../src/lib/values.js';
 import {parseManifest, parseMap} from '../src/lib/registry/validate.js';
-import {SKILLS_MAP} from '../src/data/skills-map.js';
+import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.js';
 import {templateDirectory} from './helpers/registry-template.js';
 
 const schemaDirectory = fileURLToPath(new URL('../schemas/registry/', import.meta.url));
@@ -129,6 +129,7 @@ function createAjv(): Ajv2020 {
   ajv.addKeyword({keyword: 'x-parserOnly', schemaType: 'array', validate: () => true});
   ajv.addKeyword({keyword: 'x-normalization', schemaType: 'string', validate: () => true});
   ajv.addKeyword({keyword: 'x-builtInTechnologies', schemaType: 'array', validate: () => true});
+  ajv.addKeyword({keyword: 'x-builtInCombinations', schemaType: 'array', validate: () => true});
 
   return ajv;
 }
@@ -509,6 +510,18 @@ test('built-in technology annotation mirrors SKILLS_MAP', async () => {
   expect(Array.isArray(annotation)).toBe(true);
   expect(annotation).toEqual(
     SKILLS_MAP.map(({id, name}) => ({id, name})).sort((left, right) =>
+      left.id.localeCompare(right.id),
+    ),
+  );
+});
+
+test('built-in combination annotation mirrors COMBO_SKILLS_MAP', async () => {
+  const schema = await schemaDocument('map');
+  const annotation = schema['x-builtInCombinations'];
+
+  expect(Array.isArray(annotation)).toBe(true);
+  expect(annotation).toEqual(
+    COMBO_SKILLS_MAP.map(({id, name}) => ({id, name})).sort((left, right) =>
       left.id.localeCompare(right.id),
     ),
   );

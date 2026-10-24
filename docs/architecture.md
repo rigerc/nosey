@@ -32,15 +32,21 @@ headless commands, without adding a separate UI framework dependency.
   Execution is separately opt-in: after selection confirmation and Ink exit,
   `src/features/skills/execute.ts` runs the structured plan sequentially in the scanned directory.
 - `schemas/registry/` contains Nosey's canonical JSON Schemas; their published `$id`
-  values remain stable. `registry-tools/` contains the dependency-free trusted
-  configuration and generation code shipped in the package and copied to the template.
+  values remain stable. The built-in technology and combination inventories are
+  informational annotations generated from Nosey's runtime maps. The registry
+  template references the public schemas but owns generation and validation;
   `scripts/build-schema-docs.mjs` generates [the schema reference](registry-schema.md).
-- `src/lib/registry/template.ts` resolves the upstream default branch to a commit,
-  bounds HTTP and tar extraction, rejects unsafe entries, and copies an ephemeral
-  download into the exclusively reserved destination. Local init requires network;
-  `--no-git` requires no Git or GitHub CLI. It never falls back to bundled scaffolding.
+- `src/lib/registry/template.ts` currently resolves the upstream default branch to
+  a commit, bounds HTTP and tar extraction, rejects unsafe entries, and copies an
+  ephemeral download into the exclusively reserved destination. Local init requires
+  network; `--no-git` requires no Git or GitHub CLI. The proposed integration pins
+  this archive to a reviewed commit/tree and adds a GitHub preflight and post-clone
+  content-tree check. It never falls back to bundled scaffolding.
 - Registry JSON is validated by Nosey's parsers using document `schemaVersion` values
-  before and after running its packaged configuration tools. The template ships no schema files or annotations; downloaded code is never executed during init.
+  before and after configuration. The proposed template integration keeps schema files
+  in Nosey, and initialization remains data-only: downloaded code is never executed.
+  The currently packaged configurator is scheduled for removal only after its
+  behavior and required attribution have been reviewed and ported.
   GitHub API operations use the shared Octokit client in `src/lib/registry/github.ts`,
   authenticated with `GITHUB_TOKEN`, `GH_TOKEN`, or an optional `gh auth token` fallback.
   Requests are bounded and silent; automatic retries are disabled to avoid duplicate
@@ -48,9 +54,10 @@ headless commands, without adding a separate UI framework dependency.
   `HEAD`, preserving generated history. HTTPS credentials use process-only Git configuration
   for network commands. Partial results distinguish creation, clone,
   configuration, and push completion; the wizard prevents duplicate creation attempts.
-- `npm run registry:template:sync -- <directory>` copies current canonical tools,
-  generators, notices, and canonical template JSON examples for review. It requires no release metadata or hashes
-  and protects configured registries from being overwritten with examples. See [template maintenance](registry-contract.md).
+- Template maintenance and releases are owned by the separate registry-template
+  repository. The proposed Nosey integration verifies a pinned submodule commit/tree,
+  checks compatibility against proposed schemas, and preserves offline schema commands.
+  See [registry ownership and security](registry-contract.md).
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
 - `assets/nosey-brand-kit/` retains Nosey's original asset exports; runtime semantic
@@ -90,8 +97,11 @@ Nosey's and legacy SkillSense's paths. New registry references are stored global
 legacy project-scoped references remain readable and removable.
 
 Node.js 24+ matches the imported application's runtime requirement. `npm test`
-runs both the runtime/UI tests and the catalog and mapping tool tests. The package
-ships registry tools, canonical schemas, brand assets, and third-party license notices.
+runs both runtime/UI tests and the catalog and mapping tool tests. Template tooling
+uses Node.js 22 built-ins without an installation step; Agnix is separately
+provisioned for skill linting. Nosey's checks cover schema compatibility, identity
+parity, security, package behavior, and template smoke tests. Its package includes
+canonical schemas, brand assets, and third-party license notices.
 
 ## UI framework
 

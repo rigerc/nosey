@@ -18,10 +18,10 @@ validate registry documents.
 | ---------------------- | ------------------------------------------------------------------------------------------ | ------------------------ |
 | `skills-manifest.json` | [`skills-manifest.schema.json`](../schemas/registry/skills-manifest.schema.json) | `1`                      |
 | `skills-map.json`      | [`skills-map.schema.json`](../schemas/registry/skills-map.schema.json)           | `1` or `2`               |
-| `registry.json`        | No schema: the initializer validates it with an internal object schema                     | `1`                      |
 
-Both schemas are hand-authored JSON Schema 2020-12 documents. Each declares an absolute `$id` and
-references only fragments of its own `$defs`, so validation never fetches anything over the network.
+Both schemas are hand-authored JSON Schema 2020-12 documents. Each declares a stable absolute `$id` and
+references only fragments of its own `$defs`. Nosey's schema commands stay offline; the separate
+registry template fetches the latest published schemas and fails closed on unknown validation keywords.
 
 Use `nosey schema skills-map` or `nosey schema manifest` to print a canonical schema
 as JSON to stdout. Redirect the output to save a local schema copy. The command
@@ -30,15 +30,21 @@ works offline, without a registry or interactive terminal; `--json` is optional.
 
 ## Editor annotations
 
-The template does not distribute schemas or `$schema` annotations. Schemas and this
-reference stay in Nosey. Existing registries may still use editor annotations such
-as `"$schema": "./schemas/skills-manifest.schema.json"` when they maintain their own
-schema copy.
+The registry template does not copy schema files. Its generated `skills-manifest.json`
+and `skills-map.json` point `$schema` to Nosey's public latest URLs:
+`https://raw.githubusercontent.com/rigerc/nosey/main/schemas/registry/skills-manifest.schema.json`
+and `https://raw.githubusercontent.com/rigerc/nosey/main/schemas/registry/skills-map.schema.json`.
+Built-in technology and combination inventories in the map schema are informational only.
 
 - Parsers ignore `$schema` and do not constrain its value.
 - Writers preserve existing annotations verbatim, including custom URLs. A registry
   without schemas remains unannotated.
 - No Nosey command reads, dereferences, or downloads an annotation target.
+
+The template's Node.js 22 tooling uses built-in modules without an install step.
+Nosey remains a Node.js 24+ npm application and retains offline schema output and
+tests schema/parser parity against the template's bounded evaluator. Agnix is a
+separately provisioned skill linter; it does not replace registry JSON validation.
 
 ## Compatibility rules
 
@@ -153,7 +159,7 @@ Structural contract for skills-manifest.json. This schema is not a registry vali
 | --- | --- | --- | --- | --- | --- |
 | `$schema` | any | no | — | 1 | Conventional editor annotation only. Nosey ignores it, registry writers preserve it verbatim, and it is unconstrained here: a non-string value is accepted too. |
 | `schemaVersion` | integer | yes | must equal `1` | 1 | Manifest format version. Only 1 is accepted. |
-| `registryId` | string | yes | pattern `\S`; minLength 1 | 1 | Identity shared with registry.json and skills-map.json. The owner/repository shape is an initializer authoring rule, not a parser rule. Normalization: Rewritten by registry init, which remaps this prefix in local skill IDs. |
+| `registryId` | string | yes | pattern `\S`; minLength 1 | 1 | Identity shared with skills-map.json. The owner/repository shape is an initializer authoring rule, not a parser rule. Normalization: Rewritten by registry init, which remaps this prefix in local skill IDs. |
 | `skills` | array | yes | maxItems 20000 | 1 | Every locally declared skill. Duplicate ids or paths are rejected by the parser only. |
 | `skills[]` | object | — | unknown keys ignored | 1 | One locally declared skill. Unknown keys inside a record are ignored by the parser. |
 | `skills[].id` | string | yes | pattern `\S`; minLength 1 | 1 | Unique among manifest skills; duplicates are rejected by the parser only. Normalization: Generated as <registryId>/<relative directory under skills>; init remaps the registryId prefix and leaves external IDs untouched. |
@@ -181,13 +187,13 @@ Example:
 
 ### `skills-map.json` (Nosey skills map (schemaVersion 1 and 2))
 
-Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded. x-builtInTechnologies mirrors Nosey's built-in technology IDs and names; it is informational and constrains neither technologies nor technologySkills, which may reference declared or built-in technologies.
+Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded. x-builtInTechnologies and x-builtInCombinations are informational inventories of Nosey's built-in IDs and names. They do not constrain technology or combination declarations or references.
 
 | Field | Type | Required | Constraints | Version | Description and rules |
 | --- | --- | --- | --- | --- | --- |
 | `$schema` | any | no | — | 1 and 2 | Conventional editor annotation only. Nosey ignores it, registry writers preserve it verbatim, and it is unconstrained here: a non-string value is accepted too. |
 | `schemaVersion` | integer | yes | one of `1`, `2` | 1 and 2 | Map format version: 1 for local skills only, 2 when externalSkills may appear. |
-| `registryId` | string | yes | pattern `\S`; minLength 1 | 1 and 2 | Identity shared with registry.json and skills-manifest.json. The owner/repository shape is an initializer authoring rule, not a parser rule. Normalization: Rewritten by registry init, which remaps this prefix in local skill references. |
+| `registryId` | string | yes | pattern `\S`; minLength 1 | 1 and 2 | Identity shared with skills-manifest.json. The owner/repository shape is an initializer authoring rule, not a parser rule. Normalization: Rewritten by registry init, which remaps this prefix in local skill references. |
 | `alwaysRecommend` | array | no | — | 1 and 2 | Skill IDs recommended in every project. Absent means an empty list; null is rejected. |
 | `alwaysRecommend[]` | string | — | minLength 1 | 1 and 2 | The parser's strings() rule for reference arrays: every element is a string of at least one character. Unlike text(), whitespace-only elements pass. Duplicates are accepted here. |
 | `externalSkills` | array \| null | no | maxItems 20000 | 2 | Installable skills hosted outside this registry. schemaVersion 2 only: in version 1 any presence, including null and [], is rejected by the parser. Parser-only: `parser-only:unique-by-property`, `parser-only:external-source-shape`. Normalization: In schemaVersion 2, missing or null normalizes to []; in schemaVersion 1 the property must be absent. |
