@@ -83,11 +83,26 @@ try {
   const subprocessMarker = path.join(temporary, 'acquired-script-subprocess');
   await fs.appendFile(
     preload,
-    `\nimport childProcess from 'node:child_process';\n` +
+    `\nimport childProcess from 'node:child_process';\nimport {syncBuiltinESMExports} from 'node:module';\n` +
       `for (const key of ['exec','execFile','execFileSync','execSync','fork','spawn','spawnSync']) {\n` +
       ` childProcess[key] = function (...args) { fs.writeFileSync(${JSON.stringify(subprocessMarker)}, key); throw new Error('unexpected subprocess: ' + key); };\n}\n` +
-      `for (const key of ['exec','execFile','fork','spawn']) if (childProcess.promises?.[key]) childProcess.promises[key] = async function () { fs.writeFileSync(${JSON.stringify(subprocessMarker)}, key); throw new Error('unexpected subprocess: ' + key); };\n`,
+      `for (const key of ['exec','execFile','fork','spawn']) if (childProcess.promises?.[key]) childProcess.promises[key] = async function () { fs.writeFileSync(${JSON.stringify(subprocessMarker)}, key); throw new Error('unexpected subprocess: ' + key); };\n` +
+      `syncBuiltinESMExports();\n`,
   );
+
+  await exec(
+    process.execPath,
+    [
+      '--import',
+      preload,
+      '--input-type=module',
+      '--eval',
+      "import {execFile} from 'node:child_process'; try { execFile('ignored-command', [], () => {}); } catch {}",
+    ],
+    {cwd: temporary},
+  );
+  assert.equal(await fs.readFile(subprocessMarker, 'utf8'), 'execFile');
+  await fs.rm(subprocessMarker);
 
   const registry = path.join(temporary, 'registry');
   const emptyPath = path.join(temporary, 'no-tools-installed');
@@ -172,9 +187,22 @@ try {
   );
 
   const withGit = path.join(temporary, 'with-git');
+  const gitFixtureDirectory = path.join(temporary, 'with-git-fixture');
+  await fs.mkdir(gitFixtureDirectory);
+  const gitPreload = await fixturePreload(gitFixtureDirectory);
   await exec(
     process.execPath,
-    ['--import', preload, cli, 'registry', 'init', withGit, '--registry-id', 'acme/git', '--yes'],
+    [
+      '--import',
+      gitPreload,
+      cli,
+      'registry',
+      'init',
+      withGit,
+      '--registry-id',
+      'acme/git',
+      '--yes',
+    ],
     {cwd: temporary},
   );
   const remotes = await exec('git', ['-C', withGit, 'remote']);
