@@ -9,8 +9,7 @@ import {promisify} from 'node:util';
 import {test, expect, assert} from 'vite-plus/test';
 import {loadLocalRegistry} from '../src/lib/registry/load.js';
 import {registryJson, setAlwaysRecommend, showRegistry} from '../src/lib/registry/commands.js';
-import {type JsonObject, isRecord} from '../src/lib/values.js';
-import {seedRegistrySkill} from './helpers/registry-fixture.js';
+import {type JsonObject, isRecord, isString} from '../src/lib/values.js';
 import {configureRegistryIdentity, validateRegistryDestination} from '../src/lib/registry/init.js';
 import {
   runRegistryInit,
@@ -24,6 +23,37 @@ const cli = fileURLToPath(new URL('../src/cli.tsx', import.meta.url));
 const templateSource = templateDirectory;
 const manifestAnnotation = './schemas/skills-manifest.schema.json';
 const mapAnnotation = './schemas/skills-map.schema.json';
+
+async function seedTestSkill(directory: string): Promise<void> {
+  const skillDirectory = path.join(directory, 'skills/example-testing');
+  await fs.mkdir(skillDirectory, {recursive: true});
+  await fs.writeFile(
+    path.join(skillDirectory, 'SKILL.md'),
+    '---\nname: example-testing\ndescription: Testing conventions for React projects.\n---\n',
+  );
+  const manifest = await readDocument(directory, 'skills-manifest.json');
+
+  if (!isString(manifest.registryId)) throw new Error('Fixture manifest has no registry ID');
+
+  manifest.skills = [
+    {
+      id: `${manifest.registryId}/example-testing`,
+      name: 'example-testing',
+      path: 'skills/example-testing/SKILL.md',
+      description: 'Testing conventions for React projects.',
+    },
+  ];
+  await fs.writeFile(
+    path.join(directory, 'skills-manifest.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+  );
+  const map = await readDocument(directory, 'skills-map.json');
+
+  if (!isString(map.registryId)) throw new Error('Fixture map has no registry ID');
+
+  map.technologySkills = [{technologyId: 'react', skills: [`${map.registryId}/example-testing`]}];
+  await fs.writeFile(path.join(directory, 'skills-map.json'), JSON.stringify(map, null, 2) + '\n');
+}
 
 async function readDocument(directory: string, name: string): Promise<JsonObject> {
   const document = JSON.parse(await fs.readFile(path.join(directory, name), 'utf8'));
@@ -69,7 +99,7 @@ async function temporary<T>(run: (parent: string) => Promise<T>): Promise<T> {
   }
 }
 
-test('scaffold starts empty with current generated files and registry maintenance tools', async () => {
+test('scaffold starts empty from data-only template files without executing template scripts', async () => {
   await temporary(async (parent) => {
     const destination = path.join(parent, 'nested', 'skills-registry');
     await scaffoldRegistry(destination, 'acme/team-skills');
@@ -84,57 +114,34 @@ test('scaffold starts empty with current generated files and registry maintenanc
       code: 'ENOENT',
     });
 
-    // SAFETY: the owned fixture produces this JSON contract; the assertions below verify its fields.
-    const settings = JSON.parse(
-      await fs.readFile(path.join(destination, 'registry.json'), 'utf8'),
-    ) as {registryId: string};
-
-    expect(settings.registryId).toBe('acme/team-skills');
-    const workflow = await fs.stat(path.join(destination, '.github/workflows/registry-ci.yml'));
-    expect(workflow.isFile()).toBe(true);
-
-    for (const name of [
-      '.github/workflows/template-sync.yml',
-      'scripts/validate-registry.mjs',
-      'scripts/template-update.mjs',
-      '.agents/prompts/fix-skills-using-agnix.md',
-      'scripts/generate-readme.mjs',
-      'scripts/generate-readme.test.mjs',
-      'scripts/prepare-agnix-sarif.mjs',
-      'scripts/prepare-agnix-sarif.test.mjs',
-    ]) {
-      expect((await fs.stat(path.join(destination, name))).isFile()).toBe(true);
-    }
-
-    const script = path.join(destination, 'scripts/generate-manifest.mjs');
-    await execFileAsync(process.execPath, [script, '--check'], {
-      cwd: destination,
+    await expect(fs.stat(path.join(destination, 'registry.json'))).rejects.toMatchObject({
+      code: 'ENOENT',
     });
-    await execFileAsync(process.execPath, ['scripts/generate-readme.mjs', '--check'], {
-      cwd: destination,
-    });
+    expect(
+      await fs.readFile(path.join(destination, 'scripts/configure-registry.mjs'), 'utf8'),
+    ).toContain('must not execute');
     const readme = await fs.readFile(path.join(destination, 'README.md'), 'utf8');
     expect(readme).toContain('Registry: acme/team-skills');
     expect(readme).toContain('No skills are registered.');
   });
 });
 
-test('scaffold still remaps populated template skill IDs and regenerates the catalog', async () => {
+test('scaffold still remaps populated template skill IDs and updates the catalog', async () => {
   await temporary(async (parent) => {
     const template = path.join(parent, 'populated-template');
     await scaffoldRegistry(template, 'example/original');
-    await seedRegistrySkill(template);
+    await seedTestSkill(template);
     const destination = path.join(parent, 'new-registry');
     await scaffoldRegistry(destination, 'acme/renamed', template);
     const loaded = await loadLocalRegistry(destination);
     expect(loaded.manifest.skills[0]?.id).toBe('acme/renamed/example-testing');
     expect(loaded.map.technologySkills[0]?.skills).toEqual(['acme/renamed/example-testing']);
-    await execFileAsync(process.execPath, ['scripts/generate-readme.mjs', '--check'], {
-      cwd: destination,
-    });
     expect(await fs.readFile(path.join(destination, 'README.md'), 'utf8')).toContain(
       'Registry: acme/renamed',
     );
+    expect(
+      await fs.readFile(path.join(destination, 'scripts/configure-registry.mjs'), 'utf8'),
+    ).toContain('must not execute');
   });
 });
 
@@ -213,9 +220,6 @@ for (const repository of ['.github', '.github-private', '_skills']) {
       const registry = await loadLocalRegistry(destination);
       expect(registry.manifest.registryId).toBe('acme/' + repository);
       expect(registry.manifest.skills).toEqual([]);
-      await execFileAsync(process.execPath, ['scripts/generate-manifest.mjs', '--check'], {
-        cwd: destination,
-      });
     });
   });
 }
@@ -476,6 +480,49 @@ test('scaffold creates registry documents without schema files or annotations', 
   });
 });
 
+test('only the exact trusted maintainer guide is replaced by the canonical downstream guide', async () => {
+  await temporary(async (parent) => {
+    const trusted = path.join(parent, 'trusted-template');
+    await fs.cp(path.resolve('template/registry'), trusted, {recursive: true});
+    const expected = await fs.readFile(path.join(trusted, '.agents/templates/registry-AGENTS.md'));
+    const directory = path.join(parent, 'trusted');
+    await fs.cp(trusted, directory, {recursive: true});
+    await configureRegistryIdentity(directory, 'acme/trusted');
+    expect(await fs.readFile(path.join(directory, 'AGENTS.md'))).toEqual(expected);
+
+    const userDirectory = path.join(parent, 'user-guide');
+    await fs.cp(trusted, userDirectory, {recursive: true});
+    const userGuide = Buffer.from('\uFEFF# My registry instructions\nKeep this guide.\n');
+    await fs.writeFile(path.join(userDirectory, 'AGENTS.md'), userGuide);
+    await configureRegistryIdentity(userDirectory, 'acme/user-guide');
+    expect(await fs.readFile(path.join(userDirectory, 'AGENTS.md'))).toEqual(userGuide);
+  });
+});
+
+test('a conflicting maintainer sentinel is rejected and required canonical guide failures propagate', async () => {
+  await temporary(async (parent) => {
+    const conflicting = path.join(parent, 'conflicting');
+    await fs.cp(path.resolve('template/registry'), conflicting, {recursive: true});
+    await fs.writeFile(
+      path.join(conflicting, 'AGENTS.md'),
+      '\uFEFF<!-- NOSEY-TEMPLATE-MAINTAINER-GUIDE:v1 -->\nuser edits\n',
+    );
+    await expect(configureRegistryIdentity(conflicting, 'acme/conflicting')).rejects.toThrow(
+      /Conflicting registry template maintainer guide/,
+    );
+
+    const missing = path.join(parent, 'missing-downstream');
+    await fs.cp(path.resolve('template/registry'), missing, {recursive: true});
+    await fs.rm(path.join(missing, '.agents/templates/registry-AGENTS.md'));
+    await expect(configureRegistryIdentity(missing, 'acme/missing')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    expect(await fs.readFile(path.join(missing, 'skills-map.json'), 'utf8')).toContain(
+      'example/agent-skills',
+    );
+  });
+});
+
 test('a legacy template stays unannotated and never gains a dangling reference', async () => {
   await temporary(async (parent) => {
     const source = await legacyTemplate(parent);
@@ -492,9 +539,7 @@ test('a legacy template stays unannotated and never gains a dangling reference',
     await expect(fs.stat(path.join(destination, 'schemas'))).rejects.toMatchObject({
       code: 'ENOENT',
     });
-    await execFileAsync(process.execPath, ['scripts/generate-manifest.mjs', '--check'], {
-      cwd: destination,
-    });
+    expect((await loadLocalRegistry(destination)).manifest.registryId).toBe('acme/team-skills');
   });
 });
 
@@ -527,7 +572,7 @@ test('identity rewrite remaps local IDs and leaves annotations and external IDs 
     const source = path.join(parent, 'populated');
     await scaffoldRegistry(source, 'example/original');
     await annotateRegistry(source);
-    await seedRegistrySkill(source);
+    await seedTestSkill(source);
 
     const mapPath = path.join(source, 'skills-map.json');
     const map = await readDocument(source, 'skills-map.json');
@@ -565,7 +610,7 @@ test('shared document writes never invent or leak an annotation', async () => {
     const annotated = path.join(parent, 'annotated');
     await scaffoldRegistry(annotated, 'acme/team-skills');
     await annotateRegistry(annotated);
-    await seedRegistrySkill(annotated);
+    await seedTestSkill(annotated);
 
     const shown = registryJson(await showRegistry(annotated));
 
@@ -582,7 +627,7 @@ test('shared document writes never invent or leak an annotation', async () => {
     const destination = path.join(parent, 'legacy-writes');
     await fs.cp(legacy, destination, {recursive: true});
     await configureRegistryIdentity(destination, 'acme/legacy-skills');
-    await seedRegistrySkill(destination);
+    await seedTestSkill(destination);
     await setAlwaysRecommend(destination, ['acme/legacy-skills/example-testing']);
 
     expect(Object.hasOwn(await readDocument(destination, 'skills-map.json'), '$schema')).toBe(

@@ -12,7 +12,7 @@ function within(root: string, candidate: string): boolean {
 /** Only fixed root files are read; registry data cannot select another path. */
 export async function readRegistryFile(
   directory: string,
-  name: 'registry.json' | 'skills-manifest.json' | 'skills-map.json' | 'README.md',
+  name: 'skills-manifest.json' | 'skills-map.json' | 'README.md',
 ): Promise<string> {
   const filename = path.join(directory, name);
   const info = await fs.lstat(filename);
