@@ -151,3 +151,27 @@ verified. D01 does not assign an owner or reviewer: none was capacity-checked.
   the GitHub asset digest.
 - Live GitHub generated-repository/tree comparison: **not run**; remains a
   blocking design gate. No remote repository was created or deleted.
+
+## Implementation verification updates
+
+The original baseline above is historical. The following evidence updates its pending items without claiming the unmerged integration is complete.
+
+### Live GitHub template-tree experiment
+
+The required baseline `createUsingTemplate` experiment passed against upstream `main` at `9b7c2cc895484002c3641d63f2759e1542308179`. Its tree was `a096426a2521360dd7966514d196b693a51c99d8`. The generated initial commit `413190b854f9661f4f8d2470bc9491da6b2629ee` had the same tree; source HEAD was unchanged on read-back. Independent commit IDs with equal content trees are therefore observed behavior.
+
+The private [integration-test repository](https://github.com/rigerc/nosey-template-rebuild-smoke-20261024-31bdce) is retained for user-controlled cleanup. No acquired repository code ran and no dependency installer was invoked. The command/hash journal is `/tmp/nosey-template-github-tree-experiment.json`. This test used the historical default branch, not the new candidate or a release pin.
+
+### Template candidate and cross-repository gates
+
+[Template PR #24](https://github.com/rigerc/nosey-registry-template/pull/24) is a draft and is linked to the implementation thread. Its initial `47ff8ce` head passed hosted CI. Independent Luna/medium reviews covered the bounded generators, schema evaluator/validator, guidance/sync, transactional configuration and CI/package policy; their concrete findings were corrected in follow-up commits. Later candidate `4a7b51c` passed a clean no-install Node 22 run of all 84 tests, live schema validation, generation checks, and both agnix modes. These results apply to those exact historical heads; final raw-key/UTF-8 preservation probes remain under correction before the candidate is finalized.
+
+The parent independently ran the proposed-schema comparison: 129 registry fixtures, 22 semantic cases, 12 annotation cases, and six unsupported-schema rejections. Shared identity parity subsequently passed 11 executable file-operation fixtures and 14 real configuration syntax cases; local identity grammar is shared rather than inferred from a missing directory. New proposed schema inventories contain 230 technologies and 33 combinations, generated from runtime data. No schema or template PR has been merged.
+
+### Nosey integration status
+
+The trusted identity transformation/file adapter, conformance gates, provenance helpers, read-only two-document validation and proposed schema documentation are committed on the feature branch. Initialization still uses the legacy path until an approved merged template revision can be pinned. There is no approved release commit/tree constant or submodule gitlink yet.
+
+A full transitional Nosey unit run observed 431 passing and two failing tests. One stale `registry.json` identity assertion was corrected at `db2e0eed6f92767adfe8df27edc84fa320c29b67`; the integration/command subset then passed 39 tests, with typecheck and lint passing. The remaining known legacy initializer expectation belongs to N04/N06. A complete post-integration suite is still required; no full Nosey acceptance is claimed.
+
+All delegated implementation and review workers use `gpt-6-luna` with `reasoningEffort: medium`. Project-manager MCP authentication remains unavailable; authenticated GitHub CLI is the recorded fallback. No agent registration, token usage, merge, issue closure or release success is fabricated.
