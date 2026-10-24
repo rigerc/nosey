@@ -12,6 +12,7 @@ import {
 } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {errorCode, isRecord, type JsonValue} from '../src/lib/values.js';
 
 import {
@@ -24,9 +25,8 @@ import {configureRegistryIdentityFiles} from '../src/lib/registry/identity-files
 
 type FixtureInput = {map: JsonValue; manifest: JsonValue; readme: string; agentGuide?: string};
 
-const fixtureRoot = path.resolve(
-  process.cwd(),
-  '../template/registry/scripts/test/fixtures/identity/v1',
+const fixtureRoot = fileURLToPath(
+  new URL('../template/registry/scripts/test/fixtures/identity/v1/', import.meta.url),
 );
 
 const guidePolicy = async () => ({

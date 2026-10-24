@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {test, expect} from 'vite-plus/test';
-import {buildRegistry} from '../src/lib/registry/commands.js';
 import {configureRegistryIdentity} from '../src/lib/registry/init.js';
 import {templateDirectory} from './helpers/registry-template.js';
 
@@ -20,6 +19,10 @@ test('configuration supports older map documents with null optional collections'
         combinations: null,
       }),
     );
+    const manifestPath = path.join(root, 'skills-manifest.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.registryId = 'example/agent-skills';
+    await fs.writeFile(manifestPath, JSON.stringify(manifest));
     await configureRegistryIdentity(root, 'acme/legacy');
     const first = await fs.readFile(path.join(root, 'skills-map.json'), 'utf8');
     await configureRegistryIdentity(root, 'acme/legacy');
@@ -45,13 +48,12 @@ test('trusted configuration remaps every local binding, preserves external prefi
       '---\nname: local\ndescription: A nested skill\n---\nLocal',
     );
 
-    // Target-supplied scripts are data. Neither build nor configure may execute them.
+    // Target-supplied scripts are inert data; configuration never executes them.
     for (const name of ['generate-manifest.mjs', 'generate-readme.mjs', 'configure-registry.mjs'])
       await fs.writeFile(
         path.join(root, 'scripts', name),
         'throw new Error("untrusted script ran");',
       );
-    await buildRegistry(root);
 
     const map = {
       $schema: {custom: 'preserve exactly'},
@@ -72,6 +74,17 @@ test('trusted configuration remaps every local binding, preserves external prefi
     };
 
     await fs.writeFile(path.join(root, 'skills-map.json'), JSON.stringify(map));
+    const manifest = JSON.parse(await fs.readFile(path.join(root, 'skills-manifest.json'), 'utf8'));
+    manifest.registryId = former;
+    manifest.skills = [
+      {
+        id: local,
+        name: 'Local',
+        path: 'skills/nested/local/SKILL.md',
+        description: 'A nested skill',
+      },
+    ];
+    await fs.writeFile(path.join(root, 'skills-manifest.json'), JSON.stringify(manifest));
     await configureRegistryIdentity(root, 'acme/renamed');
     const rewritten = JSON.parse(await fs.readFile(path.join(root, 'skills-map.json'), 'utf8'));
     const expected = ['acme/renamed/nested/local', external];
@@ -83,7 +96,7 @@ test('trusted configuration remaps every local binding, preserves external prefi
     expect(rewritten.externalSkills).toEqual(map.externalSkills);
     expect(rewritten.$schema).toEqual(map.$schema);
     expect(rewritten.customAnnotation).toBe('retained');
-    const names = ['registry.json', 'skills-manifest.json', 'skills-map.json', 'README.md'];
+    const names = ['skills-manifest.json', 'skills-map.json'];
 
     const before = await Promise.all(
       names.map((name) => fs.readFile(path.join(root, name), 'utf8')),
@@ -107,9 +120,21 @@ test('invalid input is rejected by Nosey parsers before configuration writes', a
     const map = JSON.parse(await fs.readFile(filename, 'utf8'));
     map.technologies = [{id: 'bad', name: 'Bad', detect: {packagePatterns: [{source: '['}]}}];
     await fs.writeFile(filename, JSON.stringify(map));
-    const before = await fs.readFile(path.join(root, 'registry.json'), 'utf8');
+
+    const before = await Promise.all(
+      ['skills-manifest.json', 'skills-map.json'].map((name) =>
+        fs.readFile(path.join(root, name), 'utf8'),
+      ),
+    );
+
     await expect(configureRegistryIdentity(root, 'acme/renamed')).rejects.toThrow();
-    expect(await fs.readFile(path.join(root, 'registry.json'), 'utf8')).toBe(before);
+    expect(
+      await Promise.all(
+        ['skills-manifest.json', 'skills-map.json'].map((name) =>
+          fs.readFile(path.join(root, name), 'utf8'),
+        ),
+      ),
+    ).toEqual(before);
   } finally {
     await fs.rm(root, {recursive: true, force: true});
   }

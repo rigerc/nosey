@@ -21,7 +21,6 @@ import {useScan} from '../features/skills/context';
 import {useScreenHints, useUiAction} from '../features/ui/context';
 import {useRouter} from '../hooks/useRouter';
 import {
-  buildRegistry,
   commandSource,
   editRegistry,
   listRegistries,
@@ -41,7 +40,6 @@ type Mode =
   | 'confirm-add'
   | 'detail'
   | 'confirm-remove'
-  | 'confirm-build'
   | 'recommend'
   | 'recommend-filter'
   | 'confirm-recommend';
@@ -231,12 +229,6 @@ export function RegistryManagerScreen() {
           }
         },
       },
-      {
-        key: 'u',
-        run: () => {
-          if (selected?.spec.type === 'local') setMode('confirm-build');
-        },
-      },
     ],
     {scope: 'screen', isActive: mode === 'detail' && !busy},
   );
@@ -267,12 +259,7 @@ export function RegistryManagerScreen() {
               ...(detail && selected?.spec.type === 'local'
                 ? [{key: 'a', label: 'always recommend'}]
                 : []),
-              ...(selected?.spec.type === 'local'
-                ? [
-                    {key: 'v', label: 'validate'},
-                    {key: 'u', label: 'build metadata'},
-                  ]
-                : []),
+              ...(selected?.spec.type === 'local' ? [{key: 'v', label: 'validate'}] : []),
               {key: 'pageup/down', label: 'page'},
             ]
           : mode === 'recommend' || mode === 'recommend-filter'
@@ -585,27 +572,6 @@ export function RegistryManagerScreen() {
                   }}
                 />
               </Stack>
-            )}
-            {mode === 'confirm-build' && selected?.spec.type === 'local' && (
-              <Confirm
-                message={`Build registry metadata in ${selected.spec.path}? This writes skills-manifest.json.`}
-                onCancel={() => setMode('detail')}
-                onConfirm={(yes) => {
-                  if (!yes) {
-                    setMode('detail');
-
-                    return;
-                  }
-
-                  const directory = selected.spec.type === 'local' ? selected.spec.path : '';
-                  void execute(async () => {
-                    const result = await buildRegistry(directory);
-                    setDetail(await validateRegistry(directory));
-                    setMessage(result);
-                    setMode('detail');
-                  });
-                }}
-              />
             )}
           </>
         )}

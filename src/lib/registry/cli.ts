@@ -1,6 +1,5 @@
 import process from 'node:process';
 import {
-  buildRegistry,
   commandSource,
   editRegistry,
   listRegistries,
@@ -12,7 +11,7 @@ import {
 import type {LoadedRegistry} from './types.js';
 import {loadGitRegistry} from './git.js';
 
-const usage = 'Expected: nosey registry <init|list|add|remove|show|validate|build|refresh>';
+const usage = 'Expected: nosey registry <init|list|add|remove|show|validate|refresh>';
 
 interface AllowedOptions {
   [key: string]: string[];
@@ -24,7 +23,6 @@ const allowedOptions: AllowedOptions = {
   remove: ['global', 'project', 'ref'],
   show: ['json', 'ref'],
   validate: ['json'],
-  build: [],
   refresh: ['json', 'global', 'ref'],
 };
 
@@ -218,11 +216,6 @@ export async function runRegistryCommand(args: string[], flags: CommandFlags): P
 
     case 'refresh': {
       await runRefresh(source, flags);
-      break;
-    }
-
-    case 'build': {
-      process.stdout.write(await buildRegistry(source ?? '.'));
       break;
     }
 

@@ -20,7 +20,7 @@ const cli = meow(
     $ ${APP_NAME} [options]
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
-    $ ${APP_NAME} registry <init|list|add|remove|show|validate|build|refresh>
+    $ ${APP_NAME} registry <init|list|add|remove|show|validate|refresh>
     $ ${APP_NAME} schema <skills-map|manifest>
     $ ${APP_NAME} doctor [--json] [--config path]
     $ ${APP_NAME} --setup [--config path]

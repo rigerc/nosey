@@ -1,4 +1,3 @@
-import {registryToolsDirectory} from './tools.js';
 import {
   jsonValueSchema,
   errorCode,
@@ -9,11 +8,9 @@ import {
 import {z} from 'zod';
 
 import {randomUUID} from 'node:crypto';
-import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import {promisify} from 'node:util';
 import {setTimeout as delay} from 'node:timers/promises';
 import {
   globalConfigPath,
@@ -27,10 +24,6 @@ import {loadLocalRegistry} from './load.js';
 import {loadGitRegistry, validateSource} from './git.js';
 import {mergeRegistries} from './merge.js';
 import type {LoadedRegistry} from './types.js';
-
-const run = promisify(execFile);
-
-const generator = path.join(registryToolsDirectory, 'generate-manifest.mjs');
 
 type ConfigDocument = JsonObject & {registries: JsonValue[]};
 
@@ -243,17 +236,6 @@ export async function validateRegistry(directory: string): Promise<LoadedRegistr
   }
 
   return loaded;
-}
-
-export async function buildRegistry(directory: string): Promise<string> {
-  // Always run the packaged generator, never code from the target registry.
-  const {stdout} = await run(process.execPath, [generator], {
-    cwd: path.resolve(directory),
-    timeout: 60_000,
-    maxBuffer: 1024 * 1024,
-  });
-
-  return stdout;
 }
 
 export function registryJson<T>(value: T): string {
