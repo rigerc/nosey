@@ -26,7 +26,7 @@ type FixtureInput = {map: JsonValue; manifest: JsonValue; readme: string; agentG
 
 const fixtureRoot = path.resolve(
   process.cwd(),
-  '../nosey-registry-template/scripts/test/fixtures/identity/v1',
+  '../template/registry/scripts/test/fixtures/identity/v1',
 );
 
 const guidePolicy = async () => ({

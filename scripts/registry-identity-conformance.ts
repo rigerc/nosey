@@ -24,6 +24,7 @@ type Candidate = {
 
 type Options = {template: string; schemas: string};
 
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const fixtureRoot = 'scripts/test/fixtures/identity/v1';
 
 function args(argv: string[]): Options {
@@ -39,12 +40,15 @@ function args(argv: string[]): Options {
     values[key.slice(2)] = path.resolve(value);
   }
 
-  if (!values.template || !values.schemas)
+  if (!values.schemas)
     throw new Error(
-      'Usage: registry-identity-conformance --template <candidate-dir> --schemas <schema-dir>',
+      'Usage: registry-identity-conformance --template <candidate-dir> --schemas <schema-dir> (template defaults to template/registry)',
     );
 
-  return {template: values.template, schemas: values.schemas};
+  return {
+    template: values.template ?? path.join(repositoryRoot, 'template/registry'),
+    schemas: values.schemas,
+  };
 }
 
 async function json(filename: string): Promise<JsonValue> {

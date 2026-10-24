@@ -40,7 +40,10 @@
     "docs:schema:check": "node scripts/build-schema-docs.mjs --check",
     "schema:technologies": "node --experimental-strip-types scripts/build-schema-technologies.ts",
     "schema:technologies:check": "node --experimental-strip-types scripts/build-schema-technologies.ts --check",
-    "registry:package:check": "node --import=tsx scripts/check-registry-package.ts"
+    "registry:package:check": "node --import=tsx scripts/check-registry-package.ts",
+    "template:provenance:check": "node --import=tsx scripts/check-template-provenance.ts",
+    "template:schema:conformance": "node --import=tsx scripts/registry-schema-conformance.ts --schemas schemas/registry",
+    "template:identity:conformance": "node --import=tsx scripts/registry-identity-conformance.ts --schemas schemas/registry"
   },
   "dependencies": {
     "ink": "^8.0.0",

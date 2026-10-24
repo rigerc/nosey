@@ -17,12 +17,10 @@ function treeId(entries: TreeEntry[]): string {
   });
 
   const content = Buffer.concat(
-    entries.map((entry) =>
-      Buffer.from(
-        `${entry.mode} ${entry.name}\0${Buffer.from(entry.oid, 'hex').toString('binary')}`,
-        'binary',
-      ),
-    ),
+    entries.flatMap((entry) => [
+      Buffer.from(`${entry.mode} ${entry.name}\0`, 'utf8'),
+      Buffer.from(entry.oid, 'hex'),
+    ]),
   );
 
   return objectId('tree', content);

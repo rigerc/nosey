@@ -52,12 +52,15 @@ function parseArguments(args: string[]): CliOptions {
     index += 1;
   }
 
-  if (!result.template || !result.schemas)
+  if (!result.schemas)
     throw new Error(
-      'Usage: registry-schema-conformance --template <candidate-dir> --schemas <schema-dir>',
+      'Usage: registry-schema-conformance --template <candidate-dir> --schemas <schema-dir> (template defaults to template/registry)',
     );
 
-  return {template: result.template, schemas: result.schemas};
+  return {
+    template: result.template ?? path.join(repositoryRoot, 'template/registry'),
+    schemas: result.schemas,
+  };
 }
 
 async function jsonFile(filename: string): Promise<JsonValue> {
