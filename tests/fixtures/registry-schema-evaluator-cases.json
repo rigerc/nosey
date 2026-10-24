@@ -110,6 +110,42 @@
       "valid": true
     },
     {
+      "name": "type-less minLength applies only to strings",
+      "schema": {"minLength": 2},
+      "data": 7,
+      "valid": true
+    },
+    {
+      "name": "type-less required applies only to objects",
+      "schema": {"required": ["present"]},
+      "data": ["present"],
+      "valid": true
+    },
+    {
+      "name": "type-less properties applies only to objects",
+      "schema": {"properties": {"count": {"type": "string"}}},
+      "data": "not an object",
+      "valid": true
+    },
+    {
+      "name": "Unicode pattern dot matches one astral code point",
+      "schema": {"type": "string", "pattern": "^.$"},
+      "data": "💡",
+      "valid": true
+    },
+    {
+      "name": "Unicode pattern dot does not split astral code point",
+      "schema": {"type": "string", "pattern": "^..$"},
+      "data": "💡",
+      "valid": false
+    },
+    {
+      "name": "Unicode property escape uses Unicode regex semantics",
+      "schema": {"type": "string", "pattern": "^\\p{Emoji}+$"},
+      "data": "💡",
+      "valid": true
+    },
+    {
       "name": "integer differs from non-integral number",
       "schema": {
         "type": "integer"

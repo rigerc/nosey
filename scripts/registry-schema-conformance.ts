@@ -94,7 +94,13 @@ function parserVerdict(document: DocumentName, data: JsonValue): ParseVerdict {
 
 function createAjv(): Ajv2020 {
   const ajv = new Ajv2020({
-    strict: true,
+    // strictTypes/strictRequired are style policies, not Draft 2020-12
+    // validity rules: keywords such as minLength apply only to strings and
+    // required applies only to objects even when no `type` is declared.
+    // Keep schema/meta validation and unknown-keyword rejection enabled.
+    strict: false,
+    strictSchema: true,
+    validateSchema: true,
     allErrors: true,
     coerceTypes: false,
     useDefaults: false,
