@@ -178,7 +178,7 @@ in `results`; registry warnings go to stderr. Exit codes: `0` successful
 preview/install, `1` planning or execution failure, `2` usage/path error,
 `130` interrupted (SIGINT), and `143` terminated (SIGTERM).
 
-To exercise the built command in CI without installing anything:
+To preview the built command manually without installing anything:
 
 ```bash
 npm run build
