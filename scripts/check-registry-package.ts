@@ -7,11 +7,7 @@ import process from 'node:process';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {z} from 'zod';
-import {
-  fixturePreload,
-  templateCommit,
-  templateDirectory,
-} from '../tests/helpers/registry-template.js';
+import {fixturePreload, templateCommit} from '../tests/helpers/registry-template.js';
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -36,18 +32,22 @@ try {
     .parse(JSON.parse(stdout));
 
   assert.ok(packed);
-  assert.equal(
-    packed.files.some((file) => file.path.startsWith('templates/')),
-    false,
-  );
+  const packedPaths = new Set(packed.files.map(({path: filename}) => filename));
 
-  for (const file of [
-    'registry-tools/configure-registry.mjs',
-    'registry-tools/generate-manifest.mjs',
+  for (const filename of [
     'schemas/registry/skills-map.schema.json',
     'schemas/registry/skills-manifest.schema.json',
+    'THIRD_PARTY_NOTICES.md',
+    'LICENSE-APACHE-2.0',
   ])
-    assert.ok(packed.files.some((entry) => entry.path === file));
+    assert.ok(packedPaths.has(filename), `package is missing ${filename}`);
+
+  for (const filename of packedPaths)
+    assert.ok(
+      !/^(?:registry-tools|template|docs\/example\/registry)(?:\/|$)/.test(filename),
+      `package contains retired/copied template content: ${filename}`,
+    );
+
   const installation = path.join(temporary, 'install');
   await fs.mkdir(installation);
   await fs.writeFile(path.join(installation, 'package.json'), '{"private":true}\n');
@@ -80,9 +80,21 @@ try {
   }
 
   const preload = await fixturePreload(temporary);
-  const registry = path.join(temporary, 'registry');
+  const subprocessMarker = path.join(temporary, 'acquired-script-subprocess');
+  await fs.appendFile(
+    preload,
+    `\nimport childProcess from 'node:child_process';\n` +
+      `for (const key of ['exec','execFile','execFileSync','execSync','fork','spawn','spawnSync']) {\n` +
+      ` childProcess[key] = function (...args) { fs.writeFileSync(${JSON.stringify(subprocessMarker)}, key); throw new Error('unexpected subprocess: ' + key); };\n}\n` +
+      `for (const key of ['exec','execFile','fork','spawn']) if (childProcess.promises?.[key]) childProcess.promises[key] = async function () { fs.writeFileSync(${JSON.stringify(subprocessMarker)}, key); throw new Error('unexpected subprocess: ' + key); };\n`,
+  );
 
-  const result = await exec(
+  const registry = path.join(temporary, 'registry');
+  const emptyPath = path.join(temporary, 'no-tools-installed');
+  await fs.mkdir(emptyPath);
+  const isolatedEnv = {...process.env, PATH: emptyPath};
+
+  const initialized = await exec(
     process.execPath,
     [
       '--import',
@@ -96,78 +108,69 @@ try {
       '--yes',
       '--no-git',
     ],
-    {
-      cwd: temporary,
-      env: {...process.env, PATH: path.join(temporary, 'no-tools-installed')},
-    },
+    {cwd: temporary, env: isolatedEnv},
   );
 
-  assert.ok(result.stdout.includes(templateCommit));
+  assert.ok(initialized.stdout.includes(templateCommit));
   await assert.rejects(fs.stat(path.join(registry, '.git')), {code: 'ENOENT'});
 
-  for (const name of ['generate-manifest.mjs', 'generate-readme.mjs'])
-    await exec(process.execPath, [path.join(packageRoot, 'registry-tools', name), '--check'], {
-      cwd: registry,
-    });
+  for (const name of ['skills-map.json', 'skills-manifest.json']) {
+    const document = JSON.parse(await fs.readFile(path.join(registry, name), 'utf8'));
+    assert.equal(document.registryId, 'acme/packaged');
+    assert.equal(
+      document.$schema,
+      `https://raw.githubusercontent.com/rigerc/nosey/main/schemas/registry/${name === 'skills-map.json' ? 'skills-map' : 'skills-manifest'}.schema.json`,
+    );
+  }
+
+  assert.equal(
+    await fs.readFile(path.join(registry, 'AGENTS.md'), 'utf8'),
+    await fs.readFile(
+      path.join(root, 'template/registry/.agents/templates/registry-AGENTS.md'),
+      'utf8',
+    ),
+  );
+  await assert.rejects(fs.stat(path.join(packageRoot, 'template')), {code: 'ENOENT'});
+  assert.match(
+    await fs.readFile(path.join(packageRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8'),
+    /surviving TypeScript registry identity configuration/,
+  );
+
+  await fs.writeFile(
+    path.join(registry, 'scripts/configure-registry.mjs'),
+    "throw new Error('untrusted registry script ran');\n",
+  );
   await fs.writeFile(
     path.join(registry, 'scripts/generate-manifest.mjs'),
-    'throw new Error("untrusted registry script ran");',
+    "throw new Error('untrusted registry script ran');\n",
   );
-  await exec(process.execPath, [cli, 'registry', 'build', registry], {cwd: temporary});
+  const strayLegacy = path.join(registry, 'registry.json');
+  const malformedLegacy = '{ malformed legacy settings';
+  await fs.writeFile(strayLegacy, malformedLegacy);
 
   const validated = await exec(
     process.execPath,
     [cli, 'registry', 'validate', registry, '--json'],
-    {cwd: temporary},
-  );
-
-  const verdict = z.object({valid: z.boolean()}).parse(JSON.parse(validated.stdout));
-  assert.ok(verdict.valid);
-
-  const minimal = path.join(temporary, 'minimal-template');
-  await fs.cp(templateDirectory, minimal, {recursive: true});
-  await fs.rm(path.join(minimal, 'schemas'), {recursive: true, force: true});
-  await fs.rm(path.join(minimal, 'scripts'), {recursive: true});
-
-  for (const name of ['skills-manifest.json', 'skills-map.json']) {
-    const filename = path.join(minimal, name);
-    const document = JSON.parse(await fs.readFile(filename, 'utf8'));
-    delete document.$schema;
-    await fs.writeFile(filename, JSON.stringify(document));
-  }
-
-  const minimalDownload = path.join(temporary, 'minimal-download');
-  await fs.mkdir(minimalDownload);
-  const minimalPreload = await fixturePreload(minimalDownload, minimal);
-  const minimalRegistry = path.join(temporary, 'minimal-registry');
-  await exec(
-    process.execPath,
-    [
-      '--import',
-      minimalPreload,
-      cli,
-      'registry',
-      'init',
-      minimalRegistry,
-      '--registry-id',
-      'acme/minimal',
-      '--yes',
-      '--no-git',
-    ],
     {
       cwd: temporary,
-      env: {...process.env, PATH: path.join(temporary, 'no-tools-installed')},
+      env: isolatedEnv,
     },
   );
-  await assert.rejects(fs.stat(path.join(minimalRegistry, 'schemas')), {code: 'ENOENT'});
 
-  const minimalValidation = await exec(
-    process.execPath,
-    [cli, 'registry', 'validate', minimalRegistry, '--json'],
-    {cwd: temporary},
+  assert.ok(z.object({valid: z.boolean()}).parse(JSON.parse(validated.stdout)).valid);
+  assert.equal(await fs.readFile(strayLegacy, 'utf8'), malformedLegacy);
+  await exec(process.execPath, ['--import', preload, cli, 'scan', registry, '--json'], {
+    cwd: temporary,
+    env: isolatedEnv,
+  });
+  assert.equal(
+    await fs.stat(subprocessMarker).then(
+      () => true,
+      () => false,
+    ),
+    false,
   );
 
-  assert.ok(z.object({valid: z.boolean()}).parse(JSON.parse(minimalValidation.stdout)).valid);
   const withGit = path.join(temporary, 'with-git');
   await exec(
     process.execPath,
@@ -177,7 +180,7 @@ try {
   const remotes = await exec('git', ['-C', withGit, 'remote']);
   assert.equal(remotes.stdout.trim(), '');
   console.log(
-    'Installed package: schema-free init with and without Git, trusted generators, offline build and validation passed.',
+    'Packed CLI: offline schemas, full pinned-template init, identity, no subprocess execution, and no default Git remote passed.',
   );
 } finally {
   await fs.rm(temporary, {recursive: true, force: true});

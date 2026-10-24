@@ -27,11 +27,10 @@ This application uses **Vite+** for building and running tests. Run package.json
 ## Registry template and schema contract
 
 The registry template is maintained in `rigerc/nosey-registry-template`; do not
-edit template content through a Nosey submodule. The planned `template/registry/`
-checkout is a pinned submodule: clone with `--recurse-submodules`, make template
-changes upstream, and update Nosey's gitlink only after that change merges. Check
-the pinned commit and tree against the trusted Nosey provenance values before
-accepting an integration change.
+edit template content through Nosey's pinned `template/registry/` submodule. Clone
+with `--recurse-submodules`; make template changes upstream, then update Nosey's
+gitlink only after that change merges. Check the pinned commit and tree against the
+trusted Nosey provenance values before accepting an integration change.
 
 Nosey owns `schemas/registry/` and its offline schema commands. The template
 references Nosey's public latest schemas and owns its generators, bounded

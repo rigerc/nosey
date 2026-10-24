@@ -286,12 +286,14 @@ and the repository name from the destination folder. Edit the suggestion as need
 if authentication is unavailable, enter the identity manually. An explicit
 `--registry-id` always takes precedence.
 Nosey checks Git, GitHub authentication, the template, and the destination repository,
-then creates a **private** repository using GitHub's template API. The proposed
-release-pinned flow also requires upstream default-branch HEAD to match the supported
-template revision and checks the created repository tree before configuration. A
-moved upstream template makes `--github` unavailable in older Nosey releases until
-Nosey is updated; pinned local archive initialization remains available while that
-revision can be fetched. Use
+then creates a **private** repository using GitHub's template API. Since that API
+uses upstream default-branch HEAD rather than Nosey's pinned archive, Nosey requires
+HEAD and the created repository tree to match its approved template revision before
+configuration. A moved upstream template makes `--github` unavailable in older
+Nosey releases until Nosey updates its reviewed pin; local initialization continues
+to use the pinned archive while it can be fetched. If that archive is unavailable,
+initialization fails closed; use an updated Nosey release after the template change
+has been reviewed. Use
 `--visibility public` to publish publicly. It uses Git to clone the generated repository,
 configures identity with Nosey's trusted code, validates, commits, and pushes the
 current branch. Template history and `origin` are retained. HTTPS Git authentication is passed
@@ -307,12 +309,14 @@ to adopt an existing repository. Initializing never runs downloaded registry scr
 
 Nosey validates registry JSON using its supported `schemaVersion` values before
 and after configuration. Registry generation belongs to the registry template;
-`nosey registry validate` is intended to remain read-only. Template tools use
+`nosey registry validate` is read-only. Nosey does not read legacy `registry.json`
+settings or provide `registry build`; use the template's generators to update
+manifest and README output. Template tools use
 Node.js 22 built-ins without package installation. Nosey remains a Node.js 24+
 npm application. The template fetches the latest public Nosey schemas and fails
 closed on unsupported keywords. Agnix is a separate skill quality linter; Nosey
 retains offline schema commands and cross-repository compatibility, security,
-identity-parity, and template smoke gates.
+identity-parity, and packed-package smoke gates.
 
 JSON Schemas stay in Nosey under `schemas/registry/`; the template refers to their
 public URLs in both generated JSON documents and keeps no schema copies. Export a
@@ -335,7 +339,7 @@ Sync excludes registry identity, mappings, generated output, skills, and workflo
 review those separately and regenerate output after accepting tool updates. A
 repository created through GitHub's web “Use this template” flow retains the template
 maintainer `AGENTS.md` until its owner runs the template configure command. See
-[registry ownership and security](docs/registry-contract.md) for proposed transport,
+[registry ownership and security](docs/registry-contract.md) for transport,
 ownership, and release gates.
 
 ## Appearance

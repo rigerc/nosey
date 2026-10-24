@@ -36,17 +36,16 @@ headless commands, without adding a separate UI framework dependency.
   informational annotations generated from Nosey's runtime maps. The registry
   template references the public schemas but owns generation and validation;
   `scripts/build-schema-docs.mjs` generates [the schema reference](registry-schema.md).
-- `src/lib/registry/template.ts` currently resolves the upstream default branch to
-  a commit, bounds HTTP and tar extraction, rejects unsafe entries, and copies an
-  ephemeral download into the exclusively reserved destination. Local init requires
-  network; `--no-git` requires no Git or GitHub CLI. The proposed integration pins
-  this archive to a reviewed commit/tree and adds a GitHub preflight and post-clone
-  content-tree check. It never falls back to bundled scaffolding.
+- `src/lib/registry/template.ts` downloads the archive at the trusted pinned commit,
+  bounds HTTP and tar extraction, rejects unsafe entries, and copies an ephemeral
+  download into the exclusively reserved destination. Local init checks the pinned
+  content tree; `--no-git` requires no Git or GitHub CLI. GitHub
+  initialization separately checks upstream default-branch HEAD and the created
+  repository tree against that same pin. It never falls back to bundled scaffolding.
 - Registry JSON is validated by Nosey's parsers using document `schemaVersion` values
-  before and after configuration. The proposed template integration keeps schema files
-  in Nosey, and initialization remains data-only: downloaded code is never executed.
-  The currently packaged configurator is scheduled for removal only after its
-  behavior and required attribution have been reviewed and ported.
+  before and after configuration. Schema files stay in Nosey, and initialization
+  remains data-only: downloaded code is never executed. Identity configuration uses
+  trusted TypeScript and retains attribution for behavior ported from the template.
   GitHub API operations use the shared Octokit client in `src/lib/registry/github.ts`,
   authenticated with `GITHUB_TOKEN`, `GH_TOKEN`, or an optional `gh auth token` fallback.
   Requests are bounded and silent; automatic retries are disabled to avoid duplicate
@@ -55,8 +54,9 @@ headless commands, without adding a separate UI framework dependency.
   for network commands. Partial results distinguish creation, clone,
   configuration, and push completion; the wizard prevents duplicate creation attempts.
 - Template maintenance and releases are owned by the separate registry-template
-  repository. The proposed Nosey integration verifies a pinned submodule commit/tree,
-  checks compatibility against proposed schemas, and preserves offline schema commands.
+  repository. Nosey verifies the pinned submodule commit/tree, checks compatibility
+  against proposed schemas, and preserves offline schema commands. Published packages
+  contain Nosey's schemas and required notices/license, not template tooling.
   See [registry ownership and security](registry-contract.md).
 - `scripts/build-skills-catalog.ts` and `propose-skill-mappings.ts` maintain catalogs
   and generate review proposals; see [their guide](../scripts/README.md).
