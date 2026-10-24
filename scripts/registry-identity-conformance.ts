@@ -268,6 +268,86 @@ async function run(options: Options): Promise<number> {
     }
   }
 
+  const trustedGuide = guidePolicy.maintainer;
+  const downstreamGuide = guidePolicy.downstream;
+
+  const guideCases = [
+    {
+      name: 'exact approved maintainer guide',
+      guide: trustedGuide,
+      accepted: true,
+      output: downstreamGuide,
+    },
+    {name: 'leading newline before maintainer guide', guide: `\n${trustedGuide}`, accepted: false},
+    {name: 'prefixed maintainer sentinel', guide: `User preface\n${trustedGuide}`, accepted: false},
+    {
+      name: 'maintainer header without sentinel',
+      guide: `${trustedGuide.replace(/<!-- NOSEY-TEMPLATE-MAINTAINER-GUIDE:v1 -->\n?/, '')}`,
+      accepted: false,
+    },
+    {
+      name: 'ordinary user guide',
+      guide: '# My registry guide\nKeep my words.\n',
+      accepted: true,
+      output: '# My registry guide\nKeep my words.\n',
+    },
+  ];
+
+  for (const item of guideCases) {
+    const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-guide-parity-'));
+    const noseyRoot = path.join(temp, 'nosey');
+    const templateRoot = path.join(temp, 'template');
+
+    try {
+      await Promise.all([fs.mkdir(noseyRoot), fs.mkdir(templateRoot)]);
+      const source = path.join(fixtureDirectory, 'configure-success', 'input');
+      await Promise.all([copyFixture(source, noseyRoot), copyFixture(source, templateRoot)]);
+      await Promise.all([
+        fs.writeFile(path.join(noseyRoot, 'AGENTS.md'), item.guide),
+        fs.writeFile(path.join(templateRoot, 'AGENTS.md'), item.guide),
+      ]);
+      const guide = path.join(templateRoot, '.agents/templates/registry-AGENTS.md');
+      await fs.mkdir(path.dirname(guide), {recursive: true});
+      await fs.copyFile(path.join(options.template, '.agents/templates/registry-AGENTS.md'), guide);
+      const before = Buffer.from(item.guide);
+      const outcomes: boolean[] = [];
+
+      for (const operation of [
+        () => configureRegistryIdentityFiles(noseyRoot, 'example/configured', {guidePolicy}),
+        () =>
+          template.configureRegistry(templateRoot, 'example/configured', {
+            schemasDir: options.schemas,
+          }),
+      ]) {
+        try {
+          await operation();
+          outcomes.push(true);
+        } catch {
+          outcomes.push(false);
+        }
+      }
+
+      if (outcomes[0] !== item.accepted || outcomes[1] !== item.accepted)
+        throw new Error(
+          `${item.name}: expected accepted=${item.accepted}, Nosey=${outcomes[0]}, template=${outcomes[1]}`,
+        );
+
+      for (const root of [noseyRoot, templateRoot]) {
+        const actual = await fs.readFile(path.join(root, 'AGENTS.md'));
+        const expected = item.accepted ? Buffer.from(item.output!) : before;
+
+        if (!actual.equals(expected))
+          throw new Error(
+            `${item.name}: ${item.accepted ? 'guide output' : 'rejected guide bytes'} changed unexpectedly`,
+          );
+      }
+
+      passed += 1;
+    } finally {
+      await fs.rm(temp, {recursive: true, force: true});
+    }
+  }
+
   const identityCases = [
     {id: 'acme.name/repo', accepted: true},
     {id: 'acme_name/repo', accepted: true},

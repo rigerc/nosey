@@ -176,6 +176,34 @@ describe('trusted registry identity transformation', () => {
     ).toBe('# User\n');
   });
 
+  it('rejects maintainer-like guide content anywhere without changing user guides', () => {
+    const maintainer = `${guideSentinel}\n# Registry template agent guide\nTrusted body\n`;
+    const downstream = '# Downstream\n';
+    const policy = {maintainer, downstream};
+
+    for (const guide of [
+      `\n${maintainer}`,
+      `User preface\n\n${maintainer}`,
+      '# Registry template agent guide\nUser edits follow\n',
+    ]) {
+      expect(() =>
+        transformRegistryIdentity({...make(), agentGuide: guide, guidePolicy: policy}),
+      ).toThrow(/Unrecognized or modified/);
+      expect(() => transformRegistryIdentity({...make(), agentGuide: guide})).toThrow(
+        /trusted guide policy/,
+      );
+    }
+
+    expect(
+      transformRegistryIdentity({...make(), agentGuide: maintainer, guidePolicy: policy})
+        .agentGuide,
+    ).toBe(downstream);
+    const userGuide = '# User guide\nNo maintainer markers here.\n';
+    expect(
+      transformRegistryIdentity({...make(), agentGuide: userGuide, guidePolicy: policy}).agentGuide,
+    ).toBe(userGuide);
+  });
+
   it('preserves nullable optional arrays for legacy v1 maps', () => {
     const input = make();
     const output = transformRegistryIdentity(input);

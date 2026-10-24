@@ -10,6 +10,11 @@ import {mergeRegistries} from './merge.js';
 import {parseMap, parseManifest} from './validate.js';
 
 export const guideSentinel = '<!-- NOSEY-TEMPLATE-MAINTAINER-GUIDE:v1 -->';
+const maintainerGuideHeader = '# Registry template agent guide';
+
+const looksLikeMaintainerGuide = (guide: string): boolean =>
+  guide.includes(guideSentinel) || guide.includes(maintainerGuideHeader);
+
 export const catalogBegin = '<!-- BEGIN GENERATED SKILL CATALOG -->';
 export const catalogEnd = '<!-- END GENERATED SKILL CATALOG -->';
 
@@ -511,16 +516,10 @@ export function transformRegistryIdentity(input: IdentityInput): IdentityOutput 
         // Already configured.
       } else if (agentGuide === maintainer && agentGuide.startsWith(`${guideSentinel}\n`)) {
         agentGuide = downstream;
-      } else if (
-        agentGuide.startsWith(guideSentinel) ||
-        agentGuide.startsWith(`\uFEFF${guideSentinel}`)
-      ) {
+      } else if (looksLikeMaintainerGuide(agentGuide)) {
         throw new Error('Unrecognized or modified template maintainer AGENTS.md');
       }
-    } else if (
-      agentGuide.startsWith(guideSentinel) ||
-      agentGuide.startsWith(`\uFEFF${guideSentinel}`)
-    ) {
+    } else if (looksLikeMaintainerGuide(agentGuide)) {
       throw new Error('A trusted guide policy is required to verify template maintainer AGENTS.md');
     }
   }
