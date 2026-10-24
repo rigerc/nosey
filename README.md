@@ -266,10 +266,9 @@ changed, Nosey displays the affected sources. With **Skills CLI** enabled, it
 also suggests running `npx skills update` yourself. The startup check and update suggestion remain advisory, including when Skills CLI execution is enabled; run the update command yourself. Ordinary
 headless scans continue to use the configured registry TTL.
 
-To create a registry in a **new** directory, Nosey downloads the default branch of
-[rigerc/nosey-registry-template](https://github.com/rigerc/nosey-registry-template)
-at one resolved commit. Network access is required, including with `--no-git`
-(which needs neither Git nor `gh`):
+To create a registry in a **new** directory, Nosey downloads a template archive.
+Network access is required, including with `--no-git` (which needs neither Git
+nor `gh`):
 
 ```bash
 npm run dev -- registry init ./team-skills --registry-id acme/team-skills --yes --no-git
@@ -287,9 +286,16 @@ and the repository name from the destination folder. Edit the suggestion as need
 if authentication is unavailable, enter the identity manually. An explicit
 `--registry-id` always takes precedence.
 Nosey checks Git, GitHub authentication, the template, and the destination repository,
-then creates a **private** repository using GitHub's template API. Use
+then creates a **private** repository using GitHub's template API. Since that API
+uses upstream default-branch HEAD rather than Nosey's pinned archive, Nosey requires
+HEAD and the created repository tree to match its approved template revision before
+configuration. A moved upstream template makes `--github` unavailable in older
+Nosey releases until Nosey updates its reviewed pin; local initialization continues
+to use the pinned archive while it can be fetched. If that archive is unavailable,
+initialization fails closed; use an updated Nosey release after the template change
+has been reviewed. Use
 `--visibility public` to publish publicly. It uses Git to clone the generated repository,
-configures identity with Nosey's packaged tools, validates, commits, and pushes the
+configures identity with Nosey's trusted code, validates, commits, and pushes the
 current branch. Template history and `origin` are retained. HTTPS Git authentication is passed
 through temporary process configuration; tokens are never saved in the remote URL
 or repository configuration. Repository creation is not automatically retried. Local creation instead
@@ -302,11 +308,19 @@ Keep the remote and useful clone; follow those instructions instead of repeating
 to adopt an existing repository. Initializing never runs downloaded registry scripts.
 
 Nosey validates registry JSON using its supported `schemaVersion` values before
-and after configuration. Existing registries and offline `registry build` do not
-need a template download.
+and after configuration. Registry generation belongs to the registry template;
+`nosey registry validate` is read-only. Nosey does not read legacy `registry.json`
+settings or provide `registry build`; use the template's generators to update
+manifest and README output. Template tools use
+Node.js 22 built-ins without package installation. Nosey remains a Node.js 24+
+npm application. The template fetches the latest public Nosey schemas and fails
+closed on unsupported keywords. Agnix is a separate skill quality linter; Nosey
+retains offline schema commands and cross-repository compatibility, security,
+identity-parity, and packed-package smoke gates.
 
-JSON Schemas stay in Nosey under `schemas/registry/`; the template does not include
-them or `$schema` annotations. Export a schema as JSON on stdout:
+JSON Schemas stay in Nosey under `schemas/registry/`; the template refers to their
+public URLs in both generated JSON documents and keeps no schema copies. Export a
+schema as JSON on stdout:
 
 ```bash
 npm run --silent dev -- schema skills-map > skills-map.schema.json
@@ -319,12 +333,14 @@ for `manifest`. See the
 [registry schema reference](docs/registry-schema.md) for the document fields and
 parser-only rules.
 
-The template's existing monthly sync workflow proposes maintenance updates through
-reviewed PRs. Enable Actions and allow Actions to create pull requests in repository
-settings. Sync excludes registry identity, mappings, generated output, skills, and
-workflows; review those separately and regenerate output after accepting tool updates.
-See [template maintenance](docs/registry-contract.md) for the single-command tools
-sync workflow.
+The template's monthly sync workflow proposes maintenance updates through reviewed
+PRs. Enable Actions and allow Actions to create pull requests in repository settings.
+Sync excludes registry identity, mappings, generated output, skills, and workflows;
+review those separately and regenerate output after accepting tool updates. A
+repository created through GitHub's web “Use this template” flow retains the template
+maintainer `AGENTS.md` until its owner runs the template configure command. See
+[registry ownership and security](docs/registry-contract.md) for transport,
+ownership, and release gates.
 
 ## Appearance
 

@@ -1,0 +1,395 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "boolean true accepts",
+      "schema": true,
+      "data": {
+        "anything": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "boolean false rejects",
+      "schema": false,
+      "data": null,
+      "valid": false
+    },
+    {
+      "name": "ref sibling assertions both apply",
+      "schema": {
+        "$ref": "#/$defs/base",
+        "minLength": 3,
+        "$defs": {
+          "base": {
+            "type": "string",
+            "pattern": "^a"
+          }
+        },
+        "type": "string"
+      },
+      "data": "ab",
+      "valid": false
+    },
+    {
+      "name": "escaped pointer tokens resolve",
+      "schema": {
+        "$ref": "#/$defs/a~1b~0c",
+        "$defs": {
+          "a/b~c": {
+            "const": {
+              "x": [
+                1,
+                {
+                  "y": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "data": {
+        "x": [
+          1,
+          {
+            "y": true
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "const compares nested JSON values structurally",
+      "schema": {
+        "const": {
+          "a": [
+            1,
+            {
+              "b": 2
+            }
+          ],
+          "c": true
+        }
+      },
+      "data": {
+        "c": true,
+        "a": [
+          1,
+          {
+            "b": 2
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "enum compares nested JSON values structurally",
+      "schema": {
+        "enum": [
+          {
+            "a": [1, 2]
+          },
+          {
+            "b": 3
+          }
+        ]
+      },
+      "data": {
+        "b": 3
+      },
+      "valid": true
+    },
+    {
+      "name": "Unicode lengths count code points",
+      "schema": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 2
+      },
+      "data": "😀é",
+      "valid": true
+    },
+    {
+      "name": "type-less minLength applies only to strings",
+      "schema": {"minLength": 2},
+      "data": 7,
+      "valid": true
+    },
+    {
+      "name": "type-less required applies only to objects",
+      "schema": {"required": ["present"]},
+      "data": ["present"],
+      "valid": true
+    },
+    {
+      "name": "type-less properties applies only to objects",
+      "schema": {"properties": {"count": {"type": "string"}}},
+      "data": "not an object",
+      "valid": true
+    },
+    {
+      "name": "Unicode pattern dot matches one astral code point",
+      "schema": {"type": "string", "pattern": "^.$"},
+      "data": "💡",
+      "valid": true
+    },
+    {
+      "name": "Unicode pattern dot does not split astral code point",
+      "schema": {"type": "string", "pattern": "^..$"},
+      "data": "💡",
+      "valid": false
+    },
+    {
+      "name": "Unicode property escape uses Unicode regex semantics",
+      "schema": {"type": "string", "pattern": "^\\p{Emoji}+$"},
+      "data": "💡",
+      "valid": true
+    },
+    {
+      "name": "integer differs from non-integral number",
+      "schema": {
+        "type": "integer"
+      },
+      "data": 1.5,
+      "valid": false
+    },
+    {
+      "name": "diagnostics expose JSON path and keyword",
+      "schema": {
+        "type": "string"
+      },
+      "data": 7,
+      "valid": false,
+      "expectedError": {
+        "path": "",
+        "keyword": "type"
+      }
+    },
+    {
+      "name": "if then else selects the matching branch",
+      "schema": {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "a"
+            }
+          },
+          "required": ["kind"],
+          "type": "object"
+        },
+        "then": {
+          "required": ["left"],
+          "properties": {
+            "left": {}
+          }
+        },
+        "else": {
+          "required": ["right"],
+          "properties": {
+            "right": {}
+          }
+        },
+        "type": "object"
+      },
+      "data": {
+        "kind": "a",
+        "left": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "dependent schemas apply when trigger exists",
+      "schema": {
+        "dependentSchemas": {
+          "token": {
+            "required": ["secret"],
+            "properties": {
+              "secret": {}
+            }
+          }
+        },
+        "type": "object"
+      },
+      "data": {
+        "token": true
+      },
+      "valid": false
+    },
+    {
+      "name": "allOf anyOf and not compose",
+      "schema": {
+        "allOf": [
+          {
+            "type": "object"
+          },
+          {
+            "anyOf": [
+              {
+                "required": ["x"],
+                "type": "object",
+                "properties": {
+                  "x": {}
+                }
+              },
+              {
+                "required": ["y"],
+                "type": "object",
+                "properties": {
+                  "y": {}
+                }
+              }
+            ],
+            "type": "object"
+          }
+        ],
+        "not": {
+          "required": ["blocked"],
+          "type": "object",
+          "properties": {
+            "blocked": {}
+          }
+        },
+        "type": "object"
+      },
+      "data": {
+        "x": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "propertyNames validates keys",
+      "schema": {
+        "propertyNames": {
+          "pattern": "^[a-z]+$",
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "data": {
+        "valid": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "additionalProperties false rejects unknown members",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "known": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "data": {
+        "known": "yes",
+        "other": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "annotation payload is not traversed as a subschema",
+      "schema": {
+        "type": "object",
+        "examples": [
+          {
+            "notAKeyword": {
+              "custom": true
+            }
+          }
+        ]
+      },
+      "data": {},
+      "valid": true
+    },
+    {
+      "name": "built-in metadata annotations are not schema branches",
+      "schema": {
+        "type": "object",
+        "x-builtInTechnologies": [
+          {
+            "id": "typescript",
+            "name": "TypeScript",
+            "patternProperties": {
+              "^x": {
+                "type": "number"
+              }
+            }
+          }
+        ],
+        "x-builtInCombinations": [
+          {
+            "id": "react-typescript",
+            "name": "React + TypeScript",
+            "unknownPayload": {
+              "$ref": "https://example.invalid/never-read"
+            }
+          }
+        ]
+      },
+      "data": {},
+      "valid": true
+    }
+  ],
+  "unsupported": [
+    {
+      "name": "unknown keyword in inactive conditional branch",
+      "schema": {
+        "if": {
+          "const": true
+        },
+        "then": {
+          "type": "string"
+        },
+        "else": {
+          "patternProperties": {
+            "^x": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "remote reference",
+      "schema": {
+        "$ref": "https://example.invalid/schema.json"
+      }
+    },
+    {
+      "name": "missing local pointer",
+      "schema": {
+        "$ref": "#/$defs/missing",
+        "$defs": {}
+      }
+    },
+    {
+      "name": "invalid pointer escape",
+      "schema": {
+        "$ref": "#/$defs/a~2b",
+        "$defs": {
+          "a~2b": true
+        }
+      }
+    },
+    {
+      "name": "recursive local reference",
+      "schema": {
+        "$defs": {
+          "loop": {
+            "$ref": "#/$defs/loop"
+          }
+        },
+        "$ref": "#/$defs/loop"
+      }
+    },
+    {
+      "name": "unknown extension is not assumed to be annotation",
+      "schema": {
+        "x-future-validation": {
+          "limit": 3
+        }
+      }
+    }
+  ]
+}

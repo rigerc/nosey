@@ -20,7 +20,6 @@ type RegistrySpec = {
   mapRegistryId?: string;
   mapSchemaVersion?: 1 | 2;
   skillFiles?: string[];
-  settingsRegistryId?: string;
   map?: JsonObject;
 };
 
@@ -59,13 +58,6 @@ async function writeRegistry(directory: string, spec: RegistrySpec): Promise<voi
     JSON.stringify(manifest, null, 2) + '\n',
   );
   await fs.writeFile(path.join(directory, 'skills-map.json'), JSON.stringify(map, null, 2) + '\n');
-
-  if (spec.settingsRegistryId !== undefined) {
-    await fs.writeFile(
-      path.join(directory, 'registry.json'),
-      JSON.stringify({schemaVersion: 1, registryId: spec.settingsRegistryId}, null, 2) + '\n',
-    );
-  }
 }
 
 async function temporaryRegistry<T>(run: (directory: string) => Promise<T>): Promise<T> {
@@ -167,7 +159,7 @@ test('CLI uses a local registry in JSON and skills-only outputs', async () => {
   }
 });
 
-test('registry documents must agree on registryId', async () => {
+test('manifest and map must agree on registryId', async () => {
   await temporaryRegistry(async (directory) => {
     await writeRegistry(directory, {registryId: 'acme/one', mapRegistryId: 'acme/two'});
 
@@ -175,16 +167,19 @@ test('registry documents must agree on registryId', async () => {
       'Manifest and map registryId do not match',
     );
   });
+});
 
+test('validation ignores invalid registry.json without changing it', async () => {
   await temporaryRegistry(async (directory) => {
-    await writeRegistry(directory, {
-      registryId: 'acme/one',
-      settingsRegistryId: 'acme/other',
-    });
+    await writeRegistry(directory, {registryId: 'acme/one'});
+    const legacyPath = path.join(directory, 'registry.json');
+    const invalidLegacyDocument = '{malformed legacy settings';
+    await fs.writeFile(legacyPath, invalidLegacyDocument);
 
-    await expect(validateRegistry(directory)).rejects.toThrow(
-      'registry.json and manifest registryId do not match',
-    );
+    await expect(validateRegistry(directory)).resolves.toMatchObject({
+      manifest: {registryId: 'acme/one'},
+    });
+    expect(await fs.readFile(legacyPath, 'utf8')).toBe(invalidLegacyDocument);
   });
 });
 

@@ -12,14 +12,36 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+          submodules: recursive
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run template:provenance:check
+      - run: npm run template:schema:conformance
+      - run: npm run template:identity:conformance
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      - name: Check template generated output
+        run: npm --prefix template/registry run generate:check
+      - name: Validate template against proposed Nosey schemas
+        run: npm --prefix template/registry run validate -- --root . --schemas ../../schemas/registry
+      - name: Run full template tests with Nosey schema fixtures
+        run: node scripts/check-template-tests.mjs
+      - name: Run template live-schema checks
+        run: npm --prefix template/registry run validate
+      - name: Require the pinned template checkout to remain clean
+        run: |
+          git -C template/registry diff --exit-code
+          test -z "$(git -C template/registry status --porcelain --untracked-files=all)"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
       - run: npm run check
       - run: npm run lint -- --deny-warnings
       - run: npm run typecheck

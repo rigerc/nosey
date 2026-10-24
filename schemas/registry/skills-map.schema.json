@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/rigerc/nosey/blob/main/templates/registry/schemas/skills-map.schema.json",
   "title": "Nosey skills map (schemaVersion 1 and 2)",
-  "description": "Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded. x-builtInTechnologies mirrors Nosey's built-in technology IDs and names; it is informational and constrains neither technologies nor technologySkills, which may reference declared or built-in technologies.",
+  "description": "Structural contract for skills-map.json. The instance schemaVersion discriminates versions 1 and 2; this schema document has a single revision. This schema is not a registry validator: parser-only rules (uniqueness by property, regex compilation, UTF-16 source limits, external source shape, path normalization) and registry-level integration rules (registryId agreement, skill file existence, dangling references, external identity conflicts) are listed instead of encoded. x-builtInTechnologies and x-builtInCombinations are informational inventories of Nosey's built-in IDs and names. They do not constrain technology or combination declarations or references.",
   "examples": [
     {
       "$schema": "./schemas/skills-map.schema.json",
@@ -265,6 +265,41 @@
     {"id": "zsh", "name": "Zsh"},
     {"id": "zustand", "name": "Zustand"}
   ],
+  "x-builtInCombinations": [
+    {"id": "android-clerk", "name": "Android + Clerk"},
+    {"id": "astro-clerk", "name": "Astro + Clerk"},
+    {"id": "chrome-extension-clerk", "name": "Chrome Extension + Clerk"},
+    {"id": "cloudflare-vite", "name": "Cloudflare + Vite"},
+    {"id": "django-celery", "name": "Django + Celery"},
+    {"id": "docker-node", "name": "Docker + Node.js"},
+    {"id": "docker-python", "name": "Docker + Python"},
+    {"id": "expo-clerk", "name": "Expo + Clerk"},
+    {"id": "fastapi-sqlalchemy", "name": "FastAPI + SQLAlchemy"},
+    {"id": "gsap-react", "name": "GSAP + React"},
+    {"id": "nextjs-clerk", "name": "Next.js + Clerk"},
+    {"id": "nextjs-drizzle", "name": "Next.js + Drizzle"},
+    {"id": "nextjs-playwright", "name": "Next.js + Playwright"},
+    {"id": "nextjs-prisma", "name": "Next.js + Prisma"},
+    {"id": "nextjs-supabase", "name": "Next.js + Supabase"},
+    {"id": "nextjs-trpc", "name": "Next.js + tRPC"},
+    {"id": "nextjs-vercel-ai", "name": "Next.js + Vercel AI SDK"},
+    {"id": "node-express", "name": "Node.js + Express"},
+    {"id": "nuxt-clerk", "name": "Nuxt + Clerk"},
+    {"id": "rails-rspec", "name": "Ruby on Rails + RSpec"},
+    {"id": "rails-sidekiq", "name": "Ruby on Rails + Sidekiq"},
+    {"id": "react-clerk", "name": "React + Clerk"},
+    {"id": "react-hook-form-zod", "name": "React Hook Form + Zod"},
+    {"id": "react-native-expo", "name": "React Native + Expo"},
+    {"id": "react-react-three-fiber", "name": "React + React Three Fiber"},
+    {"id": "react-router-clerk", "name": "React Router + Clerk"},
+    {"id": "react-shadcn", "name": "React + shadcn/ui"},
+    {"id": "react-tanstack-query", "name": "React + TanStack Query"},
+    {"id": "react-zustand", "name": "React + Zustand"},
+    {"id": "swiftui-clerk", "name": "SwiftUI + Clerk"},
+    {"id": "tailwind-shadcn", "name": "Tailwind CSS + shadcn/ui"},
+    {"id": "tanstack-clerk", "name": "TanStack Start + Clerk"},
+    {"id": "vue-clerk", "name": "Vue + Clerk"}
+  ],
   "additionalProperties": true,
   "properties": {
     "$schema": {
@@ -280,7 +315,7 @@
     "registryId": {
       "$ref": "#/$defs/Text",
       "title": "Registry ID",
-      "description": "Identity shared with registry.json and skills-manifest.json. The owner/repository shape is an initializer authoring rule, not a parser rule.",
+      "description": "Identity shared with skills-manifest.json. The owner/repository shape is an initializer authoring rule, not a parser rule.",
       "x-normalization": "Rewritten by registry init, which remaps this prefix in local skill references."
     },
     "alwaysRecommend": {

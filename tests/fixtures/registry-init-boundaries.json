@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "source": "issue-41 offline init boundary contract; inputs for the init/download worker",
+  "githubTemplate": [
+    {
+      "name": "head_matches_approved_sha",
+      "preflightHead": "T",
+      "approvedSha": "T",
+      "createRemote": false,
+      "expected": "proceed_to_create"
+    },
+    {
+      "name": "head_mismatch_before_create",
+      "preflightHead": "U",
+      "approvedSha": "T",
+      "createRemote": false,
+      "expected": "abort_before_remote_creation"
+    },
+    {
+      "name": "head_moves_during_create",
+      "preflightHead": "T",
+      "postCreateHead": "U",
+      "approvedSha": "T",
+      "createRemote": true,
+      "expected": "retain_remote_and_report_recovery"
+    },
+    {
+      "name": "same_tree_different_commit",
+      "approvedSha": "T",
+      "createdSha": "U",
+      "approvedTree": "TREE",
+      "createdTree": "TREE",
+      "createRemote": true,
+      "expected": "accept_content_equivalence"
+    },
+    {
+      "name": "postclone_tree_mismatch",
+      "approvedTree": "TREE-T",
+      "createdTree": "TREE-U",
+      "createRemote": true,
+      "expected": "retain_remote_and_report_recovery"
+    }
+  ],
+  "archive": [
+    {"name": "sha256_mismatch", "expected": "reject_before_extraction"},
+    {"name": "path_traversal", "expected": "reject_without_escape"},
+    {"name": "symlink_or_hardlink", "expected": "reject_without_following_link"},
+    {"name": "unsupported_entry_type", "expected": "reject"},
+    {"name": "entry_count_limit", "expected": "reject"},
+    {"name": "expanded_byte_limit", "expected": "reject"},
+    {"name": "download_timeout_or_size_limit", "expected": "reject"},
+    {"name": "destination_reservation_conflict", "expected": "preserve_existing_destination"}
+  ],
+  "execution": "No network transport or acquired template code is used by these cases; implementation behavior is owned by the Nosey init/download worker."
+}

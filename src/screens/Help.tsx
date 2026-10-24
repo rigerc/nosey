@@ -117,7 +117,7 @@ export function HelpScreen() {
                 <>
                   <Text>nosey [path] [--explain | --json | --skills-only | --plain]</Text>
                   <Text>nosey scan [path] --depth 8 --max-files 20000</Text>
-                  <Text>nosey registry init|list|add|remove|show|validate|build|refresh</Text>
+                  <Text>nosey registry init|list|add|remove|show|validate|refresh</Text>
                   <Text>nosey doctor --json / nosey --setup</Text>
                   <Muted>
                     --no-interactive produces a plain report. Piped output never prompts.

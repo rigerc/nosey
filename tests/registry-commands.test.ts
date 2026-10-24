@@ -10,9 +10,9 @@ import {promisify} from 'node:util';
 import {test, expect} from 'vite-plus/test';
 import {scaffoldRegistry} from './helpers/registry-template.js';
 import {
-  buildRegistry,
   editRegistry,
   setAlwaysRecommend,
+  validateRegistry,
   type RegistryEntry,
 } from '../src/lib/registry/commands.js';
 import type {LoadedRegistry} from '../src/lib/registry/types.js';
@@ -194,19 +194,6 @@ test('separate CLI processes preserve simultaneous global configuration updates'
   });
 });
 
-test('build refuses symlink manifests without overwriting their targets', async () => {
-  await fixture(async ({command, root, registry}) => {
-    const outside = path.join(root, 'outside.json');
-    const manifest = path.join(registry, 'skills-manifest.json');
-    await fs.writeFile(outside, 'keep this file');
-    await fs.rm(manifest);
-    await fs.symlink(outside, manifest);
-    await expect(command('registry', 'build', registry)).rejects.toThrow(/regular file/);
-    expect(await fs.readFile(outside, 'utf8')).toBe('keep this file');
-    expect((await fs.lstat(manifest)).isSymbolicLink()).toBe(true);
-  });
-});
-
 test('list includes legacy project entries, --global lists only global entries', async () => {
   await fixture(async ({command, projectConfig, globalConfig, registry}) => {
     const remote = 'https://example.invalid/team/skills.git';
@@ -363,7 +350,6 @@ test('validate succeeds for valid registries and defaults to the current directo
 
 for (const problem of [
   'schema',
-  'settings ID',
   'map ID',
   'missing skill',
   'unsafe path',
@@ -380,12 +366,6 @@ for (const problem of [
       const skills = manifest['skills'] as Array<{id: string; name: string; path: string}>;
 
       if (problem === 'schema') manifest['schemaVersion'] = 9;
-
-      if (problem === 'settings ID')
-        await fs.writeFile(
-          path.join(registry, 'registry.json'),
-          JSON.stringify({schemaVersion: 1, registryId: 'other/skills'}),
-        );
 
       if (problem === 'map ID') map['registryId'] = 'other/skills';
 
@@ -420,41 +400,89 @@ for (const problem of [
   });
 }
 
-test('build uses the bundled generator, is deterministic and preserves the map', async () => {
-  await fixture(async ({command, registry}) => {
+test('registry validation silently ignores every form of stray registry.json and is read-only', async () => {
+  await fixture(async ({registry, root, command}) => {
     const mapPath = path.join(registry, 'skills-map.json');
-    const originalMap = await fs.readFile(mapPath, 'utf8');
-    await fs.writeFile(
-      path.join(registry, 'scripts/generate-manifest.mjs'),
-      'throw new Error("must never execute");',
-    );
-    await fs.mkdir(path.join(registry, 'skills/new'));
-    await fs.writeFile(
-      path.join(registry, 'skills/new/SKILL.md'),
-      '---\nname: New skill\ndescription: A new skill\n---\n',
-    );
-    const {stdout} = await command('registry', 'build', registry);
-    expect(stdout).toMatch(/2 skills/);
     const manifestPath = path.join(registry, 'skills-manifest.json');
-    const first = await fs.readFile(manifestPath, 'utf8');
-    await command('registry', 'build', registry);
-    expect(await fs.readFile(manifestPath, 'utf8')).toBe(first);
-    expect(await fs.readFile(mapPath, 'utf8')).toBe(originalMap);
-    expect(first).toMatch(/acme\/skills\/new/);
-    await command('registry', 'validate', registry);
+    const skillPath = path.join(registry, 'skills/example-testing/SKILL.md');
+
+    const untouched = async () => {
+      return Promise.all(
+        [mapPath, manifestPath, skillPath].map((filename) => fs.readFile(filename)),
+      );
+    };
+
+    const before = await untouched();
+    const legacy = path.join(registry, 'registry.json');
+    const outside = path.join(root, 'outside.json');
+
+    await fs.writeFile(legacy, '{malformed');
+    let result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy);
+    await fs.writeFile(legacy, JSON.stringify({schemaVersion: 1, registryId: 'other/identity'}));
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy);
+    await fs.writeFile(outside, '{"registryId":"different/identity"}');
+    await fs.symlink(outside, legacy);
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+    expect(await fs.readFile(outside, 'utf8')).toBe('{"registryId":"different/identity"}');
+
+    await fs.rm(legacy);
+    await fs.mkdir(legacy);
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy, {recursive: true});
+    await fs.writeFile(legacy, 'x'.repeat(4 * 1024 * 1024 + 1));
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
   });
 });
 
-test('failed build preserves the existing manifest', async () => {
-  await fixture(async ({command, registry}) => {
-    const filename = path.join(registry, 'skills-manifest.json');
-    const original = await fs.readFile(filename, 'utf8');
-    await fs.writeFile(
-      path.join(registry, 'skills/example-testing/SKILL.md'),
-      '# Missing frontmatter',
+test('explicit validation accepts declared alwaysRecommend and rejects dangling IDs', async () => {
+  await fixture(async ({registry, command}) => {
+    const mapPath = path.join(registry, 'skills-map.json');
+    const map = await jsonFile(mapPath);
+    const declared = 'acme/skills/example-testing';
+    map['alwaysRecommend'] = [declared];
+    await fs.writeFile(mapPath, JSON.stringify(map));
+    await expect(validateRegistry(registry)).resolves.toBeDefined();
+
+    map['alwaysRecommend'] = ['acme/skills/not-declared'];
+    await fs.writeFile(mapPath, JSON.stringify(map));
+    await expect(validateRegistry(registry)).rejects.toThrow(
+      'Always recommended skill not declared in registry: acme/skills/not-declared',
     );
-    await expect(command('registry', 'build', registry)).rejects.toThrow(/frontmatter/);
-    expect(await fs.readFile(filename, 'utf8')).toBe(original);
+
+    // Scan keeps merge's existing warning-and-filter behavior; strict rejection is explicit validation.
+    await command('registry', 'add', './team-skills');
+    const scan = await command('.', '--json', '--no-frontend-bonus');
+    expect(scan.stderr).toContain('Always recommended skill not declared in registry');
+  });
+});
+
+test('retired registry build is rejected and omitted from help', async () => {
+  await fixture(async ({command, commandProcess, registry}) => {
+    await expect(command('registry', 'build', registry)).rejects.toThrow(
+      /Expected: nosey registry/,
+    );
+    const {stdout} = await commandProcess('--help');
+    expect(stdout).not.toMatch(/registry <[^\n]*build/);
   });
 });
 
@@ -467,14 +495,12 @@ test('invalid command syntax and flags fail before creating configuration', asyn
       ['registry', 'remove'],
       ['registry', 'show'],
       ['registry', 'list', 'extra'],
-      ['registry', 'build', '.', 'extra'],
       ['registry', 'add', './team-skills', '--ref', 'main'],
       ['registry', 'add', 'http://example.invalid/skills'],
       ['registry', 'add', 'https://example.invalid/skills', '--ref=--bad'],
       ['registry', 'add', './team-skills', '--json'],
       ['registry', 'show', './team-skills', '--global'],
       ['registry', 'validate', './team-skills', '--depth', '1'],
-      ['registry', 'build', './team-skills', '--no-git'],
       ['registry', 'list', '--registry', './team-skills'],
       ['registry', 'init', '--global'],
       ['registry', 'add', './team-skills', '--project'],
@@ -582,7 +608,7 @@ test('always recommended skills live in the registry map and reach every headles
   });
 });
 
-test('recommendation writes reject unknown IDs and survive manifest regeneration', async () => {
+test('recommendation writes reject unknown IDs and preserve mapping behavior after skill removal', async () => {
   await fixture(async ({root, registry, command}) => {
     const project = path.join(root, 'workspace');
     await fs.mkdir(project);
@@ -600,13 +626,14 @@ test('recommendation writes reject unknown IDs and survive manifest regeneration
     ).toEqual([]);
     await editRegistry('add', registry, {root: project, scope: 'project'});
     await setAlwaysRecommend(registry, [id]);
-    expect(await buildRegistry(registry)).toContain('skills-manifest.json');
     expect((await jsonFile(mapPath)).alwaysRecommend).toEqual([id]);
-    // A deleted skill is a warning, so the rest of the registry keeps working.
+    // Keep the manifest current after deletion; the map's dangling ID remains a warning.
     const edited = await jsonFile(mapPath);
     await fs.writeFile(mapPath, JSON.stringify({...edited, technologySkills: []}));
     await fs.rm(path.join(registry, 'skills/example-testing'), {recursive: true});
-    await buildRegistry(registry);
+    const manifestPath = path.join(registry, 'skills-manifest.json');
+    const manifest = await jsonFile(manifestPath);
+    await fs.writeFile(manifestPath, JSON.stringify({...manifest, skills: []}));
     const {stdout, stderr} = await command('scan', project, '--json', '--no-frontend-bonus');
     const report = JSON.parse(stdout);
     expect(report.skills).toEqual([]);

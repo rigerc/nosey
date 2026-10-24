@@ -10,7 +10,7 @@
     "assets/nosey-brand-kit",
     "THIRD_PARTY_NOTICES.md",
     "schemas/registry",
-    "registry-tools"
+    "LICENSE-APACHE-2.0"
   ],
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "lint": "vp lint",
     "check": "vp check",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:unit && npm run test:catalog && npm run test:map && npm run test:registry",
+    "test": "npm run test:unit && npm run test:catalog && npm run test:map",
     "test:unit": "vp test run",
     "test:catalog": "node --import=tsx --test scripts/build-skills-catalog.test.mjs",
     "test:map": "node --import=tsx --test scripts/propose-skill-mappings.test.mjs",
@@ -35,12 +35,14 @@
     "theme:token": "node scripts/theme.mjs token",
     "theme:default": "node scripts/theme.mjs default",
     "record": "node --import tsx scripts/screenshot.tsx --video",
-    "test:registry": "node --test registry-tools/*.test.mjs",
     "docs:schema": "node scripts/build-schema-docs.mjs",
     "docs:schema:check": "node scripts/build-schema-docs.mjs --check",
     "schema:technologies": "node --experimental-strip-types scripts/build-schema-technologies.ts",
     "schema:technologies:check": "node --experimental-strip-types scripts/build-schema-technologies.ts --check",
-    "registry:package:check": "node --import=tsx scripts/check-registry-package.ts"
+    "registry:package:check": "node --import=tsx scripts/check-registry-package.ts",
+    "template:provenance:check": "node --import=tsx scripts/check-template-provenance.ts",
+    "template:schema:conformance": "node --import=tsx scripts/registry-schema-conformance.ts --schemas schemas/registry",
+    "template:identity:conformance": "node --import=tsx scripts/registry-identity-conformance.ts --schemas schemas/registry"
   },
   "dependencies": {
     "ink": "^8.0.0",

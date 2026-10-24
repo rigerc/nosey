@@ -2,8 +2,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {z} from 'zod';
-import {githubClient} from './github.js';
+import {
+  templateArchiveUrl,
+  validateTrustedTemplateRevision,
+  type TrustedTemplateRevision,
+} from './template-provenance.js';
+import {trustedTemplateRevision} from './template-source.js';
+import {computeTemplateContentTree} from './template-content-tree.js';
 
 export const templateRepository = 'rigerc/nosey-registry-template';
 
@@ -108,6 +113,7 @@ export async function extractTemplate(
   archive: Buffer,
   directory: string,
   signal = AbortSignal.timeout(templateLimits.timeout),
+  expectedCommit?: string,
 ): Promise<void> {
   let bytes: Buffer;
 
@@ -159,8 +165,13 @@ export async function extractTemplate(
     // GitHub emits a global PAX comment containing the source commit. It does not
     // affect file paths or sizes. Reject all other extended-header semantics.
     if (type === 103) {
-      if (!/^\d+ comment=[a-f\d]{40}\n$/.test(data.toString('utf8')))
+      const match = /^(\d+) comment=([a-f\d]{40})\n$/.exec(data.toString('utf8'));
+
+      if (!match || Number(match[1]) !== data.length)
         throw new Error('Unsupported template archive extended header');
+
+      if (expectedCommit && match[2] !== expectedCommit)
+        throw new Error('Template archive source commit does not match the approved revision');
       continue;
     }
 
@@ -205,36 +216,34 @@ export async function downloadTemplate(
   transport: TemplateTransport = request,
   signal = AbortSignal.timeout(templateLimits.timeout),
 ): Promise<string> {
+  return downloadTemplateWithRevision(destination, trustedTemplateRevision, transport, signal);
+}
+
+/** Internal explicit revision seam for archive tests; production callers use downloadTemplate. */
+export async function downloadTemplateWithRevision(
+  destination: string,
+  revision: TrustedTemplateRevision,
+  transport: TemplateTransport = request,
+  signal = AbortSignal.timeout(templateLimits.timeout),
+): Promise<string> {
+  const trusted = validateTrustedTemplateRevision(revision);
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-template-'));
 
   try {
-    // Preserve the metadata byte bound and shared deadline before Octokit parses JSON.
-    const github = githubClient(undefined, async (url) => {
-      const bytes = await boundedResponse(new Request(url).url, signal, 1024 * 1024, transport);
-
-      return new Response(new Uint8Array(bytes), {headers: {'content-type': 'application/json'}});
-    });
-
-    const [owner, repo] = templateRepository.split('/');
-    const {data: metadata} = await github.rest.repos.get({owner: owner!, repo: repo!});
-    const {default_branch: branch} = z.object({default_branch: z.string().min(1)}).parse(metadata);
-
-    const {data: commit} = await github.rest.repos.getCommit({
-      owner: owner!,
-      repo: repo!,
-      ref: branch,
-    });
-
-    const {sha} = z.object({sha: z.string().regex(/^[a-f\d]{40}$/)}).parse(commit);
-
     const archive = await boundedResponse(
-      `https://codeload.github.com/${templateRepository}/tar.gz/${sha}`,
+      templateArchiveUrl(trusted),
       signal,
       templateLimits.download,
       transport,
     );
 
-    await extractTemplate(archive, temporary, signal);
+    await extractTemplate(archive, temporary, signal, trusted.commit);
+    const actualTree = await computeTemplateContentTree(temporary);
+
+    if (actualTree !== trusted.tree)
+      throw new Error(
+        `Template content tree ${actualTree} does not match approved ${trusted.tree}`,
+      );
 
     for (const name of await fs.readdir(temporary)) {
       signal.throwIfAborted();
@@ -246,7 +255,7 @@ export async function downloadTemplate(
       });
     }
 
-    return sha;
+    return trusted.commit;
   } catch (cause) {
     throw new Error(
       'Unable to download registry template: ' +

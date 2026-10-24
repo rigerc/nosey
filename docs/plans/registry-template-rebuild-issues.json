@@ -1,0 +1,744 @@
+{
+  "projectId": "PVT_kwHOAQIga84BoeE4",
+  "projectUrl": "https://github.com/users/rigerc/projects/11",
+  "sourceSHA256": "55ba0b8656e439784ba80a247b4eb57d5ea715f4e7d39cdd9c6b4235d3d91294",
+  "transport": "GitHub CLI API",
+  "mcpError": "Bad credentials - https://docs.github.com/rest",
+  "authorization": "User approved the proposed 18 issues and 18 project items by replying Proceed.",
+  "issues": {
+    "D01": {
+      "key": "D01",
+      "repository": "rigerc/nosey",
+      "title": "[D01] Record the revised contract, baseline evidence, and release decisions",
+      "number": 40,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh0tNg",
+      "url": "https://github.com/rigerc/nosey/issues/40",
+      "dependencies": [],
+      "verified": true,
+      "bodySHA256": "41d32524dfe31798f338a965042039ffd7427ee3c2db8ca2de0afebc9bf4c39f",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu14",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T01": {
+      "key": "T01",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T01] Define shared identity golden fixtures and transformation contracts",
+      "number": 16,
+      "nodeId": "I_kwDOVUEMp88AAAABZh02Ig",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/16",
+      "dependencies": ["D01"],
+      "verified": true,
+      "bodySHA256": "a0e1a0c26a607253e50c9179f5052488b06195da9afe036163a7dd25ac4c20d4",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu3w",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N01": {
+      "key": "N01",
+      "repository": "rigerc/nosey",
+      "title": "[N01] Build the differential corpus and offline security transport baseline",
+      "number": 41,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh03Dw",
+      "url": "https://github.com/rigerc/nosey/issues/41",
+      "dependencies": ["D01", "T01"],
+      "verified": true,
+      "bodySHA256": "d50dbb640272301636940e8777def7ffe611de591864be78e714904adc449e5c",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu5U",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T02": {
+      "key": "T02",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T02] Implement bounded metadata extraction and deterministic manifest generation",
+      "number": 17,
+      "nodeId": "I_kwDOVUEMp88AAAABZh034A",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/17",
+      "dependencies": ["T01"],
+      "verified": true,
+      "bodySHA256": "e0e61a53e1bd3214c67a06475dea6b3e2d9186c933c3a6956ac87d2f66c2c438",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu6c",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T03": {
+      "key": "T03",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T03] Generate a safe README catalog without changing authored content",
+      "number": 18,
+      "nodeId": "I_kwDOVUEMp88AAAABZh04vw",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/18",
+      "dependencies": ["T01", "T02"],
+      "verified": true,
+      "bodySHA256": "4c51dd7bb1e962d694f6e955737ceb6e2c38182449da3c9f200b5489da6196c5",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu8M",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T04": {
+      "key": "T04",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T04] Implement fail-closed schema coverage and the bounded evaluator",
+      "number": 19,
+      "nodeId": "I_kwDOVUEMp88AAAABZh05dQ",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/19",
+      "dependencies": ["T01", "N01"],
+      "verified": true,
+      "bodySHA256": "608953b656d57ff701dd81a9aedf9e68dba6ed2db7a042486d623c48fb3783b8",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu9Q",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T05": {
+      "key": "T05",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T05] Validate live registry schemas and integration references safely",
+      "number": 20,
+      "nodeId": "I_kwDOVUEMp88AAAABZh06Sg",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/20",
+      "dependencies": ["T02", "T04"],
+      "verified": true,
+      "bodySHA256": "e857f72686d728950c4112c218faa7b5db09c28e716f3f83a84c6ebfdb10b8ec",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIu_8",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T06": {
+      "key": "T06",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T06] Migrate template guidance and preserve downstream ownership in sync",
+      "number": 21,
+      "nodeId": "I_kwDOVUEMp88AAAABZh07KA",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/21",
+      "dependencies": ["T01"],
+      "verified": true,
+      "bodySHA256": "fa170df8592bca95282e18d7a0c535f08bec0d3650b22513736a7e307619f315",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvA8",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T07": {
+      "key": "T07",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T07] Configure identity with exact local-ID rewrites and recoverable writes",
+      "number": 22,
+      "nodeId": "I_kwDOVUEMp88AAAABZh08JA",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/22",
+      "dependencies": ["T01", "T02", "T03", "T05", "T06"],
+      "verified": true,
+      "bodySHA256": "03da06cde13454a640010d5280b682c16a03d2060f8b9467387acfa3a134ab7d",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvCI",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "T08": {
+      "key": "T08",
+      "repository": "rigerc/nosey-registry-template",
+      "title": "[T08] Replace template CI and package scripts without installation steps",
+      "number": 23,
+      "nodeId": "I_kwDOVUEMp88AAAABZh08_w",
+      "url": "https://github.com/rigerc/nosey-registry-template/issues/23",
+      "dependencies": ["T02", "T03", "T05", "T06", "T07"],
+      "verified": true,
+      "bodySHA256": "50f7395bc196fbd7232bb77f076ed3dcfe2ece00135678cab01f7bf03236088e",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvDI",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N02": {
+      "key": "N02",
+      "repository": "rigerc/nosey",
+      "title": "[N02] Implement trusted identity transformation and run premerge parity",
+      "number": 42,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1D9A",
+      "url": "https://github.com/rigerc/nosey/issues/42",
+      "dependencies": ["N01", "T07", "T08"],
+      "verified": true,
+      "bodySHA256": "87cfd83b7d4760ae7bd3404a8c6c5f86b2ebf5e12ff518fdbb77a4ab071224ba",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvE8",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "G01": {
+      "key": "G01",
+      "repository": "rigerc/nosey",
+      "title": "[G01] Accept the template candidate and record its approved commit and tree",
+      "number": 43,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1E8w",
+      "url": "https://github.com/rigerc/nosey/issues/43",
+      "dependencies": ["N02", "T08"],
+      "verified": true,
+      "bodySHA256": "5c7787264a194e0ef1a32a6157a559d024096654a321db2d9f71ea7c0b2d3c64",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvF4",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N03": {
+      "key": "N03",
+      "repository": "rigerc/nosey",
+      "title": "[N03] Pin template provenance and enforce local/GitHub acquisition gates",
+      "number": 44,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1F0w",
+      "url": "https://github.com/rigerc/nosey/issues/44",
+      "dependencies": ["G01", "N01"],
+      "verified": true,
+      "bodySHA256": "f350d6d8519412a9854022e1b62142c24cb747b5becff235b5c67272273423c7",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvIQ",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N04": {
+      "key": "N04",
+      "repository": "rigerc/nosey",
+      "title": "[N04] Wire trusted configuration into initialization and validate replacement paths",
+      "number": 45,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1GxA",
+      "url": "https://github.com/rigerc/nosey/issues/45",
+      "dependencies": ["N02", "N03"],
+      "verified": true,
+      "bodySHA256": "ebe98a6a47cab0e34667c4f797f3bdc06a6eab44ecf6c7e4f307322a455436eb",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvJY",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N05": {
+      "key": "N05",
+      "repository": "rigerc/nosey",
+      "title": "[N05] Make registry validation read-only and enforce declared recommendations",
+      "number": 46,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1HlQ",
+      "url": "https://github.com/rigerc/nosey/issues/46",
+      "dependencies": ["N02", "G01"],
+      "verified": true,
+      "bodySHA256": "c9d32c69aa4c0958c25d92aa72ef68c0dd01f7487cba626a32c230d8db117004",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvKg",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N06": {
+      "key": "N06",
+      "repository": "rigerc/nosey",
+      "title": "[N06] Retire registry build and remove replaced tooling after migration",
+      "number": 47,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1Icg",
+      "url": "https://github.com/rigerc/nosey/issues/47",
+      "dependencies": ["N04", "N05", "T06"],
+      "verified": true,
+      "bodySHA256": "c46e7ad49bdb496239594cdf4c13851d7f83f276799198d85e44841ca90d6180",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvL0",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N07": {
+      "key": "N07",
+      "repository": "rigerc/nosey",
+      "title": "[N07] Publish combination metadata and align schema, docs and attribution",
+      "number": 48,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1Jag",
+      "url": "https://github.com/rigerc/nosey/issues/48",
+      "dependencies": ["G01", "N04", "N05"],
+      "verified": true,
+      "bodySHA256": "df1b68fd9b97f9a1ab73d0935db565e3c1d2d1e7c656aeb845b7466d1587b5dd",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvMw",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    },
+    "N08": {
+      "key": "N08",
+      "repository": "rigerc/nosey",
+      "title": "[N08] Enforce cross-repo CI, package smoke and final release evidence",
+      "number": 49,
+      "nodeId": "I_kwDOVRjwjs8AAAABZh1KaA",
+      "url": "https://github.com/rigerc/nosey/issues/49",
+      "dependencies": ["N03", "N04", "N05", "N06", "N07"],
+      "verified": true,
+      "bodySHA256": "3c8b8ee818f7e269404cff1b493d8927ae3852d61cbb59b484d0e194bdcde471",
+      "projectItemId": "PVTI_lAHOAQIga84BoeE4zhDIvOM",
+      "projectVerified": true,
+      "status": "Todo",
+      "agentStatus": "unclaimed"
+    }
+  },
+  "sourceComments": [
+    {
+      "id": 6378352068,
+      "html_url": "https://github.com/rigerc/nosey/issues/40#issuecomment-6378352068"
+    },
+    {
+      "id": 6378352350,
+      "html_url": "https://github.com/rigerc/nosey/issues/40#issuecomment-6378352350"
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-10-24T01:46:05.264109+00:00",
+      "event": "Created or recovered issue D01"
+    },
+    {
+      "at": "2026-10-24T01:46:05.728511+00:00",
+      "event": "Verified issue D01"
+    },
+    {
+      "at": "2026-10-24T01:46:14.969789+00:00",
+      "event": "Recorded source part 1"
+    },
+    {
+      "at": "2026-10-24T01:46:16.507534+00:00",
+      "event": "Recorded source part 2"
+    },
+    {
+      "at": "2026-10-24T01:46:18.835804+00:00",
+      "event": "Verified issue D01"
+    },
+    {
+      "at": "2026-10-24T01:46:23.672221+00:00",
+      "event": "Created or recovered issue T01"
+    },
+    {
+      "at": "2026-10-24T01:46:24.160748+00:00",
+      "event": "Verified issue T01"
+    },
+    {
+      "at": "2026-10-24T01:46:25.561077+00:00",
+      "event": "Created or recovered issue N01"
+    },
+    {
+      "at": "2026-10-24T01:46:26.003974+00:00",
+      "event": "Verified issue N01"
+    },
+    {
+      "at": "2026-10-24T01:46:27.336555+00:00",
+      "event": "Created or recovered issue T02"
+    },
+    {
+      "at": "2026-10-24T01:46:27.745620+00:00",
+      "event": "Verified issue T02"
+    },
+    {
+      "at": "2026-10-24T01:46:29.076845+00:00",
+      "event": "Created or recovered issue T03"
+    },
+    {
+      "at": "2026-10-24T01:46:29.501531+00:00",
+      "event": "Verified issue T03"
+    },
+    {
+      "at": "2026-10-24T01:46:30.745317+00:00",
+      "event": "Created or recovered issue T04"
+    },
+    {
+      "at": "2026-10-24T01:46:31.143776+00:00",
+      "event": "Verified issue T04"
+    },
+    {
+      "at": "2026-10-24T01:46:32.414111+00:00",
+      "event": "Created or recovered issue T05"
+    },
+    {
+      "at": "2026-10-24T01:46:32.787831+00:00",
+      "event": "Verified issue T05"
+    },
+    {
+      "at": "2026-10-24T01:46:34.400634+00:00",
+      "event": "Created or recovered issue T06"
+    },
+    {
+      "at": "2026-10-24T01:46:34.864029+00:00",
+      "event": "Verified issue T06"
+    },
+    {
+      "at": "2026-10-24T01:46:36.243991+00:00",
+      "event": "Created or recovered issue T07"
+    },
+    {
+      "at": "2026-10-24T01:46:36.726985+00:00",
+      "event": "Verified issue T07"
+    },
+    {
+      "at": "2026-10-24T01:46:38.009385+00:00",
+      "event": "Created or recovered issue T08"
+    },
+    {
+      "at": "2026-10-24T01:46:38.622052+00:00",
+      "event": "Verified issue T08"
+    },
+    {
+      "at": "2026-10-24T01:46:53.549160+00:00",
+      "event": "Created or recovered issue N02"
+    },
+    {
+      "at": "2026-10-24T01:46:54.062297+00:00",
+      "event": "Verified issue N02"
+    },
+    {
+      "at": "2026-10-24T01:46:55.700134+00:00",
+      "event": "Created or recovered issue G01"
+    },
+    {
+      "at": "2026-10-24T01:46:56.110847+00:00",
+      "event": "Verified issue G01"
+    },
+    {
+      "at": "2026-10-24T01:46:57.645781+00:00",
+      "event": "Created or recovered issue N03"
+    },
+    {
+      "at": "2026-10-24T01:46:58.055741+00:00",
+      "event": "Verified issue N03"
+    },
+    {
+      "at": "2026-10-24T01:46:59.454602+00:00",
+      "event": "Created or recovered issue N04"
+    },
+    {
+      "at": "2026-10-24T01:46:59.898702+00:00",
+      "event": "Verified issue N04"
+    },
+    {
+      "at": "2026-10-24T01:47:01.243643+00:00",
+      "event": "Created or recovered issue N05"
+    },
+    {
+      "at": "2026-10-24T01:47:01.742108+00:00",
+      "event": "Verified issue N05"
+    },
+    {
+      "at": "2026-10-24T01:47:03.175956+00:00",
+      "event": "Created or recovered issue N06"
+    },
+    {
+      "at": "2026-10-24T01:47:03.564992+00:00",
+      "event": "Verified issue N06"
+    },
+    {
+      "at": "2026-10-24T01:47:05.223538+00:00",
+      "event": "Created or recovered issue N07"
+    },
+    {
+      "at": "2026-10-24T01:47:05.664451+00:00",
+      "event": "Verified issue N07"
+    },
+    {
+      "at": "2026-10-24T01:47:07.260843+00:00",
+      "event": "Created or recovered issue N08"
+    },
+    {
+      "at": "2026-10-24T01:47:07.674587+00:00",
+      "event": "Verified issue N08"
+    },
+    {
+      "at": "2026-10-24T01:47:13.006179+00:00",
+      "event": "Added or recovered project item D01"
+    },
+    {
+      "at": "2026-10-24T01:47:14.859208+00:00",
+      "event": "Verified project item D01"
+    },
+    {
+      "at": "2026-10-24T01:47:16.376837+00:00",
+      "event": "Added or recovered project item T01"
+    },
+    {
+      "at": "2026-10-24T01:47:18.496487+00:00",
+      "event": "Verified project item T01"
+    },
+    {
+      "at": "2026-10-24T01:47:20.364821+00:00",
+      "event": "Added or recovered project item N01"
+    },
+    {
+      "at": "2026-10-24T01:47:22.033534+00:00",
+      "event": "Verified project item N01"
+    },
+    {
+      "at": "2026-10-24T01:47:23.622186+00:00",
+      "event": "Added or recovered project item T02"
+    },
+    {
+      "at": "2026-10-24T01:47:25.562989+00:00",
+      "event": "Verified project item T02"
+    },
+    {
+      "at": "2026-10-24T01:47:27.446671+00:00",
+      "event": "Added or recovered project item T03"
+    },
+    {
+      "at": "2026-10-24T01:47:29.083535+00:00",
+      "event": "Verified project item T03"
+    },
+    {
+      "at": "2026-10-24T01:47:30.687490+00:00",
+      "event": "Added or recovered project item T04"
+    },
+    {
+      "at": "2026-10-24T01:47:32.522875+00:00",
+      "event": "Verified project item T04"
+    },
+    {
+      "at": "2026-10-24T01:47:39.755969+00:00",
+      "event": "Added or recovered project item T05"
+    },
+    {
+      "at": "2026-10-24T01:47:41.706904+00:00",
+      "event": "Verified project item T05"
+    },
+    {
+      "at": "2026-10-24T01:47:43.521500+00:00",
+      "event": "Added or recovered project item T06"
+    },
+    {
+      "at": "2026-10-24T01:47:45.160460+00:00",
+      "event": "Verified project item T06"
+    },
+    {
+      "at": "2026-10-24T01:47:46.696603+00:00",
+      "event": "Added or recovered project item T07"
+    },
+    {
+      "at": "2026-10-24T01:47:48.241719+00:00",
+      "event": "Verified project item T07"
+    },
+    {
+      "at": "2026-10-24T01:47:49.973754+00:00",
+      "event": "Added or recovered project item T08"
+    },
+    {
+      "at": "2026-10-24T01:47:51.610774+00:00",
+      "event": "Verified project item T08"
+    },
+    {
+      "at": "2026-10-24T01:47:53.013905+00:00",
+      "event": "Added or recovered project item N02"
+    },
+    {
+      "at": "2026-10-24T01:47:54.683258+00:00",
+      "event": "Verified project item N02"
+    },
+    {
+      "at": "2026-10-24T01:47:56.415055+00:00",
+      "event": "Added or recovered project item G01"
+    },
+    {
+      "at": "2026-10-24T01:47:58.579952+00:00",
+      "event": "Verified project item G01"
+    },
+    {
+      "at": "2026-10-24T01:48:03.642639+00:00",
+      "event": "Added or recovered project item N03"
+    },
+    {
+      "at": "2026-10-24T01:48:05.537762+00:00",
+      "event": "Verified project item N03"
+    },
+    {
+      "at": "2026-10-24T01:48:07.040819+00:00",
+      "event": "Added or recovered project item N04"
+    },
+    {
+      "at": "2026-10-24T01:48:08.854107+00:00",
+      "event": "Verified project item N04"
+    },
+    {
+      "at": "2026-10-24T01:48:10.623068+00:00",
+      "event": "Added or recovered project item N05"
+    },
+    {
+      "at": "2026-10-24T01:48:12.778233+00:00",
+      "event": "Verified project item N05"
+    },
+    {
+      "at": "2026-10-24T01:48:14.549885+00:00",
+      "event": "Added or recovered project item N06"
+    },
+    {
+      "at": "2026-10-24T01:48:16.699398+00:00",
+      "event": "Verified project item N06"
+    },
+    {
+      "at": "2026-10-24T01:48:18.414819+00:00",
+      "event": "Added or recovered project item N07"
+    },
+    {
+      "at": "2026-10-24T01:48:20.545803+00:00",
+      "event": "Verified project item N07"
+    },
+    {
+      "at": "2026-10-24T01:48:22.529550+00:00",
+      "event": "Added or recovered project item N08"
+    },
+    {
+      "at": "2026-10-24T01:48:24.174832+00:00",
+      "event": "Verified project item N08"
+    },
+    {
+      "at": "2026-10-24T01:48:33.647568+00:00",
+      "event": "Verified issue D01"
+    },
+    {
+      "at": "2026-10-24T01:48:34.127074+00:00",
+      "event": "Verified project item D01"
+    },
+    {
+      "at": "2026-10-24T01:48:34.569977+00:00",
+      "event": "Verified issue T01"
+    },
+    {
+      "at": "2026-10-24T01:48:35.058255+00:00",
+      "event": "Verified project item T01"
+    },
+    {
+      "at": "2026-10-24T01:48:35.477430+00:00",
+      "event": "Verified issue N01"
+    },
+    {
+      "at": "2026-10-24T01:48:36.032577+00:00",
+      "event": "Verified project item N01"
+    },
+    {
+      "at": "2026-10-24T01:48:36.434452+00:00",
+      "event": "Verified issue T02"
+    },
+    {
+      "at": "2026-10-24T01:48:36.974720+00:00",
+      "event": "Verified project item T02"
+    },
+    {
+      "at": "2026-10-24T01:48:37.395437+00:00",
+      "event": "Verified issue T03"
+    },
+    {
+      "at": "2026-10-24T01:48:37.998911+00:00",
+      "event": "Verified project item T03"
+    },
+    {
+      "at": "2026-10-24T01:48:38.433077+00:00",
+      "event": "Verified issue T04"
+    },
+    {
+      "at": "2026-10-24T01:48:39.023153+00:00",
+      "event": "Verified project item T04"
+    },
+    {
+      "at": "2026-10-24T01:48:39.455844+00:00",
+      "event": "Verified issue T05"
+    },
+    {
+      "at": "2026-10-24T01:48:40.047426+00:00",
+      "event": "Verified project item T05"
+    },
+    {
+      "at": "2026-10-24T01:48:40.482287+00:00",
+      "event": "Verified issue T06"
+    },
+    {
+      "at": "2026-10-24T01:48:41.071167+00:00",
+      "event": "Verified project item T06"
+    },
+    {
+      "at": "2026-10-24T01:48:41.500042+00:00",
+      "event": "Verified issue T07"
+    },
+    {
+      "at": "2026-10-24T01:48:41.949029+00:00",
+      "event": "Verified project item T07"
+    },
+    {
+      "at": "2026-10-24T01:48:42.402110+00:00",
+      "event": "Verified issue T08"
+    },
+    {
+      "at": "2026-10-24T01:48:42.887207+00:00",
+      "event": "Verified project item T08"
+    },
+    {
+      "at": "2026-10-24T01:48:43.323871+00:00",
+      "event": "Verified issue N02"
+    },
+    {
+      "at": "2026-10-24T01:48:43.835792+00:00",
+      "event": "Verified project item N02"
+    },
+    {
+      "at": "2026-10-24T01:48:44.348984+00:00",
+      "event": "Verified issue G01"
+    },
+    {
+      "at": "2026-10-24T01:48:44.859820+00:00",
+      "event": "Verified project item G01"
+    },
+    {
+      "at": "2026-10-24T01:48:45.373494+00:00",
+      "event": "Verified issue N03"
+    },
+    {
+      "at": "2026-10-24T01:48:45.885444+00:00",
+      "event": "Verified project item N03"
+    },
+    {
+      "at": "2026-10-24T01:48:46.312225+00:00",
+      "event": "Verified issue N04"
+    },
+    {
+      "at": "2026-10-24T01:48:46.746537+00:00",
+      "event": "Verified project item N04"
+    },
+    {
+      "at": "2026-10-24T01:48:47.183474+00:00",
+      "event": "Verified issue N05"
+    },
+    {
+      "at": "2026-10-24T01:48:47.762805+00:00",
+      "event": "Verified project item N05"
+    },
+    {
+      "at": "2026-10-24T01:48:48.190936+00:00",
+      "event": "Verified issue N06"
+    },
+    {
+      "at": "2026-10-24T01:48:48.636780+00:00",
+      "event": "Verified project item N06"
+    },
+    {
+      "at": "2026-10-24T01:48:49.156011+00:00",
+      "event": "Verified issue N07"
+    },
+    {
+      "at": "2026-10-24T01:48:49.655954+00:00",
+      "event": "Verified project item N07"
+    },
+    {
+      "at": "2026-10-24T01:48:50.081620+00:00",
+      "event": "Verified issue N08"
+    },
+    {
+      "at": "2026-10-24T01:48:50.570373+00:00",
+      "event": "Verified project item N08"
+    },
+    {
+      "at": "2026-10-24T01:48:50.573025+00:00",
+      "event": "Final batch verification passed"
+    }
+  ],
+  "updatedAt": "2026-10-24T01:48:50.573025+00:00",
+  "verifiedAt": "2026-10-24T01:48:50.573017+00:00",
+  "verifiedIssueCount": 18,
+  "verifiedProjectItemCount": 18
+}

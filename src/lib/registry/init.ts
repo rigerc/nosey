@@ -3,7 +3,9 @@ import type {Octokit} from 'octokit';
 import {errorCode} from '../values.js';
 
 import {execFile} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs/promises';
+import {constants as fsConstants} from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import {createInterface} from 'node:readline/promises';
@@ -11,9 +13,15 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {promisify, stripVTControlCharacters} from 'node:util';
 import {validateRegistry} from './commands.js';
 import {authenticatedGithubClient, githubGitEnvironment} from './github.js';
-import {configureTool} from './tools.js';
 import {readRegistryFile} from './load.js';
 import {downloadTemplate, templateRepository, type TemplateTransport} from './template.js';
+import {configureRegistryIdentityFiles} from './identity-files.js';
+import {trustedTemplateRevision} from './template-source.js';
+import {
+  assertGeneratedTemplateTree,
+  assertTemplateDefaultHead,
+  verifyTemplateGuide,
+} from './template-provenance.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -166,16 +174,149 @@ export async function defaultRun(
 export async function configureRegistryIdentity(
   directory: string,
   registryId: string,
-): Promise<void> {
+): Promise<string[]> {
   validateRegistryId(registryId);
-  await readRegistryFile(directory, 'registry.json');
   await readRegistryFile(directory, 'README.md');
   await validateRegistry(directory);
-  await execFileAsync(process.execPath, [configureTool, registryId, '--root', directory], {
-    timeout: 60_000,
-    maxBuffer: 1024 * 1024,
-  });
+  const guide = path.join(directory, 'AGENTS.md');
+  let guidePolicy: {maintainer: string; downstream: string} | undefined;
+
+  const readGuide = async (filename: string): Promise<Buffer> => {
+    const relative = path.relative(directory, filename);
+    let parent = path.resolve(directory);
+
+    for (const segment of path.dirname(relative).split(path.sep).filter(Boolean)) {
+      parent = path.join(parent, segment);
+      const parentInfo = await fs.lstat(parent);
+
+      if (!parentInfo.isDirectory() || parentInfo.isSymbolicLink())
+        throw new Error(`Invalid trusted guide parent: ${path.basename(parent)}`);
+    }
+
+    const info = await fs.lstat(filename);
+
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > 4 * 1024 * 1024)
+      throw new Error(`Invalid trusted guide file: ${path.basename(filename)}`);
+    const handle = await fs.open(filename, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+
+    try {
+      const opened = await handle.stat();
+
+      if (
+        !opened.isFile() ||
+        opened.nlink !== 1 ||
+        opened.dev !== info.dev ||
+        opened.ino !== info.ino ||
+        opened.size > 4 * 1024 * 1024
+      )
+        throw new Error(`Trusted guide changed while being opened: ${path.basename(filename)}`);
+
+      return await handle.readFile();
+    } finally {
+      await handle.close();
+    }
+  };
+
+  let maintainer: Buffer | undefined;
+
+  try {
+    maintainer = await readGuide(guide);
+  } catch (error) {
+    if (errorCode(error) !== 'ENOENT') throw error;
+  }
+
+  if (maintainer) {
+    const sentinel = Buffer.from('<!-- NOSEY-TEMPLATE-MAINTAINER-GUIDE:v1 -->');
+
+    const exactMaintainer = (() => {
+      try {
+        verifyTemplateGuide(maintainer!, trustedTemplateRevision, 'maintainer');
+
+        return true;
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes('maintainer guide hash mismatch'))
+          throw error;
+
+        return false;
+      }
+    })();
+
+    const guideText = maintainer.toString('utf8');
+
+    if (
+      !exactMaintainer &&
+      (maintainer.includes(sentinel) ||
+        /NOSEY-TEMPLATE-MAINTAINER-GUIDE|Registry template agent guide/u.test(guideText))
+    )
+      throw new Error('Conflicting registry template maintainer guide; refusing replacement');
+
+    if (exactMaintainer) {
+      const downstream = await readGuide(
+        path.join(directory, '.agents/templates/registry-AGENTS.md'),
+      );
+
+      verifyTemplateGuide(downstream, trustedTemplateRevision, 'downstream');
+
+      const decode = (bytes: Buffer, name: string): string => {
+        const value = bytes.toString('utf8');
+
+        if (!Buffer.from(value).equals(bytes)) throw new Error(`${name} must be valid UTF-8`);
+
+        return value;
+      };
+
+      guidePolicy = {
+        maintainer: decode(maintainer, 'AGENTS.md'),
+        downstream: decode(downstream, '.agents/templates/registry-AGENTS.md'),
+      };
+    }
+  }
+
+  const {changedFiles} = await configureRegistryIdentityFiles(directory, registryId, {guidePolicy});
   await validateRegistry(directory);
+
+  return changedFiles;
+}
+
+const identityFiles = new Set([
+  'skills-map.json',
+  'skills-manifest.json',
+  'README.md',
+  'AGENTS.md',
+]);
+
+function changedStatusPaths(status: string): string[] {
+  return status
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.slice(3));
+}
+
+async function assertOnlyExpectedIdentityChanges(
+  directory: string,
+  runner: CommandRunner,
+  expected: Map<string, string>,
+): Promise<void> {
+  const status =
+    (await runner('git', ['-C', directory, 'status', '--porcelain=v1', '--untracked-files=all'])) ??
+    '';
+
+  const paths = changedStatusPaths(status);
+  const unexpected = paths.filter((file) => !expected.has(file));
+
+  if (unexpected.length)
+    throw new Error(
+      `Unexpected changes in generated registry clone; preserved for recovery: ${unexpected.join(', ')}`,
+    );
+
+  for (const [file, digest] of expected) {
+    const contents = await fs.readFile(path.join(directory, file));
+
+    if (createHash('sha256').update(contents).digest('hex') !== digest)
+      throw new Error(
+        `Configured identity file changed before staging: ${file}; preserved for recovery`,
+      );
+  }
 }
 
 function destinationExistsError(destination: string): Error {
@@ -300,6 +441,8 @@ async function githubPreflight(
 
   if (!template.is_template)
     throw new Error('GitHub source repository is unavailable or is not a template');
+
+  await assertTemplateDefaultHead(github, trustedTemplateRevision);
 
   try {
     await github.rest.repos.get({owner, repo: repository});
@@ -444,11 +587,48 @@ async function createFromGithub(
     result.gitInitialized = true;
     stage = 'template readiness';
     result.initialCommit = await readGeneratedHead(destination, runner, wait);
+    await assertGeneratedTemplateTree(destination, runner, trustedTemplateRevision);
     stage = 'configuration';
-    await configureRegistryIdentity(destination, registryId);
+    const changedFiles = await configureRegistryIdentity(destination, registryId);
     result.configured = true;
+    const configuredOutputs = new Map<string, string>();
+
+    for (const file of changedFiles) {
+      if (!identityFiles.has(file))
+        throw new Error(`Configurator reported an unexpected identity output: ${file}`);
+      const bytes = await fs.readFile(path.join(destination, file));
+      configuredOutputs.set(file, createHash('sha256').update(bytes).digest('hex'));
+    }
+
+    await assertOnlyExpectedIdentityChanges(destination, runner, configuredOutputs);
     stage = 'commit';
-    await runner('git', ['-C', destination, 'add', '--all']);
+
+    if (changedFiles.length) await runner('git', ['-C', destination, 'add', '--', ...changedFiles]);
+
+    const stagedPaths = (
+      (await runner('git', ['-C', destination, 'diff', '--cached', '--name-only'])) ?? ''
+    )
+      .split('\n')
+      .filter(Boolean);
+
+    if (
+      stagedPaths.some((file) => !configuredOutputs.has(file)) ||
+      stagedPaths.length !== configuredOutputs.size
+    )
+      throw new Error(
+        'Git index contains unexpected or missing configured identity files; preserved for recovery',
+      );
+
+    for (const [file, digest] of configuredOutputs) {
+      const staged = await runner('git', ['-C', destination, 'show', `:${file}`]);
+
+      if (staged === undefined || createHash('sha256').update(staged).digest('hex') !== digest)
+        throw new Error(
+          `Staged identity file differs from its verified output: ${file}; preserved for recovery`,
+        );
+    }
+
+    await assertOnlyExpectedIdentityChanges(destination, runner, configuredOutputs);
     await runner('git', [
       '-C',
       destination,
@@ -465,11 +645,11 @@ async function createFromGithub(
 
     const recovery =
       stage === 'clone'
-        ? `Clone ${remoteUrl} into a new directory with git clone ${remoteUrl}.git, then configure its registry identity.`
+        ? `Clone ${remoteUrl} into a new directory with git clone ${remoteUrl}.git. Inspect the clone, repair its registry identity manually, validate it with nosey registry validate <directory>, then commit and push from that clone.`
         : stage === 'template readiness'
-          ? 'Once GitHub finishes generating the template, run git fetch origin in this clone and check out its default branch. Then configure the registry identity, validate, commit, and push.'
+          ? `Inspect this clone at ${destination} and compare its tree with the approved Nosey template. For recovery, create a separate pinned scaffold with nosey registry init <new-directory> --registry-id ${registryId} --no-git, validate and review it, then manually transfer the intended files into the clone before committing and pushing. Do not configure or push a mismatched tree.`
           : stage === 'configuration'
-            ? 'Correct the registry data or use a Nosey version that supports its schemaVersion, then run the packaged registry-tools/configure-registry.mjs with --root pointing at this clone. Validate before committing and pushing.'
+            ? `Inspect this preserved clone at ${destination}, correct the registry data directly, run nosey registry validate ${destination}, then commit and push from the clone. Do not repeat registry init.`
             : stage === 'commit'
               ? 'Check Git identity and commit hooks, commit the configured files, then push origin HEAD from this directory.'
               : 'Retry git push origin HEAD from this directory.';

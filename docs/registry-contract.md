@@ -1,44 +1,61 @@
 # Registry contracts and template ownership
 
 The standalone [registry template](https://github.com/rigerc/nosey-registry-template)
-owns manifest generation, validation, Agnix, CI and downstream updates. The
-template independently tests all of these behaviors; Nosey does not publish,
-copy or synchronize template source files.
+owns registry generators, validation, Agnix skill linting, CI and downstream
+updates. Its scripts use Node.js 22 built-ins and need no package installation.
+Nosey remains a Node.js 24+ npm application. Nosey owns the formats it reads
+(manifest v1 and map v1/v2), the offline schema commands, and in-process identity
+configuration. The template refers to Nosey's public latest schemas; it does not
+ship schema copies.
 
-Nosey owns the registry formats it consumes (manifest v1, map v1/v2) in
-`schemas/registry`, and the parser/loader contract. Incompatible schema
-changes require an incremented `schemaVersion`.
+## Initialization and release consistency
 
-## Testing without a vendored template
+Local initialization downloads an archive at the exact template commit trusted by
+that Nosey release. It checks the archive source commit and content tree before
+writing the destination, then configures identity with trusted Nosey TypeScript.
+It never runs acquired template or registry scripts. `registry build` and the old
+Nosey-side generator/configuration tooling are retired. A stray `registry.json` is
+ignored; Nosey does not read legacy registry settings or provide a compatibility
+path. `skills-map.json` is the canonical identity document.
 
-The repository does **not** vendor the template for tests or initialization.
-Test initialization uses an ephemeral, minimal synthetic registry created by
-`tests/helpers/registry-template.ts`, with a mocked GitHub archive transport.
-These tests verify Nosey's creation, identity rewriting, archive-extraction
-security, schema loading and installed package behavior entirely offline.
-The helper is not a template release and must not be published as one.
+GitHub initialization has a separate release gate because GitHub's template API
+creates from the current default branch, not from Nosey's pinned archive. The
+operation checks that the current upstream revision is the approved revision and
+verifies the created repository tree before configuration. A new upstream default
+branch commit can temporarily disable `--github` on older Nosey releases while
+local pinned initialization remains available. If the pinned archive cannot be
+fetched, initialization fails closed; update Nosey's reviewed provenance pin after
+the upstream template change has been reviewed and released. GitHub setup failures
+retain the created remote and report recovery steps rather than deleting it or
+retrying repository creation.
 
-Template tools, Agnix and synchronization are tested and maintained in the
-separate `rigerc/nosey-registry-template` repository. Verify interoperability
-against an approved real template revision during releases, rather than
-vendoring the template into Nosey source control.
+GitHub web “Use this template” does not run configuration. The maintainer
+`AGENTS.md` remains until the registry owner runs the template's configure command.
+Template generators and validation are maintained and tested in the template
+repository; Nosey tests schema and identity compatibility against the pinned
+template during development and release checks.
 
-The illustrative layout in `docs/example/registry/` is documentation only. It
-is not a template release, is not executed by CI, and must not be used for
-initialization.
+## Package and schema contract
 
-## Registry creation
+The Nosey package contains its CLI, registry schemas, third-party notices and the
+Apache license required for retained identity-configuration attribution. It does
+not contain the template checkout, copied template scripts or the retired
+`registry-tools/` directory. A packed-package smoke installs the package in an
+isolated temporary directory and checks offline schema output and initialization
+without Git or other installed tools.
 
-Local creation fetches an immutable upstream template commit and configures
-the registry ID without executing code from the downloaded repository.
-GitHub creation uses the GitHub template API then clones and configures the
-created repository. Template provenance under `.template/state.json` remains
-unchanged by Nosey's identity rewrite. Downstream updates are proposed via
-the template's own reviewed PR workflow.
+Both registry JSON identities use Nosey's public latest schema URLs. Nosey schema
+commands work offline from its packaged schemas. Template validation fetches the
+latest public schemas and fails closed on unsupported keywords. `$schema` values
+are data annotations for Nosey and are not dereferenced during registry loading.
+See the [registry schema reference](registry-schema.md) for document fields and
+parser-only rules.
 
-The older packaged `registry-tools` remain a Nosey-internal compatibility
-implementation for `nosey registry build` and safe initialization. They are
-**not** copied into the template; the old `registry:template:sync` copying
-command and its fixture freshness checks have been removed. Template
-maintainers should use `make generate`, `make check` and Agnix CI in the
-template repo instead.
+## Archive and Git safety
+
+Archive extraction checks checksums, paths, entry types, byte and entry-count
+limits, timeouts and destination reservation. Local and GitHub initialization use
+separate failure paths. GitHub creation may leave a remote behind if cloning,
+configuration, commit or push fails; recovery preserves useful local state and
+never automatically retries creation. Tokens are not stored in remote URLs or
+repository configuration.

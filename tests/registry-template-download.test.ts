@@ -22,7 +22,7 @@ async function temporary(run: (root: string) => Promise<void>) {
   }
 }
 
-test('local download pins the default branch once and needs neither Git nor gh', async () => {
+test('local download requests only the packaged commit archive and needs neither Git nor gh', async () => {
   await temporary(async (root) => {
     const requests: string[] = [];
     const transport = await fixtureTransport();
@@ -48,60 +48,32 @@ test('local download pins the default branch once and needs neither Git nor gh',
       code: 'ENOENT',
     });
     expect(requests).toEqual([
-      'https://api.github.com/repos/rigerc/nosey-registry-template',
-      'https://api.github.com/repos/rigerc/nosey-registry-template/commits/trunk',
       'https://codeload.github.com/rigerc/nosey-registry-template/tar.gz/' + templateCommit,
     ]);
-    expect(
-      (await fs.stat(path.join(directory, '.github/workflows/registry-ci.yml'))).isFile(),
-    ).toBe(true);
+    expect((await fs.stat(path.join(directory, '.github/workflows/ci.yml'))).isFile()).toBe(true);
     await expect(fs.stat(path.join(directory, '.git'))).rejects.toMatchObject({code: 'ENOENT'});
     await expect(fs.stat(path.join(directory, 'template'))).rejects.toMatchObject({code: 'ENOENT'});
   });
 });
 
-test('local initialization needs no schemas, template scripts, or contract metadata', async () => {
+test('production download rejects altered pinned content before configuration', async () => {
   await temporary(async (root) => {
     const template = path.join(root, 'template');
     await fs.cp(templateDirectory, template, {recursive: true});
 
-    for (const name of ['schemas', 'scripts', 'docs'])
-      await fs.rm(path.join(template, name), {recursive: true, force: true});
-
-    for (const name of ['skills-manifest.json', 'skills-map.json']) {
-      const filename = path.join(template, name);
-      const document = JSON.parse(await fs.readFile(filename, 'utf8'));
-      delete document.$schema;
-      await fs.writeFile(filename, JSON.stringify(document));
-    }
-
-    // Leftovers from an older template are ordinary ignored data, not a compatibility gate.
-    await fs.writeFile(path.join(template, 'nosey-contract.json'), 'obsolete metadata');
     const directory = path.join(root, 'registry');
-
-    const result = await runRegistryInit(
-      {directory, registryId: 'acme/minimal', git: false, yes: true},
-      {
-        transport: await fixtureTransport(template),
-      },
-    );
-
-    expect(result.configured).toBe(true);
-
-    for (const name of ['skills-manifest.json', 'skills-map.json']) {
-      const document = JSON.parse(await fs.readFile(path.join(directory, name), 'utf8'));
-      expect(document.registryId).toBe('acme/minimal');
-      expect(Object.hasOwn(document, '$schema')).toBe(false);
-    }
-
-    await expect(fs.stat(path.join(directory, 'schemas'))).rejects.toMatchObject({code: 'ENOENT'});
-    expect(await fs.readFile(path.join(directory, 'README.md'), 'utf8')).toContain(
-      'Registry: acme/minimal',
-    );
+    await fs.writeFile(path.join(template, 'README.md'), 'changed pinned content\n');
+    await expect(
+      runRegistryInit(
+        {directory, registryId: 'acme/minimal', git: false, yes: true},
+        {transport: await fixtureTransport(template)},
+      ),
+    ).rejects.toThrow(/content tree.*does not match approved/);
+    await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
   });
 });
 
-for (const name of ['registry.json', 'skills-manifest.json', 'skills-map.json']) {
+for (const name of ['skills-manifest.json', 'skills-map.json']) {
   test(`unsupported ${name} schemaVersion fails before configuration and cleans up`, async () => {
     await temporary(async (root) => {
       const template = path.join(root, 'template');
@@ -115,7 +87,7 @@ for (const name of ['registry.json', 'skills-manifest.json', 'skills-map.json'])
       );
       await expect(fs.stat(directory)).rejects.toMatchObject({code: 'ENOENT'});
       expect(
-        JSON.parse(await fs.readFile(path.join(template, 'registry.json'), 'utf8')).registryId,
+        JSON.parse(await fs.readFile(path.join(template, 'skills-map.json'), 'utf8')).registryId,
       ).toBe('example/agent-skills');
     });
   });
@@ -257,7 +229,7 @@ test('network failure, oversized responses and request deadline are bounded', as
           new Response(
             new ReadableStream({
               start(controller) {
-                controller.enqueue(new Uint8Array(1024 * 1024 + 1));
+                controller.enqueue(new Uint8Array(templateLimits.download + 1));
               },
               cancel() {
                 cancelled = true;

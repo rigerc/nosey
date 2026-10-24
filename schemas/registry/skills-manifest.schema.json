@@ -35,7 +35,7 @@
     "registryId": {
       "$ref": "#/$defs/Text",
       "title": "Registry ID",
-      "description": "Identity shared with registry.json and skills-map.json. The owner/repository shape is an initializer authoring rule, not a parser rule.",
+      "description": "Identity shared with skills-map.json. The owner/repository shape is an initializer authoring rule, not a parser rule.",
       "x-normalization": "Rewritten by registry init, which remaps this prefix in local skill IDs."
     },
     "skills": {

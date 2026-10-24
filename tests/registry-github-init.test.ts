@@ -11,7 +11,9 @@ import {
 import {githubClient} from '../src/lib/registry/github.js';
 import type {Octokit} from 'octokit';
 import {templateRepository} from '../src/lib/registry/template.js';
-import {templateDirectory} from './helpers/registry-template.js';
+import {trustedTemplateRevision} from '../src/lib/registry/template-source.js';
+
+const pinnedTemplateDirectory = path.resolve('template/registry');
 
 type Call = {command: string; args: string[]};
 
@@ -53,7 +55,11 @@ async function fixture(
 
     if (endpoint === '/user' || endpoint === '/users/acme') return Response.json({login: 'acme'});
 
-    if (endpoint === '/repos/' + templateRepository) return Response.json({is_template: true});
+    if (endpoint === '/repos/' + templateRepository)
+      return Response.json({is_template: true, default_branch: 'main'});
+
+    if (endpoint === '/repos/' + templateRepository + '/branches/main')
+      return Response.json({commit: {sha: trustedTemplateRevision.commit}});
 
     if (request.method === 'POST') {
       created = true;
@@ -88,7 +94,14 @@ async function fixture(
       expect(args[3]).toBe(directory);
       expect(args[2]).toBe('https://github.com/acme/skills.git');
       expect(await fs.readdir(directory)).toEqual([]);
-      await fs.cp(templateDirectory, directory, {recursive: true});
+      await fs.mkdir(directory, {recursive: true});
+      await git([
+        '-C',
+        pinnedTemplateDirectory,
+        'checkout-index',
+        '--all',
+        '--prefix=' + directory + '/',
+      ]);
       await git(['init', '--initial-branch=trunk', directory]);
       await git(['-C', directory, 'add', '--all']);
       await git(['-C', directory, 'commit', '-m', 'chore(registry): initialize template']);
@@ -148,7 +161,16 @@ for (const visibility of ['private', 'public'] as const) {
           }),
         ],
         ['clone', '--', 'https://github.com/acme/skills.git', directory],
-        ['-C', directory, 'add', '--all'],
+        [
+          '-C',
+          directory,
+          'add',
+          '--',
+          'skills-map.json',
+          'skills-manifest.json',
+          'README.md',
+          'AGENTS.md',
+        ],
         [
           '-C',
           directory,
@@ -165,7 +187,7 @@ for (const visibility of ['private', 'public'] as const) {
         result.initialCommit,
       );
       expect(
-        JSON.parse(await fs.readFile(path.join(directory, 'registry.json'), 'utf8')).registryId,
+        JSON.parse(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).registryId,
       ).toBe('acme/skills');
       expect(
         calls.some((call) => call.args.includes('--source') || call.args.includes('--force')),
@@ -197,7 +219,14 @@ test('an initially empty clone waits for generated template history before confi
       if (waits === 2) {
         // Model GitHub completing generation after two readiness checks found no commit.
         const seed = path.join(root, 'template-seed');
-        await fs.cp(templateDirectory, seed, {recursive: true});
+        await fs.mkdir(seed, {recursive: true});
+        await git([
+          '-C',
+          pinnedTemplateDirectory,
+          'checkout-index',
+          '--all',
+          '--prefix=' + seed + '/',
+        ]);
         await git(['init', '--initial-branch=trunk', seed]);
         await git(['-C', seed, 'add', '--all']);
         await git(['-C', seed, 'commit', '-m', 'chore(registry): generate template']);
@@ -303,7 +332,7 @@ for (const stage of ['clone', 'commit', 'push']) {
   });
 }
 
-test('unsupported clone is retained unchanged and never staged or pushed', async () => {
+test('dirty clone changes are retained and rejected before identity writes or push', async () => {
   await fixture(async ({directory, calls, runner, github}) => {
     const wrapped: CommandRunner = async (command, args) => {
       const output = await runner(command, args);
@@ -317,17 +346,23 @@ test('unsupported clone is retained unchanged and never staged or pushed', async
       return output;
     };
 
-    await expect(
-      runRegistryInit(
-        {directory, registryId: 'acme/skills', github: true, yes: true},
-        {run: wrapped, github},
-      ),
-    ).rejects.toMatchObject({
-      result: {githubCreated: true, cloneCompleted: true, configured: false, pushCompleted: false},
-      message: expect.stringContaining('Unsupported skills-map.json schemaVersion'),
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({
+      githubCreated: true,
+      cloneCompleted: true,
+      configured: false,
+      pushCompleted: false,
     });
+    expect(error.message).toContain('dirty');
     expect(
-      JSON.parse(await fs.readFile(path.join(directory, 'registry.json'), 'utf8')).registryId,
+      JSON.parse(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).registryId,
     ).toBe('example/agent-skills');
     expect(calls.some((call) => call.args.includes('add') || call.args.includes('push'))).toBe(
       false,
@@ -335,7 +370,40 @@ test('unsupported clone is retained unchanged and never staged or pushed', async
   });
 });
 
-test('GitHub initialization works without schemas or scripts in the template clone', async () => {
+test('clean clone with a changed content tree is rejected before configuration or push', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    const wrapped: CommandRunner = async (command, args) => {
+      const output = await runner(command, args);
+
+      if (args[0] === 'clone') {
+        await fs.appendFile(
+          path.join(directory, 'README.md'),
+          '\nchanged after template generation\n',
+        );
+        await git(['-C', directory, 'add', 'README.md']);
+        await git(['-C', directory, 'commit', '-m', 'chore(registry): alter generated tree']);
+      }
+
+      return output;
+    };
+
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({configured: false, pushCompleted: false});
+    expect(error.message).toContain('content tree');
+    expect(calls.some((call) => call.args.includes('add') || call.args.includes('push'))).toBe(
+      false,
+    );
+  });
+});
+
+test('GitHub initialization rejects changes made before its approved tree check', async () => {
   await fixture(async ({directory, runner, github}) => {
     const wrapped: CommandRunner = async (command, args) => {
       const output = await runner(command, args);
@@ -348,13 +416,82 @@ test('GitHub initialization works without schemas or scripts in the template clo
       return output;
     };
 
-    const result = await runRegistryInit(
+    await expect(
+      runRegistryInit(
+        {directory, registryId: 'acme/skills', github: true, yes: true},
+        {run: wrapped, github},
+      ),
+    ).rejects.toBeInstanceOf(RegistryInitError);
+  });
+});
+
+test('worktree change between clean status and tree read is preserved before any identity write or staging', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    let injected = false;
+
+    const wrapped: CommandRunner = async (command, args) => {
+      const output = await runner(command, args);
+
+      if (!injected && args.includes('status')) {
+        injected = true;
+        await fs.writeFile(path.join(directory, 'race.txt'), 'preserve me');
+      }
+
+      return output;
+    };
+
+    const error = await runRegistryInit(
       {directory, registryId: 'acme/skills', github: true, yes: true},
       {run: wrapped, github},
-    );
+    ).catch((cause: unknown) => cause);
 
-    expect(result).toMatchObject({githubCreated: true, configured: true, pushCompleted: true});
-    await expect(fs.stat(path.join(directory, 'schemas'))).rejects.toMatchObject({code: 'ENOENT'});
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({configured: false, pushCompleted: false});
+    expect(error.message).toContain('changed during template verification');
+    expect(await fs.readFile(path.join(directory, 'race.txt'), 'utf8')).toBe('preserve me');
+    expect(
+      JSON.parse(await fs.readFile(path.join(directory, 'skills-map.json'), 'utf8')).registryId,
+    ).toBe('example/agent-skills');
+    expect(
+      calls.some((call) => ['add', 'commit', 'push'].some((op) => call.args.includes(op))),
+    ).toBe(false);
+  });
+});
+
+test('unrelated file arriving at staging is never staged or pushed', async () => {
+  await fixture(async ({directory, calls, runner, github}) => {
+    let injected = false;
+
+    const wrapped: CommandRunner = async (command, args) => {
+      if (!injected && args.includes('add')) {
+        injected = true;
+        await fs.writeFile(path.join(directory, 'late-user-file.txt'), 'preserve me');
+      }
+
+      return runner(command, args);
+    };
+
+    const error = await runRegistryInit(
+      {directory, registryId: 'acme/skills', github: true, yes: true},
+      {run: wrapped, github},
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(RegistryInitError);
+
+    if (!(error instanceof RegistryInitError)) throw new Error('Expected init error');
+    expect(error.result).toMatchObject({configured: true, pushCompleted: false});
+    expect(error.message).toContain('Unexpected changes');
+    expect(await fs.readFile(path.join(directory, 'late-user-file.txt'), 'utf8')).toBe(
+      'preserve me',
+    );
+    expect(
+      (await git(['-C', directory, 'diff', '--cached', '--name-only'])).trim().split('\n'),
+    ).toEqual(['AGENTS.md', 'README.md', 'skills-manifest.json', 'skills-map.json']);
+    expect(calls.some((call) => call.args.includes('commit') || call.args.includes('push'))).toBe(
+      false,
+    );
   });
 });
 

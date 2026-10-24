@@ -863,6 +863,7 @@ describe('Registry UI writes', () => {
     await press(app, '\r');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('acme/team'), {timeout: 5000});
     await vi.waitFor(() => expect(app.lastFrame()).not.toContain('Working on registry'));
+    expect(app.lastFrame()).not.toContain('build metadata');
     await press(app, 'd');
     await vi.waitFor(() => expect(app.lastFrame()).toContain('Remove reference from'));
     await press(app, '\r'); // default No
@@ -975,9 +976,12 @@ describe('Registry UI writes', () => {
     await press(app, '\r');
     await settle();
     await vi.waitFor(() => expect(app.lastFrame()).toContain('Registry created'));
-    expect(JSON.parse(readFileSync(join(destination, 'registry.json'), 'utf8')).registryId).toBe(
+    expect(JSON.parse(readFileSync(join(destination, 'skills-map.json'), 'utf8')).registryId).toBe(
       'acme/created',
     );
+    expect(
+      JSON.parse(readFileSync(join(destination, 'skills-manifest.json'), 'utf8')).registryId,
+    ).toBe('acme/created');
     expect(existsSync(join(destination, '.git'))).toBe(false);
     await press(app, '\r'); // Return to Registries, not another creation
     expect(app.lastFrame()).toContain('Registry references');

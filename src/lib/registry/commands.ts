@@ -1,20 +1,16 @@
-import {registryToolsDirectory} from './tools.js';
 import {
   jsonValueSchema,
   errorCode,
   jsonObjectSchema,
   type JsonObject,
   type JsonValue,
-  isRecord,
 } from '../values.js';
 import {z} from 'zod';
 
 import {randomUUID} from 'node:crypto';
-import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import {promisify} from 'node:util';
 import {setTimeout as delay} from 'node:timers/promises';
 import {
   globalConfigPath,
@@ -27,12 +23,7 @@ import {
 import {loadLocalRegistry} from './load.js';
 import {loadGitRegistry, validateSource} from './git.js';
 import {mergeRegistries} from './merge.js';
-import {parseManifest} from './validate.js';
 import type {LoadedRegistry} from './types.js';
-
-const run = promisify(execFile);
-
-const generator = path.join(registryToolsDirectory, 'generate-manifest.mjs');
 
 type ConfigDocument = JsonObject & {registries: JsonValue[]};
 
@@ -238,31 +229,6 @@ export async function showRegistry(source: string, ref?: string): Promise<Loaded
 
 export async function validateRegistry(directory: string): Promise<LoadedRegistry> {
   const loaded = await loadLocalRegistry(directory);
-  // The registry.json file is optional for existing hand-authored registries.
-  const settingsPath = path.join(directory, 'registry.json');
-
-  try {
-    const info = await fs.lstat(settingsPath);
-
-    if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) {
-      throw new Error('Invalid registry file: registry.json');
-    }
-
-    const settings = jsonObjectSchema.parse(JSON.parse(await fs.readFile(settingsPath, 'utf8')));
-
-    if (!settings || !isRecord(settings) || Array.isArray(settings)) {
-      throw new Error('registry.json must be an object');
-    }
-
-    const header = parseManifest({...settings, skills: []});
-
-    if (header.registryId !== loaded.manifest.registryId) {
-      throw new Error('registry.json and manifest registryId do not match');
-    }
-  } catch (error: unknown) {
-    if (errorCode(error) !== 'ENOENT') throw error;
-  }
-
   const merged = mergeRegistries([loaded]);
 
   if (merged.warnings.length > 0) {
@@ -270,17 +236,6 @@ export async function validateRegistry(directory: string): Promise<LoadedRegistr
   }
 
   return loaded;
-}
-
-export async function buildRegistry(directory: string): Promise<string> {
-  // Always run the packaged generator, never code from the target registry.
-  const {stdout} = await run(process.execPath, [generator], {
-    cwd: path.resolve(directory),
-    timeout: 60_000,
-    maxBuffer: 1024 * 1024,
-  });
-
-  return stdout;
 }
 
 export function registryJson<T>(value: T): string {
