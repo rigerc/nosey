@@ -1,4 +1,5 @@
 import {spawn} from 'node:child_process';
+import {z} from 'zod';
 import {AppError, toAppError} from '../../lib/errors';
 import {formatInstallCommand, type InstallInvocation} from './install';
 
@@ -8,19 +9,68 @@ export interface ConfirmedSelection {
   execution?: InstallInvocation[];
 }
 
-/** Called only after Ink exits and restores the terminal. */
-export function runInstallCommand(invocation: InstallInvocation): Promise<number> {
+export interface InstallProcessResult {
+  exitCode: number;
+  output?: string;
+}
+
+export interface InstallCommandResult {
+  command: string;
+  exitCode: number;
+  ok: boolean;
+  output?: string;
+}
+
+export interface InstallExecution {
+  results: InstallCommandResult[];
+  completed: number;
+  total: number;
+  exitCode: number;
+  error?: AppError;
+}
+
+export type InstallRunner = (
+  invocation: InstallInvocation,
+) => Promise<number | InstallProcessResult>;
+
+const runnerResultSchema = z.union([
+  z.number().transform((exitCode) => ({exitCode, output: undefined})),
+  z.object({exitCode: z.number(), output: z.string().optional()}),
+]);
+
+const defaultWrite = (message: string) => {
+  process.stdout.write(message);
+};
+
+function runProcess(
+  invocation: InstallInvocation,
+  capture: boolean,
+  maxOutputBytes: number,
+): Promise<InstallProcessResult> {
   return new Promise((resolve, reject) => {
     const child = spawn('npx', invocation.args, {
       cwd: invocation.cwd,
       shell: false,
-      stdio: 'inherit',
+      stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       // The user already reviewed the command; npm may need to download Skills CLI.
       env: {...process.env, npm_config_yes: 'true'},
       detached: process.platform !== 'win32',
     });
 
     let interrupted: NodeJS.Signals | undefined;
+    let output = '';
+
+    const append = (chunk: Buffer) => {
+      output += chunk.toString('utf8');
+
+      // Keep the most recent output; CI only needs the failure context.
+      if (output.length > maxOutputBytes) output = output.slice(-maxOutputBytes);
+    };
+
+    if (capture) {
+      child.stdout?.on('data', append);
+      child.stderr?.on('data', append);
+    }
 
     const forward = (signal: NodeJS.Signals) => {
       interrupted = signal;
@@ -53,18 +103,97 @@ export function runInstallCommand(invocation: InstallInvocation): Promise<number
     child.once('close', (code, signal) => {
       cleanup();
       const stopped = interrupted ?? signal;
-      resolve(stopped === 'SIGINT' ? 130 : stopped === 'SIGTERM' ? 143 : (code ?? 1));
+      const exitCode = stopped === 'SIGINT' ? 130 : stopped === 'SIGTERM' ? 143 : (code ?? 1);
+
+      if (capture) {
+        resolve({exitCode, output});
+      } else {
+        resolve({exitCode});
+      }
     });
   });
+}
+
+/** Called only after Ink exits and restores the terminal. */
+export function runInstallCommand(invocation: InstallInvocation): Promise<number> {
+  return runProcess(invocation, false, 0).then((result) => result.exitCode);
+}
+
+/** JSON consumers receive one document, so child output must not inherit stdout. */
+export function captureInstallCommand(
+  invocation: InstallInvocation,
+  maxOutputBytes = 64 * 1024,
+): Promise<InstallProcessResult> {
+  return runProcess(invocation, true, maxOutputBytes);
+}
+
+export async function executeInstallPlan(
+  execution: readonly InstallInvocation[],
+  options: {
+    run?: InstallRunner;
+    write?: (message: string) => void;
+    capture?: boolean;
+    maxOutputBytes?: number;
+  } = {},
+): Promise<InstallExecution> {
+  const total = execution.length;
+
+  const run: InstallRunner =
+    options.run ??
+    (options.capture
+      ? (invocation) => captureInstallCommand(invocation, options.maxOutputBytes)
+      : runInstallCommand);
+
+  const results: InstallCommandResult[] = [];
+  let completed = 0;
+
+  for (const invocation of execution) {
+    options.write?.('Running: ' + formatInstallCommand(invocation) + '\n');
+    let value: number | InstallProcessResult;
+
+    try {
+      // Sequential execution is intentional: a partial install is easier to inspect.
+      // eslint-disable-next-line no-await-in-loop
+      value = await run(invocation);
+    } catch (error) {
+      const failure = toAppError(error);
+
+      return {
+        results,
+        completed,
+        total,
+        exitCode: 1,
+        error: new AppError(failure.message, {
+          cause: error,
+          hint: `${completed}/${total} commands completed. Remaining commands were not run.`,
+        }),
+      };
+    }
+
+    const parsed = runnerResultSchema.parse(value);
+
+    const result: InstallCommandResult = {
+      command: formatInstallCommand(invocation),
+      exitCode: parsed.exitCode,
+      ok: parsed.exitCode === 0,
+    };
+
+    if (parsed.output !== undefined) result.output = parsed.output;
+    results.push(result);
+
+    if (parsed.exitCode !== 0) return {results, completed, total, exitCode: parsed.exitCode};
+
+    completed++;
+  }
+
+  return {results, completed, total, exitCode: 0};
 }
 
 /** Printing and execution share the post-UI handoff, including empty selections. */
 export async function completeSelection(
   selection: ConfirmedSelection,
-  run = runInstallCommand,
-  write: (message: string) => void = (message) => {
-    process.stdout.write(message);
-  },
+  run: InstallRunner = runInstallCommand,
+  write: (message: string) => void = defaultWrite,
 ): Promise<number> {
   if (selection.execution === undefined) {
     if (selection.commands !== undefined)
@@ -84,33 +213,19 @@ export async function completeSelection(
     return 0;
   }
 
-  let completed = 0;
+  const outcome = await executeInstallPlan(selection.execution, {run, write});
 
-  for (const invocation of selection.execution) {
-    write('Running: ' + formatInstallCommand(invocation) + '\n');
-    let code: number;
+  if (outcome.error !== undefined) throw outcome.error;
 
-    try {
-      code = await run(invocation);
-    } catch (error) {
-      throw new AppError(toAppError(error).message, {
-        cause: error,
-        hint: `${completed}/${selection.execution.length} commands completed. Remaining commands were not run.`,
-      });
-    }
+  if (outcome.exitCode !== 0) {
+    write(
+      `Skills CLI stopped (exit ${outcome.exitCode}). ${outcome.completed}/${outcome.total} commands completed. Remaining commands were not run.\n`,
+    );
 
-    if (code !== 0) {
-      write(
-        `Skills CLI stopped (exit ${code}). ${completed}/${selection.execution.length} commands completed. Remaining commands were not run.\n`,
-      );
-
-      return code;
-    }
-
-    completed++;
+    return outcome.exitCode;
   }
 
-  write(`Skills CLI completed ${completed}/${selection.execution.length} commands.\n`);
+  write(`Skills CLI completed ${outcome.completed}/${outcome.total} commands.\n`);
 
   return 0;
 }

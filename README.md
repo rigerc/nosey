@@ -146,6 +146,45 @@ The explicit `scan` subcommand is always headless. A project path alone opens th
 
 Use `npm run dev -- --help` for the complete command and option reference.
 
+### Install recommended skills (headless)
+
+`install` scans a project, checks its project-local `skills-lock.json` and agent
+skill directories, and plans missing skills. **It never executes the Skills CLI
+unless you pass `--yes`.** No skills are installed globally.
+
+```bash
+# Preview only (safe in CI)
+npm run dev -- install ../your-project --agent codex
+
+# Install recommended skills locally
+npm run dev -- install ../your-project --agent codex --yes
+
+# Target multiple agents and capture one JSON result document
+npm run dev -- install ../your-project --agent codex --agent claude-code --yes --json
+
+# Pin a verified version of the Skills CLI for reproducibility
+npm run dev -- install ../your-project --agent codex --yes --skills-cli skills@1.2.3
+```
+
+Replace `skills@1.2.3` with a verified published version. Running `npx` may
+download executable packages; review the commands and their sources first.
+Without `--agent`, Nosey uses configured `skillsCli.defaultAgents`, then
+discovers project-local agent folders. Already installed skills are skipped;
+partial installations target missing agents. Existing files without verified
+lock provenance are not counted as installed.
+
+`--json` reserves stdout for one JSON document and captures Skills CLI output
+in `results`; registry warnings go to stderr. Exit codes: `0` successful
+preview/install, `1` planning or execution failure, `2` usage/path error,
+`130` interrupted (SIGINT), and `143` terminated (SIGTERM).
+
+To preview the built command manually without installing anything:
+
+```bash
+npm run build
+node dist/cli.js install . --agent codex --json > install-plan.json
+```
+
 ### MCP server detection
 
 Scans also read workspace MCP declarations from `.mcp.json`, `.cursor/mcp.json`,

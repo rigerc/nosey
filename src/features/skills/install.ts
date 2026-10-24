@@ -40,6 +40,18 @@ const directories = new Map<string, string>(
 
 const safeIdentifier = /^[A-Za-z0-9_.@-]+$/;
 
+const packagePart = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?';
+
+const packageSpec = new RegExp(
+  '^(?:@' + packagePart + '/)?' + packagePart + '(?:@[a-z0-9](?:[a-z0-9._+-]*[a-z0-9])?)?$',
+  'i',
+);
+
+/** Accept only npm package specs; caller-supplied values become argv, never a shell string. */
+export function validSkillsCliPackage(value: string): boolean {
+  return value.length > 0 && value.length <= 214 && packageSpec.test(value);
+}
+
 // Recommendation IDs retain their catalog slugs; Skills CLI selects frontmatter names.
 const builtInInstallNames = new Map([
   ['vercel-labs/agent-skills/react-best-practices', 'vercel-react-best-practices'],
@@ -256,8 +268,12 @@ export function generateInstallCommands(
   available: readonly InstallableSkill[],
   agents: readonly string[],
   projectRoot: string,
+  skillsCli = 'skills',
 ): InstallCommands {
   if (selectedIds.length === 0) return {commands: [], invocations: [], errors: []};
+
+  if (!validSkillsCliPackage(skillsCli))
+    return {commands: [], invocations: [], errors: ['Invalid Skills CLI package specification.']};
 
   if (!agents.length)
     return {
@@ -315,7 +331,7 @@ export function generateInstallCommands(
   const invocations = [...groups.values()].map((group) => ({
     cwd: path.resolve(projectRoot),
     args: [
-      'skills',
+      skillsCli,
       'add',
       group.source,
       ...group.skills.flatMap((name) => ['--skill', name]),
