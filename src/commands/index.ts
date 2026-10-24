@@ -1,10 +1,12 @@
 import {AppError} from '../lib/errors';
 import {inspectEnvironment} from './doctor';
+import {runInstall, type InstallCommandOptions} from './install';
 import {runScan, type ScanCommandOptions} from './scan';
 import {registryInitOptions, runRegistry, type RegistryCommandOptions} from './registry';
 import {runSchema} from './schema';
 
-export interface CommandOptions extends ScanCommandOptions, RegistryCommandOptions {
+export interface CommandOptions
+  extends ScanCommandOptions, RegistryCommandOptions, InstallCommandOptions {
   configFile?: string;
 }
 
@@ -14,16 +16,40 @@ export async function runCommand(
   args: string[],
   options: CommandOptions,
 ): Promise<boolean> {
-  if (name !== 'registry' && registryInitOptions.some((key) => options[key] !== undefined))
+  if (
+    name !== 'registry' &&
+    name !== 'install' &&
+    registryInitOptions.some((key) => options[key] !== undefined)
+  )
     throw new AppError('Registry initialization options require: nosey registry init', {
       exitCode: 2,
     });
 
-  if (name !== 'registry' && (options.global !== undefined || options.ref !== undefined))
-    throw new AppError('--global and --ref require a registry subcommand', {exitCode: 2});
+  if (name === 'install') {
+    const registryOnly = ['registryId', 'git', 'github', 'visibility'] as const;
+
+    if (registryOnly.some((key) => options[key] !== undefined))
+      throw new AppError('Registry initialization options require: nosey registry init', {
+        exitCode: 2,
+      });
+  }
+
+  if (
+    name !== 'registry' &&
+    (options.global !== undefined || options.project !== undefined || options.ref !== undefined)
+  )
+    throw new AppError('--global, --project and --ref require a registry subcommand', {
+      exitCode: 2,
+    });
 
   if (name === 'scan') {
     await runScan(args, options);
+
+    return true;
+  }
+
+  if (name === 'install') {
+    await runInstall(args, options);
 
     return true;
   }

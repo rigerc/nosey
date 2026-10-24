@@ -20,6 +20,7 @@ const cli = meow(
     $ ${APP_NAME} [options]
     $ ${APP_NAME} scan [path] [--json | --skills-only | --explain]
     $ ${APP_NAME} [path] [--json | --skills-only | --explain]
+    $ ${APP_NAME} install [path] [--agent <id> ...] [--yes] [--json]
     $ ${APP_NAME} registry <init|list|add|remove|show|validate|refresh>
     $ ${APP_NAME} schema <skills-map|manifest>
     $ ${APP_NAME} doctor [--json] [--config path]
@@ -35,6 +36,9 @@ const cli = meow(
     --json           JSON output for scans, registries, and diagnostics
     --skills-only    Print only suggested skill IDs
     --explain        Include detection evidence in scan reports
+    --agent <id>     Target agent for install (repeatable)
+    --skills-cli <spec> npm package spec for Skills CLI (default: skills)
+    --dry-run        Print the installation plan; this is the default without --yes
     --no-interactive Run a headless scan (scan commands always run headlessly)
     --no-frontend-bonus Disable frontend bonus suggestions
     --registry <source> Add a local or Git skill registry (repeatable)
@@ -44,7 +48,7 @@ const cli = meow(
     --project        Remove a legacy project-scoped registry reference
     --ref <revision> Select a Git registry revision (add/show/refresh)
     --registry-id <id> owner/repository for registry init
-    --yes            Noninteractive registry initialization
+    --yes            Noninteractive registry initialization or skill installation
     --no-git         Skip Git initialization for a registry
     --github         Generate a GitHub template repository, clone, configure and push
     --visibility <level> private | public for GitHub creation
@@ -68,6 +72,9 @@ const cli = meow(
       json: {type: 'boolean'},
       skillsOnly: {type: 'boolean'},
       explain: {type: 'boolean'},
+      agent: {type: 'string', isMultiple: true},
+      skillsCli: {type: 'string'},
+      dryRun: {type: 'boolean'},
       interactive: {type: 'boolean'},
       frontendBonus: {type: 'boolean'},
       registry: {type: 'string', isMultiple: true},
@@ -164,6 +171,9 @@ async function main() {
     'debug',
     'skillsOnly',
     'explain',
+    'agent',
+    'skillsCli',
+    'dryRun',
     'interactive',
     'frontendBonus',
     'registry',
@@ -256,6 +266,27 @@ async function main() {
     }
 
     await runCommand('registry', input.slice(1), flags);
+
+    return;
+  }
+
+  if (input[0] === 'install') {
+    if (flags.setup || flags.screen !== 'home' || flags.skillsOnly)
+      throw new AppError('Scan and setup flags cannot be used with install', {exitCode: 2});
+
+    const registryOnly = ['registryId', 'git', 'github', 'visibility'] as const;
+
+    if (registryOnly.some((key) => flags[key] !== undefined))
+      throw new AppError('Registry initialization options require: nosey registry init', {
+        exitCode: 2,
+      });
+
+    if (flags.global !== undefined || flags.project !== undefined || flags.ref !== undefined)
+      throw new AppError('--global, --project and --ref require a registry subcommand', {
+        exitCode: 2,
+      });
+
+    await runCommand('install', input.slice(1), {...flags, configFile: flags.config});
 
     return;
   }
