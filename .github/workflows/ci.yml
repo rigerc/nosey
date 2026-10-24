@@ -18,15 +18,23 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run template:provenance:check
+      - run: npm run template:schema:conformance
+      - run: npm run template:identity:conformance
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
           node-version: '22'
       - name: Check template generated output
         run: npm --prefix template/registry run generate:check
       - name: Validate template against proposed Nosey schemas
         run: npm --prefix template/registry run validate -- --root . --schemas ../../schemas/registry
-      - name: Run template built-in tests
-        run: npm --prefix template/registry test
+      - name: Run full template tests with Nosey schema fixtures
+        run: node scripts/check-template-tests.mjs
       - name: Run template live-schema checks
-        run: npm --prefix template/registry run check
+        run: npm --prefix template/registry run validate
       - name: Require the pinned template checkout to remain clean
         run: |
           git -C template/registry diff --exit-code
@@ -34,8 +42,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci
       - run: npm run check
       - run: npm run lint -- --deny-warnings
       - run: npm run typecheck
@@ -47,6 +53,3 @@ jobs:
       - run: npm run docs:schema:check
       - run: npm run schema:technologies:check
       - run: npm run registry:package:check
-      - run: npm run template:provenance:check
-      - run: npm run template:schema:conformance
-      - run: npm run template:identity:conformance
