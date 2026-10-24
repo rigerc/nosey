@@ -375,6 +375,108 @@ describe('trusted registry identity transformation', () => {
     }
   });
 
+  it.each([
+    ['ordinary identity growth', 'newowner/newrepository'],
+    ['long valid identity', `newowner/${'r'.repeat(300)}`],
+  ])('rejects %s when serialized manifest output exceeds its bound', async (_label, registryId) => {
+    const temporary = await mkdtemp(path.join(os.tmpdir(), 'nosey-identity-output-limit-'));
+    const root = path.join(temporary, 'registry');
+    await cp(path.join(fixtureRoot, 'configure-success/input'), root, {recursive: true});
+    await mkdir(path.join(root, 'skills/nested/release'), {recursive: true});
+    await mkdir(path.join(root, 'skills/nested/tooling/lint'), {recursive: true});
+    await writeFile(path.join(root, 'skills/nested/release/SKILL.md'), 'fixture skill data');
+    await writeFile(path.join(root, 'skills/nested/tooling/lint/SKILL.md'), 'fixture skill data');
+
+    const manifestPath = path.join(root, 'skills-manifest.json');
+    const parsedManifest: unknown = JSON.parse(await readFile(manifestPath, 'utf8'));
+
+    if (!isRecord(parsedManifest)) throw new Error('Fixture manifest must be an object');
+    const manifest = parsedManifest;
+    const manifestLimit = 4 * 1024 * 1024;
+    manifest.padding = '';
+    const baseLength = Buffer.byteLength(`${JSON.stringify(manifest, null, 2)}\n`);
+    manifest.padding = 'x'.repeat(manifestLimit - 1 - baseLength);
+    const padded = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+    expect(padded.length).toBe(manifestLimit - 1);
+    await writeFile(manifestPath, padded);
+
+    const filenames = ['skills-map.json', 'skills-manifest.json', 'README.md', 'AGENTS.md'];
+    const before = new Map<string, Buffer>();
+
+    for (const filename of filenames)
+      before.set(filename, await readFile(path.join(root, filename)));
+
+    try {
+      await expect(
+        configureRegistryIdentityFiles(root, registryId, {guidePolicy: await guidePolicy()}),
+      ).rejects.toThrow('skills-manifest.json output exceeds the 4194304-byte limit');
+
+      for (const [filename, bytes] of before)
+        expect(await readFile(path.join(root, filename))).toEqual(bytes);
+      expect((await readdir(root)).filter((name) => name.includes('.nosey-'))).toEqual([]);
+    } finally {
+      await rm(temporary, {recursive: true, force: true});
+    }
+  });
+
+  it('attempts independent rollback restores and preserves a failed restore backup', async () => {
+    const policy = await guidePolicy();
+    const temporary = await mkdtemp(path.join(os.tmpdir(), 'nosey-identity-restore-failure-'));
+    const root = path.join(temporary, 'registry');
+    await cp(path.join(fixtureRoot, 'configure-success/input'), root, {recursive: true});
+    await mkdir(path.join(root, 'skills/nested/release'), {recursive: true});
+    await mkdir(path.join(root, 'skills/nested/tooling/lint'), {recursive: true});
+    await writeFile(path.join(root, 'skills/nested/release/SKILL.md'), 'fixture skill data');
+    await writeFile(path.join(root, 'skills/nested/tooling/lint/SKILL.md'), 'fixture skill data');
+
+    const filenames = ['skills-map.json', 'skills-manifest.json', 'README.md', 'AGENTS.md'];
+    const before = new Map<string, Buffer>();
+
+    for (const filename of filenames)
+      before.set(filename, await readFile(path.join(root, filename)));
+
+    let restoreAttempt = 0;
+
+    try {
+      let failure: unknown;
+
+      try {
+        await configureRegistryIdentityFiles(root, 'acme/team-skills', {
+          guidePolicy: policy,
+          beforeRename(completed) {
+            if (completed === 3) throw new Error('injected write failure');
+          },
+          beforeRestore() {
+            if (restoreAttempt++ === 0) throw new Error('injected restore failure');
+          },
+        });
+      } catch (error) {
+        failure = error;
+      }
+
+      expect(failure).toBeInstanceOf(Error);
+      const failureMessage = failure instanceof Error ? failure.message : String(failure);
+      expect(failureMessage).toContain('injected write failure');
+      expect(failureMessage).toContain('Rollback was incomplete');
+      expect(restoreAttempt).toBe(3);
+
+      const recovery = failureMessage.match(/original preserved at ([^;)]+)/)?.[1];
+      expect(recovery).toBeDefined();
+      expect(await readFile(recovery!)).toEqual(before.get('README.md'));
+
+      // The first restore is the most recently replaced file (README.md); later restores still ran.
+      for (const filename of ['skills-map.json', 'skills-manifest.json', 'AGENTS.md'])
+        expect(await readFile(path.join(root, filename))).toEqual(before.get(filename));
+      expect(await readFile(path.join(root, 'README.md'))).not.toEqual(before.get('README.md'));
+
+      await writeFile(path.join(root, 'README.md'), await readFile(recovery!));
+      await rm(recovery!, {force: true});
+      expect((await readdir(root)).filter((name) => name.includes('.nosey-'))).toEqual([]);
+    } finally {
+      await rm(temporary, {recursive: true, force: true});
+    }
+  });
+
   it('rejects linked fixed files before any mutation', async () => {
     const policy = await guidePolicy();
     const temporary = await mkdtemp(path.join(os.tmpdir(), 'nosey-identity-links-'));

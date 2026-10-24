@@ -18,9 +18,18 @@ export type IdentityFileOptions = {
   guidePolicy?: GuidePolicy;
   /** Trusted test seam. Never populate this from registry data or environment variables. */
   beforeRename?: (completedRenames: number, target: string) => void | Promise<void>;
+  /** Trusted test seam for exercising recovery when an individual restore fails. */
+  beforeRestore?: (target: string) => void | Promise<void>;
 };
 
-type Change = {target: string; original: Buffer; output: Buffer; staged?: string; backup?: string};
+type Change = {
+  target: string;
+  original: Buffer;
+  output: Buffer;
+  staged?: string;
+  backup?: string;
+  preserveBackup?: boolean;
+};
 
 async function fixedRegularFile(filename: string, maxBytes: number): Promise<Buffer> {
   const info = await lstat(filename);
@@ -197,6 +206,12 @@ export async function configureRegistryIdentityFiles(
   for (const [name, text] of outputText) {
     const original = requiredInput(name);
     const output = Buffer.from(text);
+    const maxBytes = limits.get(name);
+
+    if (maxBytes === undefined) throw new Error(`No size limit configured for ${name}`);
+
+    if (output.length > maxBytes)
+      throw new Error(`${name} output exceeds the ${maxBytes}-byte limit`);
 
     if (!original.equals(output))
       changes.push({target: path.join(registryRoot, name), original, output});
@@ -224,10 +239,25 @@ export async function configureRegistryIdentityFiles(
         replaced.push(change);
       }
     } catch (error) {
+      const restoreFailures: string[] = [];
+
       for (const change of replaced.reverse()) {
-        await rename(change.backup!, change.target);
-        change.backup = undefined;
+        try {
+          await options.beforeRestore?.(path.basename(change.target));
+          await rename(change.backup!, change.target);
+          change.backup = undefined;
+        } catch (restoreError) {
+          change.preserveBackup = true;
+          restoreFailures.push(
+            `${path.basename(change.target)}: ${String(restoreError)} (original preserved at ${change.backup})`,
+          );
+        }
       }
+
+      if (restoreFailures.length)
+        throw new Error(
+          `Registry identity update failed: ${String(error)}. Rollback was incomplete; recover these originals manually: ${restoreFailures.join('; ')}`,
+        );
 
       throw error;
     }
@@ -237,7 +267,7 @@ export async function configureRegistryIdentityFiles(
     for (const change of changes) {
       if (change.staged !== undefined) temporaryFiles.push(change.staged);
 
-      if (change.backup !== undefined) temporaryFiles.push(change.backup);
+      if (change.backup !== undefined && !change.preserveBackup) temporaryFiles.push(change.backup);
     }
 
     await Promise.all(temporaryFiles.map((file) => rm(file, {force: true})));
