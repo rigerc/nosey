@@ -101,8 +101,7 @@ export async function runInstall(args: string[], options: InstallCommandOptions)
   if (options.skillsOnly)
     throw new AppError('--skills-only cannot be used with install', {exitCode: 2});
 
-  if (options.explain)
-    throw new AppError('--explain can only be used with scan', {exitCode: 2});
+  if (options.explain) throw new AppError('--explain can only be used with scan', {exitCode: 2});
 
   if (options.dryRun && options.yes)
     throw new AppError('--dry-run and --yes are mutually exclusive', {exitCode: 2});
