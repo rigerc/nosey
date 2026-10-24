@@ -212,15 +212,12 @@ Add `tests/install-command.test.ts` and extend `tests/commands.test.ts`:
 
 ### 6. CI flow
 
-Add a safe smoke step to `.github/workflows/ci.yml` after the existing scan:
+Nosey's CI intentionally has no standalone `nosey install` smoke step.
+Install-command regression tests run under the existing `npm test` step, and
+users may run a headless preview locally with
+`node dist/cli.js install . --agent codex --json`.
 
-```yaml
-- name: Plan recommended skills
-  run: node dist/cli.js install . --agent codex --json > install-plan.json
-```
-
-This never spawns `npx` and verifies the command in the built package. Document
-the executing form for consumers:
+For downstream consumers who choose to install skills in their own CI:
 
 ```yaml
 - uses: actions/checkout@v7
@@ -301,5 +298,5 @@ Each PR should pass `npm run typecheck`, `npm run lint -- --deny-warnings`,
 - `nosey install . --agent codex --json` emits one valid JSON document with
   stable ordering and stderr-only warnings.
 - A second run is a no-op when the lock provenance and agent files match.
-- The command is documented in help, README, and the architecture guide, and CI
-  exercises the non-executing plan path.
+- The command is documented in help, README, and the architecture guide. Its
+  automated tests run under `npm test`; CI has no dedicated install-plan step.
