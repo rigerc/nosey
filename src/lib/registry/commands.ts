@@ -5,7 +5,6 @@ import {
   jsonObjectSchema,
   type JsonObject,
   type JsonValue,
-  isRecord,
 } from '../values.js';
 import {z} from 'zod';
 
@@ -27,7 +26,6 @@ import {
 import {loadLocalRegistry} from './load.js';
 import {loadGitRegistry, validateSource} from './git.js';
 import {mergeRegistries} from './merge.js';
-import {parseManifest} from './validate.js';
 import type {LoadedRegistry} from './types.js';
 
 const run = promisify(execFile);
@@ -238,31 +236,6 @@ export async function showRegistry(source: string, ref?: string): Promise<Loaded
 
 export async function validateRegistry(directory: string): Promise<LoadedRegistry> {
   const loaded = await loadLocalRegistry(directory);
-  // The registry.json file is optional for existing hand-authored registries.
-  const settingsPath = path.join(directory, 'registry.json');
-
-  try {
-    const info = await fs.lstat(settingsPath);
-
-    if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) {
-      throw new Error('Invalid registry file: registry.json');
-    }
-
-    const settings = jsonObjectSchema.parse(JSON.parse(await fs.readFile(settingsPath, 'utf8')));
-
-    if (!settings || !isRecord(settings) || Array.isArray(settings)) {
-      throw new Error('registry.json must be an object');
-    }
-
-    const header = parseManifest({...settings, skills: []});
-
-    if (header.registryId !== loaded.manifest.registryId) {
-      throw new Error('registry.json and manifest registryId do not match');
-    }
-  } catch (error: unknown) {
-    if (errorCode(error) !== 'ENOENT') throw error;
-  }
-
   const merged = mergeRegistries([loaded]);
 
   if (merged.warnings.length > 0) {

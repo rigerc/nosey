@@ -13,6 +13,7 @@ import {
   buildRegistry,
   editRegistry,
   setAlwaysRecommend,
+  validateRegistry,
   type RegistryEntry,
 } from '../src/lib/registry/commands.js';
 import type {LoadedRegistry} from '../src/lib/registry/types.js';
@@ -363,7 +364,6 @@ test('validate succeeds for valid registries and defaults to the current directo
 
 for (const problem of [
   'schema',
-  'settings ID',
   'map ID',
   'missing skill',
   'unsafe path',
@@ -380,12 +380,6 @@ for (const problem of [
       const skills = manifest['skills'] as Array<{id: string; name: string; path: string}>;
 
       if (problem === 'schema') manifest['schemaVersion'] = 9;
-
-      if (problem === 'settings ID')
-        await fs.writeFile(
-          path.join(registry, 'registry.json'),
-          JSON.stringify({schemaVersion: 1, registryId: 'other/skills'}),
-        );
 
       if (problem === 'map ID') map['registryId'] = 'other/skills';
 
@@ -419,6 +413,82 @@ for (const problem of [
     });
   });
 }
+
+test('registry validation silently ignores every form of stray registry.json and is read-only', async () => {
+  await fixture(async ({registry, root, command}) => {
+    const mapPath = path.join(registry, 'skills-map.json');
+    const manifestPath = path.join(registry, 'skills-manifest.json');
+    const skillPath = path.join(registry, 'skills/example-testing/SKILL.md');
+
+    const untouched = async () => {
+      return Promise.all(
+        [mapPath, manifestPath, skillPath].map((filename) => fs.readFile(filename)),
+      );
+    };
+
+    const before = await untouched();
+    const legacy = path.join(registry, 'registry.json');
+    const outside = path.join(root, 'outside.json');
+
+    await fs.writeFile(legacy, '{malformed');
+    let result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy);
+    await fs.writeFile(legacy, JSON.stringify({schemaVersion: 1, registryId: 'other/identity'}));
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy);
+    await fs.writeFile(outside, '{"registryId":"different/identity"}');
+    await fs.symlink(outside, legacy);
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+    expect(await fs.readFile(outside, 'utf8')).toBe('{"registryId":"different/identity"}');
+
+    await fs.rm(legacy);
+    await fs.mkdir(legacy);
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+
+    await fs.rm(legacy, {recursive: true});
+    await fs.writeFile(legacy, 'x'.repeat(4 * 1024 * 1024 + 1));
+    result = await command('registry', 'validate', registry);
+    expect(result.stdout).toMatch(/Valid registry/);
+    expect(result.stderr).toBe('');
+    expect(await untouched()).toEqual(before);
+  });
+});
+
+test('explicit validation accepts declared alwaysRecommend and rejects dangling IDs', async () => {
+  await fixture(async ({registry, command}) => {
+    const mapPath = path.join(registry, 'skills-map.json');
+    const map = await jsonFile(mapPath);
+    const declared = 'acme/skills/example-testing';
+    map['alwaysRecommend'] = [declared];
+    await fs.writeFile(mapPath, JSON.stringify(map));
+    await expect(validateRegistry(registry)).resolves.toBeDefined();
+
+    map['alwaysRecommend'] = ['acme/skills/not-declared'];
+    await fs.writeFile(mapPath, JSON.stringify(map));
+    await expect(validateRegistry(registry)).rejects.toThrow(
+      'Always recommended skill not declared in registry: acme/skills/not-declared',
+    );
+
+    // Scan keeps merge's existing warning-and-filter behavior; strict rejection is explicit validation.
+    await command('registry', 'add', './team-skills');
+    const scan = await command('.', '--json', '--no-frontend-bonus');
+    expect(scan.stderr).toContain('Always recommended skill not declared in registry');
+  });
+});
 
 test('build uses the bundled generator, is deterministic and preserves the map', async () => {
   await fixture(async ({command, registry}) => {
