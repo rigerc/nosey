@@ -54,13 +54,16 @@ export async function buildInstallPlan(
   const project = path.resolve(root);
   const statuses = await inspectInstalledSkills(project, skills, agents);
 
-  const annotated: InstallableSkill[] = skills.map((skill) => {
-    const installation = statuses.get(skill.id);
+  const annotated: InstallableSkill[] = skills
+    .map((skill) => {
+      const installation = statuses.get(skill.id);
 
-    if (installation === undefined) return skill;
+      if (installation === undefined) return skill;
 
-    return {...skill, installation};
-  });
+      return {...skill, installation};
+    })
+    // Stable ordering makes headless plans reproducible in CI.
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const commands = generateInstallCommands(
     annotated.map((skill) => skill.id),

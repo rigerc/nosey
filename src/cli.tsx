@@ -33,7 +33,7 @@ const cli = meow(
     --config <path>  Read/write a specific JSON configuration file
     --setup          Open the interactive configuration wizard
     --plain          Print once and exit (also the default when piped or in CI)
-    --json           JSON output for scans, registries, and diagnostics
+    --json           JSON output for scans, installs, registries, and diagnostics
     --skills-only    Print only suggested skill IDs
     --explain        Include detection evidence in scan reports
     --agent <id>     Target agent for install (repeatable)

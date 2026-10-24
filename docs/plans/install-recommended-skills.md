@@ -1,7 +1,8 @@
 # Install recommended skills command
 
-Status: **proposed; not implemented**. This plan adds a first-class headless
-command for installing Nosey's recommended skills, with CI as a primary consumer.
+Status: **implemented on `t3/dc395c01`**. The command, shared planner, JSON-safe
+execution, test coverage, documentation, and CI preview smoke check are in place.
+The remainder of this document records the original implementation plan.
 
 ## Goal
 

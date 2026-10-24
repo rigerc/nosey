@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import {appConfig, resolveConfig} from '../config';
 import {AppError} from '../lib/errors';
 import {loadConfig} from '../lib/config';
@@ -100,6 +101,9 @@ export async function runInstall(args: string[], options: InstallCommandOptions)
   if (options.skillsOnly)
     throw new AppError('--skills-only cannot be used with install', {exitCode: 2});
 
+  if (options.explain)
+    throw new AppError('--explain can only be used with scan', {exitCode: 2});
+
   if (options.dryRun && options.yes)
     throw new AppError('--dry-run and --yes are mutually exclusive', {exitCode: 2});
 
@@ -120,6 +124,11 @@ export async function runInstall(args: string[], options: InstallCommandOptions)
     });
 
   const root = args[0] ?? '.';
+  const target = await fs.stat(root).catch(() => undefined);
+
+  if (!target?.isDirectory())
+    throw new AppError('Project path must be an existing directory: ' + root, {exitCode: 2});
+
   const configured = loadDefaultAgents(options.configFile);
   const explicit = explicitAgents(options.agent);
   const agents = await resolveInstallAgents(root, explicit, configured);

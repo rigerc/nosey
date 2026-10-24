@@ -209,6 +209,66 @@ test('rejects invalid flags and configuration before planning', async () => {
   expect(invalid.stderr).toContain('Cannot read configuration');
 });
 
+
+test('rejects missing/non-directory project paths and scan-only options', async () => {
+  const root = fixture();
+  const file = path.join(root, 'not-a-directory');
+  writeFileSync(file, 'hello');
+
+  for (const args of [
+    ['install', 'missing-project', '--agent', 'codex', '--json'],
+    ['install', file, '--agent', 'codex', '--json'],
+    ['install', '.', '--agent', 'codex', '--explain', '--json'],
+    ['install', '.', 'extra-path', '--agent', 'codex', '--json'],
+  ]) {
+    const result = await run(root, args);
+    expect(result.code).toBe(2);
+    expect(result.stdout).toBe('');
+  }
+});
+
+test('discovers local agents and deduplicates explicit agent flags', async () => {
+  const root = fixture();
+  mkdirSync(path.join(root, '.agents', 'skills'), {recursive: true});
+  const discovered = await run(root, ['install', '.', '--json']);
+  expect(discovered.code).toBe(0);
+  expect(JSON.parse(discovered.stdout).agents).toEqual(['codex']);
+  const explicit = await run(root, [
+    'install', '.', '--agent', 'claude-code', '--agent', 'claude-code', '--json',
+  ]);
+  expect(explicit.code).toBe(0);
+  expect(JSON.parse(explicit.stdout).agents).toEqual(['claude-code']);
+});
+
+test('sorts recommended skills before generating commands', async () => {
+  const root = fixture();
+  const plan = await buildInstallPlan(root, [
+    {id: 'zeta/skills/z'}, {id: 'alpha/skills/a'},
+  ], ['codex']);
+  expect(plan.skills.map((skill) => skill.id)).toEqual(['alpha/skills/a', 'zeta/skills/z']);
+  expect(plan.commands.commands.map((command) => command.includes('alpha/skills'))).toEqual([
+    true, false,
+  ]);
+});
+
+test('runs a pinned Skills CLI in text mode only with --yes', async () => {
+  const root = fixture();
+  const record = path.join(root, 'pinned-npx.jsonl');
+  const env = {PATH: fakeNpx(root, installProgram(record))};
+  const preview = await run(root, ['install', '.', '--agent', 'codex', '--skills-cli', 'skills@1.2.3'], env);
+  expect(preview.code).toBe(0);
+  expect(preview.stdout).toContain('npx skills@1.2.3 add');
+  expect(existsSync(record)).toBe(false);
+  const executed = await run(root, [
+    'install', '.', '--agent', 'codex', '--skills-cli', 'skills@1.2.3', '--yes',
+  ], env);
+  expect(executed.code).toBe(0);
+  expect(executed.stdout).toContain('Skills CLI completed');
+  const calls = readFileSync(record, 'utf8').trim().split(String.fromCharCode(10)).map((line) => JSON.parse(line));
+  expect(calls.length).toBeGreaterThan(0);
+  expect(calls.every((call: {args: string[]}) => call.args[0] === 'skills@1.2.3')).toBe(true);
+});
+
 test('pins the Skills CLI package without changing the default', () => {
   const root = fixture();
 

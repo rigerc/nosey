@@ -9,6 +9,8 @@ headless commands, without adding a separate UI framework dependency.
 - `src/screens/index.ts` defines screens and visible navigation order.
 - `src/commands/index.ts` registers headless commands.
 - `src/commands/scan.ts` resolves registries, scans workspaces, and prints reports.
+- `src/commands/install.ts` builds noninteractive installation plans and optionally
+  executes them with `--yes`; JSON output captures child output.
 - `src/commands/registry.ts` routes registry management and noninteractive initialization.
 - `src/commands/schema.ts` prints the canonical map or manifest JSON Schema offline.
 - `src/lib/scanner.ts`, `manifests.ts`, `detect.ts`, `report.ts`, and `text-cache.ts`
@@ -27,6 +29,8 @@ headless commands, without adding a separate UI framework dependency.
   and client approval are not inferred. Syntax/shape failures add `invalid-config`
   skipped inputs with no parser source excerpts. No global MCP config is read.
 - `src/features/skills/filter.ts` and `groups.ts` provide pure selection helpers.
+- `src/features/skills/plan.ts` builds deterministic, project-local plans and skips
+  already-installed agent targets.
 - `src/features/skills/install.ts` inspects project-local installations (lock provenance
   and agent folders) and generates copyable `skills add --yes --json` commands.
   Execution is separately opt-in: after selection confirmation and Ink exit,
