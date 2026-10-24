@@ -511,10 +511,16 @@ export function transformRegistryIdentity(input: IdentityInput): IdentityOutput 
         // Already configured.
       } else if (agentGuide === maintainer && agentGuide.startsWith(`${guideSentinel}\n`)) {
         agentGuide = downstream;
-      } else if (agentGuide.startsWith(guideSentinel)) {
+      } else if (
+        agentGuide.startsWith(guideSentinel) ||
+        agentGuide.startsWith(`\uFEFF${guideSentinel}`)
+      ) {
         throw new Error('Unrecognized or modified template maintainer AGENTS.md');
       }
-    } else if (agentGuide.startsWith(guideSentinel)) {
+    } else if (
+      agentGuide.startsWith(guideSentinel) ||
+      agentGuide.startsWith(`\uFEFF${guideSentinel}`)
+    ) {
       throw new Error('A trusted guide policy is required to verify template maintainer AGENTS.md');
     }
   }

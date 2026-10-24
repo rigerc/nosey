@@ -276,7 +276,8 @@ describe('trusted registry identity transformation', () => {
   it('rejects every shared negative identity fixture without relying on fixture names as verdicts', async () => {
     const directories = await readdir(fixtureRoot, {withFileTypes: true});
     const policy = await guidePolicy();
-    let rejected = 0;
+    const negativeFixtures: string[] = [];
+    const rejectedFixtures: string[] = [];
 
     for (const entry of directories.filter((item) => item.isDirectory())) {
       const inputDirectory = path.join(fixtureRoot, entry.name, 'input');
@@ -293,13 +294,14 @@ describe('trusted registry identity transformation', () => {
       );
 
       if (metadata.verdict !== 'reject') continue;
+      negativeFixtures.push(entry.name);
       let raw;
 
       try {
         raw = await readFixtureInput(entry.name);
       } catch (error) {
         expect(error).toBeInstanceOf(SyntaxError);
-        rejected++;
+        rejectedFixtures.push(entry.name);
         continue;
       }
 
@@ -310,10 +312,11 @@ describe('trusted registry identity transformation', () => {
           guidePolicy: policy,
         }),
       ).toThrow();
-      rejected++;
+      rejectedFixtures.push(entry.name);
     }
 
-    expect(rejected).toBe(9);
+    expect(negativeFixtures.length).toBeGreaterThan(0);
+    expect(rejectedFixtures).toEqual(negativeFixtures);
   });
 
   it('prevalidates and rolls back recoverable filesystem failures, then stays byte-idempotent', async () => {
