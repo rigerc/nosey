@@ -2,9 +2,11 @@
 
 Captured 2026-10-24 for [D01](https://github.com/rigerc/nosey/issues/40). The
 authoritative contract is [registry-template-rebuild.md](registry-template-rebuild.md),
-whose SHA-256 is
-`55ba0b8656e439784ba80a247b4eb57d5ea715f4e7d39cdd9c6b4235d3d91294` (matches
-the issue attachment). This is a point-in-time baseline; recheck upstream heads
+which was normalized by the repository Markdown formatter when committed. The
+original attachment/source-comment SHA-256 is
+`55ba0b8656e439784ba80a247b4eb57d5ea715f4e7d39cdd9c6b4235d3d91294`;
+the formatted committed specification SHA-256 is
+`2e8b7f871050c5aeb28a056f43f0bf38d4cbabdc6ddd0865ac5e499133db5932`. Formatting changes tables and emphasis syntax; source snapshots preserve the original bytes. This is a point-in-time baseline; recheck upstream heads
 before implementation or release decisions.
 
 ## Repository heads and runtime

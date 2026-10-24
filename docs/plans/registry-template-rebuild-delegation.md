@@ -2,7 +2,7 @@
 
 Original proposal snapshot: **2026-10-24 01:37 UTC**. Mode: **Execute — approved backlog complete**. The user approved the batch with “Proceed.” Created and read-back verified **18 issues and 18 project items**, all **Todo / unclaimed**, using authenticated GitHub CLI because the MCP still returns Bad credentials. No worker claims/launches, merges or releases were performed. See the execution record below.
 
-Authoritative requirements: [revised specification](registry-template-rebuild.md). It is an exact copy of the supplied `registry-template-rebuild-revised.md` (SHA-256 `55ba0b8656e439784ba80a247b4eb57d5ea715f4e7d39cdd9c6b4235d3d91294`), replacing the older local plan that required yaml/ajv in the template. The prior local draft is preserved at `/tmp/nosey-rebuild-plan-lazuvydh/registry-template-rebuild.md`. Both plan files are local/uncommitted; no GitHub source permalink exists yet.
+Authoritative requirements: [revised specification](registry-template-rebuild.md). It is a Markdown-format-normalized copy of the supplied `registry-template-rebuild-revised.md` (SHA-256 `55ba0b8656e439784ba80a247b4eb57d5ea715f4e7d39cdd9c6b4235d3d91294`), replacing the older local plan that required yaml/ajv in the template. The prior local draft is preserved at `/tmp/nosey-rebuild-plan-lazuvydh/registry-template-rebuild.md`. Both plan files are local/uncommitted; no GitHub source permalink exists yet.
 
 ## Baseline and evidence quality
 
