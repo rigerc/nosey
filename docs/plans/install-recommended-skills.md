@@ -1,7 +1,8 @@
 # Install recommended skills command
 
 Status: **implemented on `t3/dc395c01`**. The command, shared planner, JSON-safe
-execution, test coverage, documentation, and CI preview smoke check are in place.
+execution, test coverage, and documentation are in place. The separate install-plan
+CI smoke step was removed; install regression tests still run through `npm test`.
 The remainder of this document records the original implementation plan.
 
 ## Goal
