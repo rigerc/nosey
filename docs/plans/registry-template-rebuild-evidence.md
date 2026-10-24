@@ -42,13 +42,16 @@ Inspected `schemas/registry/skills-map.schema.json`,
 `schemas/registry/skills-manifest.schema.json`, `src/lib/registry/validate.ts`,
 `src/lib/registry/merge.ts`, and `tests/fixtures/registry-schema/`.
 
-Schema vocabulary observed (applicators/assertions and document annotations;
-counts omitted because the inventory is the set of used keywords):
+Schema vocabulary observed by walking the schema-bearing locations in both
+schemas (`$defs`, `properties`, `propertyNames`, `items`, and applicator
+subschemas), rather than treating arbitrary annotation payloads as schemas
+(counts omitted):
 
-- Standard: `$schema`, `$id`, `$ref`, `type`, `title`, `description`,
-  `examples`, `required`, `properties`, `items`, `additionalProperties`,
-  `const`, `enum`, `pattern`, `minLength`, `maxLength`, `minItems`,
-  `maxItems`, `allOf`, `anyOf`, `not`, `if`, `then`, and `dependentSchemas`.
+- Standard: `$schema`, `$id`, `$ref`, `$defs`, `type`, `title`, `description`,
+  `examples`, `required`, `properties`, `propertyNames`, `items`,
+  `additionalProperties`, `const`, `enum`, `pattern`, `minLength`,
+  `maxLength`, `minItems`, `maxItems`, `minProperties`, `allOf`, `anyOf`,
+  `not`, `if`, `then`, and `dependentSchemas`.
 - Custom annotations: `x-builtInTechnologies`, `x-normalization`,
   `x-parserOnly`.
 
@@ -62,10 +65,17 @@ references. The fixture corpus distinguishes `valid`, schema `invalid`, and
 `parser-only` cases; it includes map and manifest cases for duplicate IDs,
 unsafe paths, invalid regexes, and length/Unicode behavior.
 
+**Observed behavior:** `mergeRegistries` filters undeclared `alwaysRecommend`
+IDs and emits a warning. The explicit `validateRegistry` command calls
+`mergeRegistries` and throws if that result contains warnings, so an undeclared
+ID fails explicit registry validation even though merge itself filters it.
+Other consumers of merge results can observe the filtered registry plus its
+warning; test both paths explicitly.
+
 **Selected revised policy:** validation rejects every undeclared
-`alwaysRecommend` skill ID. Current `mergeRegistries` filters unresolved IDs
-before adding recommendations, so current merge behavior is not proof that
-validation rejects them. Test validation and merging explicitly.
+`alwaysRecommend` skill ID. This agrees with the current explicit
+`validateRegistry` behavior; the merge path's filtering alone would not
+establish that policy.
 
 **Selected annotation policy:** `x-builtInCombinations` is informational,
 nonasserting metadata. It must not become an instance-validation keyword.
