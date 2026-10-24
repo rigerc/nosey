@@ -1,0 +1,3 @@
+[submodule "template/registry"]
+	path = template/registry
+	url = https://github.com/rigerc/nosey-registry-template.git

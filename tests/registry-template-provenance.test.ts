@@ -1,4 +1,6 @@
 import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import path from 'node:path';
 import {test, expect} from 'vite-plus/test';
 import type {CommandRunner} from '../src/lib/registry/init.js';
 import {githubClient} from '../src/lib/registry/github.js';
@@ -10,6 +12,7 @@ import {
   verifyTemplateGuide,
   type TrustedTemplateRevision,
 } from '../src/lib/registry/template-provenance.js';
+import {trustedTemplateRevision} from '../src/lib/registry/template-source.js';
 
 const commit = 'a'.repeat(40);
 const tree = 'b'.repeat(40);
@@ -22,6 +25,22 @@ const revision: TrustedTemplateRevision = {
   maintainerGuideSha256: 'c'.repeat(64),
   downstreamGuideSha256: digest,
 };
+
+test('approved guide digests match the bytes in the pinned template submodule', async () => {
+  const root = path.resolve('template/registry/scripts/test/fixtures/identity/v1');
+
+  const [maintainer, downstream] = await Promise.all([
+    readFile(path.join(root, 'maintainer-guide.md')),
+    readFile(path.join(root, 'downstream-guide.md')),
+  ]);
+
+  expect(createHash('sha256').update(maintainer).digest('hex')).toBe(
+    trustedTemplateRevision.maintainerGuideSha256,
+  );
+  expect(createHash('sha256').update(downstream).digest('hex')).toBe(
+    trustedTemplateRevision.downstreamGuideSha256,
+  );
+});
 
 test('trusted provenance validates Git object and guide hash shapes', () => {
   expect(validateTrustedTemplateRevision(revision).commit).toBe(commit);
