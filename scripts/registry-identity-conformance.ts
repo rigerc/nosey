@@ -268,50 +268,82 @@ async function run(options: Options): Promise<number> {
     }
   }
 
-  const candidateSyntaxCases = [
-    {id: 'acme/repo_name', accepted: true},
-    {id: 'acme/repo.name', accepted: true},
-    {id: 'acme-name/repo', accepted: true},
-    {id: 'acme_name/repo', accepted: false},
-    {id: 'acme.name/repo', accepted: false},
-    {id: `${'a'.repeat(40)}/repo`, accepted: false},
+  const identityCases = [
+    {id: 'acme.name/repo', accepted: true},
+    {id: 'acme_name/repo', accepted: true},
+    {id: `${'a'.repeat(40)}/repo`, accepted: true},
+    {id: 'octocat/hello-world', accepted: true},
+    {id: 'acme/repo_name.v2-rc', accepted: true},
+    {id: `acme/${'r'.repeat(101)}`, accepted: true},
+    {id: './repo', accepted: false},
+    {id: '../repo', accepted: false},
+    {id: 'acme./repo', accepted: false},
+    {id: 'acme/repo.', accepted: false},
+    {id: 'acme/team/repo', accepted: false},
+    {id: '/repo', accepted: false},
+    {id: 'acme/', accepted: false},
+    {id: '', accepted: false},
   ];
 
-  for (const item of candidateSyntaxCases) {
-    let noseyAccepted = true;
+  for (const item of identityCases) {
+    const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'nosey-identity-syntax-'));
+    const noseyRoot = path.join(temp, 'nosey');
+    const templateRoot = path.join(temp, 'template');
 
     try {
-      validateRegistryId(item.id);
-    } catch {
-      noseyAccepted = false;
+      await Promise.all([fs.mkdir(noseyRoot), fs.mkdir(templateRoot)]);
+      const source = path.join(fixtureDirectory, 'configure-success', 'input');
+      await Promise.all([copyFixture(source, noseyRoot), copyFixture(source, templateRoot)]);
+      const guide = path.join(templateRoot, '.agents/templates/registry-AGENTS.md');
+      await fs.mkdir(path.dirname(guide), {recursive: true});
+      await fs.copyFile(path.join(options.template, '.agents/templates/registry-AGENTS.md'), guide);
+
+      const verdicts: boolean[] = [];
+
+      try {
+        validateRegistryId(item.id);
+        await configureRegistryIdentityFiles(noseyRoot, item.id, {guidePolicy});
+        verdicts.push(true);
+      } catch {
+        verdicts.push(false);
+      }
+
+      try {
+        await template.configureRegistry(templateRoot, item.id, {schemasDir: options.schemas});
+        verdicts.push(true);
+      } catch {
+        verdicts.push(false);
+      }
+
+      if (
+        verdicts[0] !== item.accepted ||
+        verdicts[1] !== item.accepted ||
+        verdicts[0] !== verdicts[1]
+      )
+        throw new Error(
+          `identity syntax mismatch for ${JSON.stringify(item.id)}: expected=${item.accepted}, Nosey=${verdicts[0]}, template=${verdicts[1]}`,
+        );
+
+      if (item.accepted) {
+        for (const filename of ['skills-map.json', 'skills-manifest.json']) {
+          const noseyDocument = await json(path.join(noseyRoot, filename));
+          const templateDocument = await json(path.join(templateRoot, filename));
+
+          if (JSON.stringify(noseyDocument) !== JSON.stringify(templateDocument))
+            throw new Error(
+              `${JSON.stringify(item.id)}: ${filename} output differs between configurators`,
+            );
+        }
+      }
+    } finally {
+      await fs.rm(temp, {recursive: true, force: true});
     }
-
-    if (!noseyAccepted)
-      throw new Error(`Nosey local identity grammar unexpectedly rejected ${item.id}`);
-    let templateAccepted = true;
-
-    try {
-      await template.configureRegistry(
-        path.join(options.template, 'missing-syntax-fixture'),
-        item.id,
-        {schemasDir: options.schemas},
-      );
-    } catch (error) {
-      templateAccepted = !(
-        error instanceof Error && /safe GitHub owner\/repository/.test(error.message)
-      );
-    }
-
-    if (templateAccepted !== item.accepted)
-      throw new Error(
-        `template identity syntax verdict mismatch for ${item.id}: expected=${item.accepted}, actual=${templateAccepted}`,
-      );
   }
 
   if (!passed)
     throw new Error(`BLOCKED: no executable shared identity fixtures found at ${fixtureDirectory}`);
   console.log(
-    `Identity conformance passed: ${passed}/${passed} shared file-operation fixtures plus ${candidateSyntaxCases.length} explicit identity syntax cases; local Nosey grammar retained its dotted/underscored owner support while the manual template configure kept stricter GitHub owner rules.`,
+    `Identity conformance passed: ${passed}/${passed} shared file-operation fixtures plus ${identityCases.length} executable identity syntax cases against isolated registries and the proposed Nosey schemas.`,
   );
 
   return passed;
