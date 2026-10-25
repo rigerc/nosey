@@ -10,6 +10,11 @@ import {test, expect} from 'vite-plus/test';
 import {detectProject, type Report} from '../src/lib/detect.js';
 import {scanProject} from '../src/lib/scanner.js';
 import {allPackages, indexManifests} from '../src/lib/manifests.js';
+import {
+  deriveSkillGroups,
+  orderedSelection,
+  selectedInGroup,
+} from '../src/features/skills/groups.js';
 
 import {COMBO_SKILLS_MAP, SKILLS_MAP} from '../src/data/skills-map.js';
 
@@ -359,82 +364,176 @@ test('Go indirect modules do not count as direct technology dependencies', async
   );
 });
 
-const samberGoSkills = [
-  'golang-benchmark',
-  'golang-cli',
+const coreGoSkills = [
   'golang-code-style',
-  'golang-concurrency',
-  'golang-context',
-  'golang-continuous-integration',
-  'golang-data-structures',
-  'golang-database',
-  'golang-dependency-injection',
-  'golang-dependency-management',
-  'golang-design-patterns',
-  'golang-documentation',
   'golang-error-handling',
-  'golang-google-wire',
-  'golang-gopls',
-  'golang-graphql',
-  'golang-grpc',
-  'golang-how-to',
-  'golang-lint',
-  'golang-modernize',
-  'golang-naming',
-  'golang-observability',
-  'golang-performance',
-  'golang-pkg-go-dev',
-  'golang-popular-libraries',
-  'golang-project-layout',
-  'golang-refactoring',
-  'golang-safety',
-  'golang-samber-do',
-  'golang-samber-hot',
-  'golang-samber-lo',
-  'golang-samber-mo',
-  'golang-samber-oops',
-  'golang-samber-ro',
-  'golang-samber-slog',
   'golang-security',
-  'golang-spf13-cobra',
-  'golang-spf13-viper',
-  'golang-stay-updated',
-  'golang-stretchr-testify',
-  'golang-structs-interfaces',
-  'golang-swagger',
   'golang-testing',
-  'golang-troubleshooting',
-  'golang-uber-dig',
-  'golang-uber-fx',
 ].map((name) => 'samber/cc-skills-golang/' + name);
 
-test('samber Go skills are default suggestions for every Go project', async () => {
-  await fixture({'go.mod': 'module example.com/cli\n\ngo 1.24\n'}, (report) => {
-    expect(has(report, 'go')).toBe(true);
-
-    const ids = report.skills.map((candidate) => candidate.id);
-    expect(ids.filter((id) => id.startsWith('samber/cc-skills-golang/'))).toStrictEqual(
-      samberGoSkills,
+for (const file of ['go.mod', 'go.work']) {
+  test(`bare ${file} recommends only the four core Go skills`, async () => {
+    await fixture(
+      {[file]: file === 'go.mod' ? 'module example.com/cli\n\ngo 1.24\n' : 'go 1.24\n'},
+      (report) => {
+        expect(has(report, 'go')).toBe(true);
+        expect(report.skills.map((candidate) => candidate.id).sort()).toStrictEqual(coreGoSkills);
+        expect(
+          report.technologies
+            .find((tech) => tech.id === 'go')
+            ?.skills.slice()
+            .sort(),
+        ).toStrictEqual(coreGoSkills);
+      },
     );
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(report.technologies.find((tech) => tech.id === 'go')?.skills).toHaveLength(48);
   });
-});
+}
 
-test('Go library modules detect specific skill origins', async () => {
+// Explicit expectations keep module aliases and recommendation identities under review.
+const goLibraryMappings: Array<[string, string, string[]]> = [
+  ['google-wire', 'golang-google-wire', ['github.com/google/wire']],
+  ['uber-dig', 'golang-uber-dig', ['go.uber.org/dig']],
+  ['uber-fx', 'golang-uber-fx', ['go.uber.org/fx']],
+  ['samber-do', 'golang-samber-do', ['github.com/samber/do', 'github.com/samber/do/v2']],
+  ['samber-hot', 'golang-samber-hot', ['github.com/samber/hot']],
+  ['samber-lo', 'golang-samber-lo', ['github.com/samber/lo']],
+  ['samber-mo', 'golang-samber-mo', ['github.com/samber/mo']],
+  ['samber-oops', 'golang-samber-oops', ['github.com/samber/oops']],
+  ['samber-ro', 'golang-samber-ro', ['github.com/samber/ro']],
+  [
+    'samber-slog',
+    'golang-samber-slog',
+    [
+      'github.com/samber/slog-multi',
+      'github.com/samber/slog-sampling',
+      'github.com/samber/slog-formatter',
+    ],
+  ],
+  ['cobra', 'golang-spf13-cobra', ['github.com/spf13/cobra']],
+  ['viper', 'golang-spf13-viper', ['github.com/spf13/viper']],
+  [
+    'swagger',
+    'golang-swagger',
+    [
+      'github.com/swaggo/swag',
+      'github.com/swaggo/gin-swagger',
+      'github.com/swaggo/echo-swagger',
+      'github.com/swaggo/http-swagger',
+      'github.com/swaggo/files',
+    ],
+  ],
+  ['testify', 'golang-stretchr-testify', ['github.com/stretchr/testify']],
+  [
+    'go-graphql',
+    'golang-graphql',
+    ['github.com/99designs/gqlgen', 'github.com/graph-gophers/graphql-go'],
+  ],
+  ['go-grpc', 'golang-grpc', ['google.golang.org/grpc']],
+];
+
+for (const [technologyId, skillName, modules] of goLibraryMappings) {
+  for (const module of modules) {
+    test(`${module} recommends only its matching Go library skill with a specific origin`, async () => {
+      const id = 'samber/cc-skills-golang/' + skillName;
+      await fixture(
+        {'go.mod': `module example.com/service\nrequire ${module} v1.0.0\n`},
+        (report) => {
+          expect(has(report, technologyId)).toBe(true);
+          expect(
+            report.technologies
+              .find((tech) => tech.id === technologyId)
+              ?.evidence.some((reason) => reason.includes('go.mod')),
+          ).toBe(true);
+          expect(skill(report, id)?.sources.map((source) => source.id)).toStrictEqual([
+            technologyId,
+          ]);
+          expect(
+            report.skills
+              .filter((candidate) => candidate.id.startsWith('samber/cc-skills-golang/'))
+              .map((candidate) => candidate.id)
+              .sort(),
+          ).toStrictEqual([...coreGoSkills, id].sort());
+
+          if (technologyId === 'go-graphql') {
+            expect(has(report, 'graphql')).toBe(true);
+            expect(skill(report, 'apollographql/skills/graphql-operations')).toBeTruthy();
+          }
+
+          if (technologyId === 'go-grpc') expect(has(report, 'grpc')).toBe(true);
+        },
+      );
+    });
+  }
+
+  test(`${technologyId} is not recommended for indirect-only or similarly named modules`, async () => {
+    const requirements = modules
+      .flatMap((module) => [`  ${module} v1.0.0 // indirect`, `  ${module}-unrelated v1.0.0`])
+      .join('\n');
+
+    await fixture(
+      {'go.mod': `module example.com/service\nrequire (\n${requirements}\n)\n`},
+      (report) => {
+        expect(has(report, technologyId)).toBe(false);
+        expect(report.skills.map((candidate) => candidate.id).sort()).toStrictEqual(coreGoSkills);
+      },
+    );
+  });
+}
+
+for (const withGo of [false, true]) {
+  test(`non-Go GraphQL/gRPC dependencies do not suggest Go library skills (Go workspace: ${withGo})`, async () => {
+    const files = {
+      'web/package.json': {dependencies: {graphql: '^16', '@grpc/grpc-js': '^1'}},
+      'service/requirements.txt': 'grpcio==1.71.0\ngrpcio-tools==1.71.0\n',
+    };
+
+    if (withGo) Object.assign(files, {'other/go.mod': 'module example.com/unrelated\ngo 1.24\n'});
+
+    await fixture(files, (report) => {
+      expect(has(report, 'graphql')).toBe(true);
+      expect(has(report, 'grpc')).toBe(true);
+      expect(skill(report, 'apollographql/skills/graphql-operations')).toBeTruthy();
+      expect(has(report, 'go-graphql')).toBe(false);
+      expect(has(report, 'go-grpc')).toBe(false);
+      expect(
+        report.skills
+          .filter((candidate) => candidate.id.startsWith('samber/cc-skills-golang/'))
+          .map((candidate) => candidate.id)
+          .sort(),
+      ).toStrictEqual(withGo ? coreGoSkills : []);
+    });
+  });
+}
+
+test('Go CLI dependencies add three skills to the four-skill baseline', async () => {
   await fixture(
     {
       'go.mod':
-        'module example.com/service\n\ngo 1.24\n\nrequire (\n  github.com/spf13/cobra v1.9.1\n  go.uber.org/fx v1.23.2\n  github.com/samber/lo v1.53.0\n  google.golang.org/grpc v1.71.0\n)\n',
+        'module example.com/cli\nrequire (\n github.com/spf13/cobra v1.9.1\n go.uber.org/fx v1.23.2\n github.com/samber/lo v1.53.0\n)\n',
     },
     (report) => {
+      expect(report.skills.map((candidate) => candidate.id).sort()).toStrictEqual(
+        [
+          ...coreGoSkills,
+          'samber/cc-skills-golang/golang-spf13-cobra',
+          'samber/cc-skills-golang/golang-uber-fx',
+          'samber/cc-skills-golang/golang-samber-lo',
+        ].sort(),
+      );
+      const groups = deriveSkillGroups(report);
+      expect(groups.map((group) => [group.key, group.skillIds.length])).toStrictEqual([
+        ['technology:cobra', 1],
+        ['technology:go', 4],
+        ['technology:samber-lo', 1],
+        ['technology:uber-fx', 1],
+      ]);
+      const selected = new Set(report.skills.map((candidate) => candidate.id));
       expect(
-        ['go', 'cobra', 'uber-fx', 'samber-lo', 'grpc'].filter((id) => !has(report, id)),
-      ).toStrictEqual([]);
-
-      const cobra = skill(report, 'samber/cc-skills-golang/golang-spf13-cobra');
-      expect(cobra?.sources.map((source) => source.id).sort()).toStrictEqual(['cobra', 'go']);
-      expect(report.skills.filter((candidate) => candidate.id === cobra?.id)).toHaveLength(1);
+        groups
+          .map((group) => selectedInGroup(group, selected))
+          .reduce((sum, count) => sum + count, 0),
+      ).toBe(7);
+      expect(orderedSelection(report, selected)).toHaveLength(7);
     },
   );
 });

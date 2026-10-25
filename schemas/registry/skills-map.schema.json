@@ -107,6 +107,8 @@
     {"id": "github-actions", "name": "GitHub Actions"},
     {"id": "gitlab-ci", "name": "GitLab CI/CD"},
     {"id": "go", "name": "Go"},
+    {"id": "go-graphql", "name": "Go GraphQL"},
+    {"id": "go-grpc", "name": "Go gRPC"},
     {"id": "google-cloud", "name": "Google Cloud"},
     {"id": "google-genai", "name": "Google Gen AI"},
     {"id": "google-wire", "name": "Google Wire"},

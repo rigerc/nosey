@@ -52,6 +52,14 @@ npm run dev -- scan ../your-project --explain
 
 Nosey reads manifests and configuration signals without executing the scanned project's code. It reports detected technologies, matching agent skills, and supporting evidence. Installing recommended skills requires enabling Skills CLI execution and confirming a selection.
 
+Go projects receive four core skills from `samber/cc-skills-golang`: code style,
+error handling, testing, and security. Direct Go module requirements add matching
+library skills, such as Cobra, Fx, or Testify; indirect-only requirements do not.
+GraphQL and gRPC Go skills require their corresponding Go modules, including in
+mixed-language workspaces. Other Go specialties and the former `affaan-m` Go
+defaults can be added through a custom registry. Existing installed skills are
+not removed when recommendations change.
+
 ## Terminal workflow
 
 Navigate four tabs in one terminal session:
@@ -276,6 +284,11 @@ npm run dev -- registry add https://github.com/org/skills.git --ref v1
 npm run dev -- registry list --json
 npm run dev -- registry validate ./team-skills --json
 ```
+
+Built-in technology IDs are reserved. The Go mappings include `go-graphql` and
+`go-grpc`; custom registries defining those technologies must rename their own
+definitions or extend the built-in IDs through `technologySkills`. A duplicate
+technology definition causes that registry to be skipped with a warning.
 
 ### Refreshing Git registries
 

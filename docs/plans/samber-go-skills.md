@@ -1,5 +1,101 @@
 # Add samber Go skills with mappings
 
+## Follow-up: granular recommendations
+
+Status: **implemented**. This follow-up supersedes
+the all-skills default and shared-origin requirements in the historical plan
+below. The former `go.skills` list contained 48 IDs. The current mapping in
+[`src/data/skills-map.ts`](../../src/data/skills-map.ts) recommends four core
+skills; [`tests/detect.test.ts`](../../tests/detect.test.ts) covers the baseline,
+dependency mappings, language boundaries, and grouping/selection behavior.
+
+### Recommendation policy
+
+Recommend a small baseline for Go, then add skills supported by detected
+dependencies. Avoid using the existence of `go.mod` as evidence for every Go
+specialty.
+
+| Level      | Trigger                                        | Recommendations                                                                                                                                                                                |
+| ---------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core       | Existing `go.mod` / `go.work` detection        | Four samber skills: `golang-code-style`, `golang-error-handling`, `golang-testing`, `golang-security`.                                                                                         |
+| Library    | Exact direct module requirement                | Only the matching library skill: Cobra, Viper, Testify, Wire, Dig, Fx, the seven samber mappings, Swagger, GraphQL, or gRPC.                                                                   |
+| Specialist | Explicit user choice through a custom registry | Remaining general-purpose skills, including performance, benchmarks, concurrency, database, observability, modernization, and tooling. No automatic specialist recommendations in this change. |
+
+The four core IDs use the existing `samber/cc-skills-golang/` prefix. This is a
+product selection, not an upstream installation requirement. Remove the
+two `affaan-m` defaults to avoid offering competing baseline collections; users
+can restore them through a custom registry. Keep the core count at four rather
+than replacing 48 suggestions with the previously mentioned 14-skill shortlist.
+
+Preserve all 16 existing library mappings, but remove their skills from `go`.
+In particular, Cobra should contribute `golang-spf13-cobra` only under Cobra;
+it should no longer have a `go` origin. Existing exact matching and the exclusion
+of indirect-only requirements remain in place.
+
+GraphQL and gRPC need an additional language boundary: their current technology
+entries match non-Go dependencies too. Move the samber skill and Go module
+matchers to dedicated `go-graphql` and `go-grpc` technology entries. Preserve the
+existing generic technologies, their matchers, and non-Go skill recommendations;
+retain Go module matchers there as well if needed to preserve generic technology
+detection. This avoids recommending a Go skill merely because a JavaScript or
+Python project uses GraphQL/gRPC, including mixed-language workspaces where Go
+is detected elsewhere. Check the new IDs against reserved built-in IDs and
+document their compatibility impact on custom registries.
+
+### Implementation slices
+
+1. **Trim defaults and retain dependency recommendations.** Update
+   `src/data/skills-map.ts` with the four core IDs, dependency-only library skills,
+   and Go-specific GraphQL/gRPC entries. Keep detection, report, and installation
+   APIs unchanged. No ranking, arbitrary result cap, new settings, or schema
+   fields are needed.
+2. **Replace the volume contract with relevance tests.** In `tests/detect.test.ts`,
+   replace the 48-skill assertion with the exact four core IDs for bare `go.mod`
+   and `go.work` fixtures. Cover every library mapping, absent and indirect-only
+   dependencies, and module path aliases. Assert library skills have the specific
+   technology origin and appear once. Add JS/Python-only GraphQL/gRPC negative
+   cases and a mixed-language fixture with Go but no matching Go requirement.
+   Keep install-source grouping coverage in `tests/skills-cli.test.ts`.
+3. **Refresh metadata and document the behavior.** Run
+   `npm run schema:technologies` for the changed built-in inventory. Update the
+   README's recommendation explanation with the four-core-plus-dependencies
+   policy. Existing installed skills are unaffected; scan and install planning
+   will use the smaller recommendation set and do not uninstall omitted skills.
+4. **Verify the shared output contract.** Run `npm run typecheck`,
+   `npm run build`, `npm run test`, `npm run schema:technologies:check`,
+   `npm run docs:schema:check`, and `npm run template:schema:conformance`.
+   Check built CLI plain, JSON, skills-only, and install-preview output using the
+   same bare-Go and library fixtures. Verify interactive grouping and selection
+   with the smaller set.
+
+### Acceptance examples
+
+- Bare Go workspace: exactly four Go recommendations, with no library or
+  specialist skills (other independent technology/registry suggestions may exist).
+- Go + Cobra + Fx + samber/lo: four core plus three library skills, seven distinct
+  Go skill IDs rather than 48.
+- Indirect-only Cobra: four core, no Cobra skill.
+- JavaScript/Python GraphQL or gRPC without matching Go modules: no samber Go
+  GraphQL/gRPC skill, even when an unrelated Go workspace is also present.
+- All 16 library skills remain reachable through their direct-module mappings;
+  installation keeps the existing source grouping and deduplication behavior.
+
+### Implementation evidence
+
+- Typecheck and build pass. All 43 unit-test files pass (495 tests), together
+  with 24 catalog and 17 mapping tests.
+- Generated technology metadata and schema documentation checks pass. Template
+  schema conformance passes 132 registry fixtures, 22 semantic cases, and 12
+  annotation cases, and rejects six unsupported schemas.
+- Built CLI plain, JSON, skills-only, and install-preview output confirm four Go
+  skills for a bare module and seven for Cobra + Fx + samber/lo. Unrelated custom
+  registry recommendations remain additive; no install commands were executed.
+- Interactive grouping/selection helpers and the existing full and compact Scan
+  tests pass. The new `go-graphql` and `go-grpc` IDs are documented as reserved
+  built-ins in the README.
+
+## Historical implementation
+
 Status: **implemented on `t3/add-golang-skill-mappings`**. Verified against
 [`samber/cc-skills-golang`](https://github.com/samber/cc-skills-golang) at commit
 [`246b6c4`](https://github.com/samber/cc-skills-golang/commit/246b6c4c1ab3077dee114beb9ade3bb0527dfebc)
