@@ -8,6 +8,7 @@ import {
   generateInstallCommands,
   inspectInstalledSkills,
   installationLabel,
+  skillSource,
 } from '../src/features/skills/install';
 
 const roots: string[] = [];
@@ -311,4 +312,29 @@ test('explicit registry install names take precedence over built-in aliases', ()
 
   expect(result.errors).toEqual([]);
   expect(result.commands[0]).toContain('skills add acme/fork --skill custom-react');
+});
+
+test('groups three-segment samber Go skills under one install source', () => {
+  const ids = [
+    'samber/cc-skills-golang/golang-spf13-cobra',
+    'samber/cc-skills-golang/golang-uber-fx',
+  ];
+
+  expect(skillSource({id: ids[0]!})).toStrictEqual({
+    source: 'samber/cc-skills-golang',
+    name: 'golang-spf13-cobra',
+  });
+
+  const result = generateInstallCommands(
+    ids,
+    ids.map((id) => ({id})),
+    ['codex'],
+    fixture(),
+  );
+
+  expect(result.errors).toEqual([]);
+  expect(result.commands).toHaveLength(1);
+  expect(result.commands[0]).toContain('skills add samber/cc-skills-golang');
+  expect(result.commands[0]).toContain('--skill golang-spf13-cobra');
+  expect(result.commands[0]).toContain('--skill golang-uber-fx');
 });
