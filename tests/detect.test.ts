@@ -359,6 +359,94 @@ test('Go indirect modules do not count as direct technology dependencies', async
   );
 });
 
+const samberGoSkills = [
+  'golang-benchmark',
+  'golang-cli',
+  'golang-code-style',
+  'golang-concurrency',
+  'golang-context',
+  'golang-continuous-integration',
+  'golang-data-structures',
+  'golang-database',
+  'golang-dependency-injection',
+  'golang-dependency-management',
+  'golang-design-patterns',
+  'golang-documentation',
+  'golang-error-handling',
+  'golang-google-wire',
+  'golang-gopls',
+  'golang-graphql',
+  'golang-grpc',
+  'golang-how-to',
+  'golang-lint',
+  'golang-modernize',
+  'golang-naming',
+  'golang-observability',
+  'golang-performance',
+  'golang-pkg-go-dev',
+  'golang-popular-libraries',
+  'golang-project-layout',
+  'golang-refactoring',
+  'golang-safety',
+  'golang-samber-do',
+  'golang-samber-hot',
+  'golang-samber-lo',
+  'golang-samber-mo',
+  'golang-samber-oops',
+  'golang-samber-ro',
+  'golang-samber-slog',
+  'golang-security',
+  'golang-spf13-cobra',
+  'golang-spf13-viper',
+  'golang-stay-updated',
+  'golang-stretchr-testify',
+  'golang-structs-interfaces',
+  'golang-swagger',
+  'golang-testing',
+  'golang-troubleshooting',
+  'golang-uber-dig',
+  'golang-uber-fx',
+].map((name) => 'samber/cc-skills-golang/' + name);
+
+test('samber Go skills are default suggestions for every Go project', async () => {
+  await fixture({'go.mod': 'module example.com/cli\n\ngo 1.24\n'}, (report) => {
+    expect(has(report, 'go')).toBe(true);
+
+    const ids = report.skills.map((candidate) => candidate.id);
+    expect(ids.filter((id) => id.startsWith('samber/cc-skills-golang/'))).toStrictEqual(
+      samberGoSkills,
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(report.technologies.find((tech) => tech.id === 'go')?.skills).toHaveLength(48);
+  });
+});
+
+test('Go library modules detect specific skill origins', async () => {
+  await fixture(
+    {
+      'go.mod':
+        'module example.com/service\n\ngo 1.24\n\nrequire (\n  github.com/spf13/cobra v1.9.1\n  go.uber.org/fx v1.23.2\n  github.com/samber/lo v1.53.0\n  google.golang.org/grpc v1.71.0\n)\n',
+    },
+    (report) => {
+      expect(
+        ['go', 'cobra', 'uber-fx', 'samber-lo', 'grpc'].filter((id) => !has(report, id)),
+      ).toStrictEqual([]);
+
+      const cobra = skill(report, 'samber/cc-skills-golang/golang-spf13-cobra');
+      expect(cobra?.sources.map((source) => source.id).sort()).toStrictEqual(['cobra', 'go']);
+      expect(report.skills.filter((candidate) => candidate.id === cobra?.id)).toHaveLength(1);
+    },
+  );
+});
+
+test('built-in technology skill lists are unique three-segment IDs', () => {
+  for (const technology of SKILLS_MAP) {
+    expect(new Set(technology.skills).size).toBe(technology.skills.length);
+
+    for (const id of technology.skills) expect(id.split('/')).toHaveLength(3);
+  }
+});
+
 test('Cargo dependency subtables and renames are detected', async () => {
   await fixture(
     {
