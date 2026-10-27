@@ -314,6 +314,7 @@
     {"id": "swiftui-clerk", "name": "SwiftUI + Clerk"},
     {"id": "tailwind-shadcn", "name": "Tailwind CSS + shadcn/ui"},
     {"id": "tanstack-clerk", "name": "TanStack Start + Clerk"},
+    {"id": "terraform-azure", "name": "Terraform + Azure"},
     {"id": "vue-clerk", "name": "Vue + Clerk"}
   ],
   "additionalProperties": true,
