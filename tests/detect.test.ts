@@ -70,6 +70,70 @@ test('mapping loads complete base and combo catalogs', () => {
   expect(SKILLS_MAP.some((technology) => technology.id === 'react')).toBe(true);
 });
 
+test('selected awesome-copilot defaults require matching technology signals', async () => {
+  await fixture(
+    {
+      'package.json': {
+        dependencies: {
+          '@aws-sdk/client-s3': '^3',
+          '@azure/identity': '^4',
+          '@qdrant/js-client-rest': '^1',
+          pg: '^8',
+          '@playwright/test': '^1',
+        },
+      },
+      'main.tf': 'terraform {}',
+      '.github/workflows/ci.yml': 'name: CI\non: push\njobs: {}',
+    },
+    (report) => {
+      expect(has(report, 'aws')).toBe(true);
+      expect(has(report, 'azure')).toBe(true);
+      expect(has(report, 'qdrant')).toBe(true);
+      expect(has(report, 'postgres')).toBe(true);
+      expect(has(report, 'github-actions')).toBe(true);
+      expect(combo(report, 'terraform-azure')).toBe(true);
+
+      for (const id of [
+        'aws-resource-query',
+        'azure-deployment-preflight',
+        'qdrant-search-quality',
+        'postgresql-code-review',
+        'github-actions-hardening',
+        'terraform-azurerm-set-diff-analyzer',
+      ]) {
+        expect(skill(report, `github/awesome-copilot/${id}`)).toBeTruthy();
+      }
+
+      // The Playwright package is not evidence that Playwright MCP is configured.
+      expect(has(report, 'mcp-playwright')).toBe(false);
+      expect(skill(report, 'github/awesome-copilot/playwright-generate-test')).toBeFalsy();
+    },
+  );
+
+  await fixture(
+    {
+      '.mcp.json': {
+        mcpServers: {
+          browser: {command: 'npx', args: ['-y', '@playwright/mcp@latest']},
+        },
+      },
+    },
+    (report) => {
+      expect(has(report, 'mcp-playwright')).toBe(true);
+      expect(skill(report, 'github/awesome-copilot/playwright-generate-test')).toBeTruthy();
+    },
+  );
+
+  await fixture({'requirements.txt': 'pytest\nruff\n'}, (report) => {
+    expect(skill(report, 'github/awesome-copilot/pytest-coverage')).toBeTruthy();
+    expect(skill(report, 'github/awesome-copilot/ruff-recursive-fix')).toBeTruthy();
+  });
+
+  await fixture({'build.bat': '@echo off'}, (report) => {
+    expect(skill(report, 'github/awesome-copilot/batch-files')).toBeTruthy();
+  });
+});
+
 test('detects npm dependencies, scoped patterns, bonuses, and deduped combo skills', async () => {
   await fixture(
     {
