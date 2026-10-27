@@ -448,6 +448,14 @@ export const SKILLS_MAP: Technology[] = [
       'microsoft/github-copilot-for-azure/azure-deploy',
       'microsoft/github-copilot-for-azure/azure-ai',
       'microsoft/github-copilot-for-azure/azure-diagnostics',
+      'github/awesome-copilot/azure-architecture-autopilot',
+      'github/awesome-copilot/azure-deployment-preflight',
+      'github/awesome-copilot/azure-developer-cli',
+      'github/awesome-copilot/azure-pricing',
+      'github/awesome-copilot/azure-resource-health-diagnose',
+      'github/awesome-copilot/azure-resource-visualizer',
+      'github/awesome-copilot/azure-well-architected-review',
+      'github/awesome-copilot/az-cost-optimize',
     ],
   },
   {
@@ -550,7 +558,13 @@ export const SKILLS_MAP: Technology[] = [
       pythonPackages: ['boto3', 'botocore', 'aws-cdk-lib'],
       gems: ['aws-sdk', 'aws-sdk-s3'],
     },
-    skills: [],
+    skills: [
+      'github/awesome-copilot/aws-cloudwatch-investigation',
+      'github/awesome-copilot/aws-cost-optimize',
+      'github/awesome-copilot/aws-resource-health-diagnose',
+      'github/awesome-copilot/aws-resource-query',
+      'github/awesome-copilot/aws-well-architected-review',
+    ],
   },
   {
     id: 'swiftui',
@@ -736,6 +750,12 @@ export const SKILLS_MAP: Technology[] = [
     skills: [
       'github/awesome-copilot/java-docs',
       'affaan-m/everything-claude-code/java-coding-standards',
+      'github/awesome-copilot/java-development',
+      'github/awesome-copilot/java-debugging',
+      'github/awesome-copilot/java-diagnostics',
+      'github/awesome-copilot/java-junit',
+      'github/awesome-copilot/java-testcontainers',
+      'github/awesome-copilot/java-upgrade',
     ],
   },
   {
@@ -863,6 +883,8 @@ export const SKILLS_MAP: Technology[] = [
       'github/awesome-copilot/dotnet-best-practices',
       'github/awesome-copilot/dotnet-design-pattern-review',
       'github/awesome-copilot/dotnet-upgrade',
+      'github/awesome-copilot/dotnet-timezone',
+      'github/awesome-copilot/nuget-manager',
     ],
   },
   {
@@ -1055,7 +1077,11 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['pyproject.toml', 'requirements.txt', 'setup.py', 'setup.cfg', 'Pipfile'],
     },
-    skills: ['inferen-sh/skills/python-executor', 'wshobson/agents/python-testing-patterns'],
+    skills: [
+      'inferen-sh/skills/python-executor',
+      'wshobson/agents/python-testing-patterns',
+      'github/awesome-copilot/python-pypi-package-builder',
+    ],
   },
   {
     id: 'fastapi',
@@ -1123,7 +1149,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       pythonPackages: ['pytest'],
     },
-    skills: ['wshobson/agents/python-testing-patterns'],
+    skills: ['wshobson/agents/python-testing-patterns', 'github/awesome-copilot/pytest-coverage'],
   },
   {
     id: 'pandas',
@@ -1189,13 +1215,21 @@ export const SKILLS_MAP: Technology[] = [
         'compose.yaml',
       ],
     },
-    skills: ['docker/skills/docker-project-foundations'],
+    skills: [
+      'docker/skills/docker-project-foundations',
+      'github/awesome-copilot/multi-stage-dockerfile',
+    ],
   },
   {
     id: 'github-actions',
     name: 'GitHub Actions',
     detect: {configFiles: ['.github/workflows']},
-    skills: [],
+    skills: [
+      'github/awesome-copilot/github-actions-efficiency',
+      'github/awesome-copilot/github-actions-hardening',
+      'github/awesome-copilot/github-actions-runtime-upgrade-conventions',
+      'github/awesome-copilot/create-github-action-workflow-specification',
+    ],
   },
   {
     id: 'kubernetes',
@@ -1329,7 +1363,7 @@ export const SKILLS_MAP: Technology[] = [
         'jest.config.json',
       ],
     },
-    skills: [],
+    skills: ['github/awesome-copilot/javascript-typescript-jest'],
   },
   {
     id: 'cypress',
@@ -1338,7 +1372,7 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['cypress'],
       configFiles: ['cypress.config.js', 'cypress.config.cjs', 'cypress.config.ts', 'cypress.json'],
     },
-    skills: [],
+    skills: ['github/awesome-copilot/cypress-flake-fixer'],
   },
   {
     id: 'eslint',
@@ -1406,7 +1440,10 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@modelcontextprotocol/sdk'],
       pythonPackages: ['mcp'],
     },
-    skills: [],
+    skills: [
+      'github/awesome-copilot/mcp-implementation-security-review',
+      'github/awesome-copilot/mcp-release-qa',
+    ],
   },
   {
     id: 'mcp-context7',
@@ -1422,7 +1459,12 @@ export const SKILLS_MAP: Technology[] = [
     id: 'mcp-playwright',
     name: 'Playwright MCP',
     detect: {mcpServers: [{packages: ['@playwright/mcp']}]},
-    skills: ['anthropics/skills/webapp-testing'],
+    skills: [
+      'anthropics/skills/webapp-testing',
+      'github/awesome-copilot/playwright-generate-test',
+      'github/awesome-copilot/playwright-explore-website',
+      'github/awesome-copilot/playwright-automation-fill-in-form',
+    ],
   },
   {
     id: 'mcp-chrome-devtools',
@@ -1693,7 +1735,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['.github/dependabot.yml', '.github/dependabot.yaml'],
     },
-    skills: ['cli/cli/dependabot-triager'],
+    skills: ['cli/cli/dependabot-triager', 'github/awesome-copilot/dependabot'],
   },
 
   // Developer tooling — monorepos, bundlers, and formatters
@@ -1848,7 +1890,7 @@ export const SKILLS_MAP: Technology[] = [
         patterns: ['[tool.ruff]', '[tool.ruff.lint]', '[tool.ruff.format]'],
       },
     },
-    skills: [],
+    skills: ['github/awesome-copilot/ruff-recursive-fix'],
   },
   {
     id: 'bazel',
@@ -2035,7 +2077,10 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['pg', 'postgres'],
       pythonPackages: ['psycopg', 'psycopg2', 'psycopg2-binary', 'asyncpg', 'pg8000'],
     },
-    skills: [],
+    skills: [
+      'github/awesome-copilot/postgresql-code-review',
+      'github/awesome-copilot/postgresql-optimization',
+    ],
   },
   {
     id: 'mysql',
@@ -2080,7 +2125,16 @@ export const SKILLS_MAP: Technology[] = [
       packages: ['@qdrant/js-client-rest'],
       pythonPackages: ['qdrant-client'],
     },
-    skills: [],
+    skills: [
+      'github/awesome-copilot/qdrant-clients-sdk',
+      'github/awesome-copilot/qdrant-deployment-options',
+      'github/awesome-copilot/qdrant-model-migration',
+      'github/awesome-copilot/qdrant-monitoring',
+      'github/awesome-copilot/qdrant-performance-optimization',
+      'github/awesome-copilot/qdrant-scaling',
+      'github/awesome-copilot/qdrant-search-quality',
+      'github/awesome-copilot/qdrant-version-upgrade',
+    ],
   },
   {
     id: 'bullmq',
@@ -2442,7 +2496,7 @@ export const SKILLS_MAP: Technology[] = [
     id: 'batch',
     name: 'Windows batch',
     detect: {fileExtensions: ['.bat', '.cmd']},
-    skills: [],
+    skills: ['github/awesome-copilot/batch-files'],
   },
   {
     id: 'jinja',
@@ -2832,6 +2886,12 @@ export const COMBO_SKILLS_MAP: ComboSkill[] = [
     name: 'Docker + Python',
     requires: ['docker', 'python'],
     skills: [],
+  },
+  {
+    id: 'terraform-azure',
+    name: 'Terraform + Azure',
+    requires: ['terraform', 'azure'],
+    skills: ['github/awesome-copilot/terraform-azurerm-set-diff-analyzer'],
   },
 ];
 

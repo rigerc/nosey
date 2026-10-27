@@ -60,6 +60,8 @@ mixed-language workspaces. Other Go specialties and the former `affaan-m` Go
 defaults can be added through a custom registry. Existing installed skills are
 not removed when recommendations change.
 
+The built-in skill map also recommends selected [GitHub awesome-copilot skills](https://github.com/github/awesome-copilot/tree/main/skills) for detected technologies including Java, .NET, PostgreSQL, Qdrant, AWS, Azure, GitHub Actions, and testing tools. Skills that require a specific integration, such as Playwright MCP, are suggested only when the matching signal is detected. Nosey does not install these skills during a scan.
+
 ## Terminal workflow
 
 Navigate four tabs in one terminal session:
