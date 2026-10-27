@@ -1149,10 +1149,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       pythonPackages: ['pytest'],
     },
-    skills: [
-      'wshobson/agents/python-testing-patterns',
-      'github/awesome-copilot/pytest-coverage',
-    ],
+    skills: ['wshobson/agents/python-testing-patterns', 'github/awesome-copilot/pytest-coverage'],
   },
   {
     id: 'pandas',
@@ -1738,10 +1735,7 @@ export const SKILLS_MAP: Technology[] = [
     detect: {
       configFiles: ['.github/dependabot.yml', '.github/dependabot.yaml'],
     },
-    skills: [
-      'cli/cli/dependabot-triager',
-      'github/awesome-copilot/dependabot',
-    ],
+    skills: ['cli/cli/dependabot-triager', 'github/awesome-copilot/dependabot'],
   },
 
   // Developer tooling — monorepos, bundlers, and formatters
